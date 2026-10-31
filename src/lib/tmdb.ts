@@ -7,6 +7,7 @@
  * una Edge Function de Supabase) que guarde el token. Ver docs/PLAN.md, sección 6.
  */
 
+import { demoMovie, demoSearch, demoSeason, demoTrending, demoTv } from './demo';
 import type {
   TmdbMovie,
   TmdbSearchResult,
@@ -24,6 +25,9 @@ export const LANGUAGE = process.env.EXPO_PUBLIC_LANGUAGE ?? 'es-MX';
 export const REGION = process.env.EXPO_PUBLIC_REGION ?? 'CO';
 
 export const hasToken = TOKEN.length > 0;
+
+/** Sin token, la app usa el catálogo de demostración de demo.ts. */
+export const isDemo = !hasToken;
 
 export class TmdbError extends Error {
   constructor(
@@ -72,6 +76,7 @@ export function imageUrl(path: string | null | undefined, size: ImageSize = 'w34
 export async function searchTitles(query: string, page = 1): Promise<TmdbSearchResult[]> {
   const q = query.trim();
   if (!q) return [];
+  if (isDemo) return demoSearch(q);
   const data = await get<{ results: TmdbSearchResult[] }>('/search/multi', {
     query: q,
     page: String(page),
@@ -81,19 +86,27 @@ export async function searchTitles(query: string, page = 1): Promise<TmdbSearchR
 }
 
 export async function getTrending(): Promise<TmdbSearchResult[]> {
+  if (isDemo) return demoTrending();
   const data = await get<{ results: TmdbSearchResult[] }>('/trending/all/week');
   return data.results.filter((r) => r.media_type === 'movie' || r.media_type === 'tv');
 }
 
-export function getMovie(id: number): Promise<TmdbMovie> {
+function notFound(): never {
+  throw new TmdbError('Este título no está en el catálogo de demostración.', 404);
+}
+
+export async function getMovie(id: number): Promise<TmdbMovie> {
+  if (isDemo) return demoMovie(id) ?? notFound();
   return get<TmdbMovie>(`/movie/${id}`);
 }
 
-export function getTv(id: number): Promise<TmdbTv> {
+export async function getTv(id: number): Promise<TmdbTv> {
+  if (isDemo) return demoTv(id) ?? notFound();
   return get<TmdbTv>(`/tv/${id}`);
 }
 
-export function getSeason(tvId: number, season: number): Promise<TmdbSeason> {
+export async function getSeason(tvId: number, season: number): Promise<TmdbSeason> {
+  if (isDemo) return demoSeason(tvId, season) ?? notFound();
   return get<TmdbSeason>(`/tv/${tvId}/season/${season}`);
 }
 
@@ -105,6 +118,7 @@ export async function getWatchProviders(
   type: MediaType,
   id: number,
 ): Promise<TmdbWatchProviders | null> {
+  if (isDemo) return null;
   const data = await get<{ results: Record<string, TmdbWatchProviders> }>(
     `/${type}/${id}/watch/providers`,
   );

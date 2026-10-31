@@ -28,7 +28,7 @@ export function TitleCard({
     <Link href={{ pathname: '/titulo/[tipo]/[id]', params: { tipo: mediaType, id: String(id) } }} asChild>
       <Pressable style={({ pressed }) => [{ width, gap: Space.xs }, pressed && { opacity: 0.8 }]}>
         <View>
-          <Poster path={posterPath} width={width} />
+          <Poster path={posterPath} title={title} width={width} />
           {badge ? (
             <View style={styles.badge}>
               <T variant="caption" style={{ color: C.onAccent, fontWeight: '700' }}>

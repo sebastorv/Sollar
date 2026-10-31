@@ -1,7 +1,8 @@
-import { DarkTheme, Stack, ThemeProvider } from 'expo-router';
+import { DarkTheme, router, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, type ReactNode } from 'react';
+import { Pressable, Text } from 'react-native';
 
 import { C } from '@/constants/theme';
 import { LibraryProvider, useLibrary } from '@/store/library';
@@ -29,6 +30,25 @@ function HideSplashWhenReady({ children }: { children: ReactNode }) {
   return children;
 }
 
+function BackButton() {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="Volver"
+      onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
+      hitSlop={8}
+      style={({ pressed }) => ({
+        paddingVertical: 6,
+        paddingHorizontal: 12,
+        borderRadius: 999,
+        backgroundColor: 'rgba(14,14,17,0.7)',
+        opacity: pressed ? 0.7 : 1,
+      })}>
+      <Text style={{ color: C.text, fontSize: 15, fontWeight: '600' }}>‹ Atrás</Text>
+    </Pressable>
+  );
+}
+
 export default function RootLayout() {
   return (
     <ThemeProvider value={theme}>
@@ -43,7 +63,7 @@ export default function RootLayout() {
                 title: '',
                 headerTransparent: true,
                 headerTintColor: C.text,
-                headerBackTitle: 'Atrás',
+                headerLeft: () => <BackButton />,
               }}
             />
           </Stack>

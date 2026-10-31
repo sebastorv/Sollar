@@ -14,18 +14,15 @@ export default function ProfileScreen() {
   const stats = useMemo(() => computeStats(items), [items]);
   const [importOpen, setImportOpen] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [exportText, setExportText] = useState<string | null>(null);
 
   async function onExport() {
     const json = JSON.stringify(exportBackup(), null, 2);
     const name = `butaca-respaldo-${new Date().toISOString().slice(0, 10)}.json`;
     if (Platform.OS === 'web') {
-      const url = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = name;
-      a.click();
-      URL.revokeObjectURL(url);
-      setMessage('Respaldo descargado.');
+      // En web se muestra el texto con botones de copiar y descargar: algunos
+      // navegadores (o la vista previa) bloquean las descargas.
+      setExportText(json);
     } else {
       await Share.share({ title: name, message: json });
     }
@@ -82,6 +79,8 @@ export default function ProfileScreen() {
         </T>
       </Section>
 
+      <ExportModal text={exportText} onClose={() => setExportText(null)} onDone={setMessage} />
+
       <ImportModal
         visible={importOpen}
         onClose={() => setImportOpen(false)}
@@ -106,6 +105,63 @@ function Stat({ value, label }: { value: string; label: string }) {
         {label}
       </T>
     </View>
+  );
+}
+
+function ExportModal({
+  text,
+  onClose,
+  onDone,
+}: {
+  text: string | null;
+  onClose: () => void;
+  onDone: (msg: string) => void;
+}) {
+  const [note, setNote] = useState<string | null>(null);
+  const inFrame = typeof window !== 'undefined' && window.self !== window.top;
+
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(text ?? '');
+      setNote('Copiado. Pégalo en una nota o un archivo para guardarlo.');
+    } catch {
+      setNote('No se pudo copiar automáticamente: selecciona el texto y cópialo.');
+    }
+  }
+
+  function download() {
+    try {
+      const url = URL.createObjectURL(new Blob([text ?? ''], { type: 'application/json' }));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `butaca-respaldo-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      onDone('Respaldo descargado.');
+    } catch {
+      setNote('Este navegador no permitió la descarga: usa Copiar.');
+    }
+  }
+
+  return (
+    <Modal visible={text != null} animationType="slide" transparent onRequestClose={onClose}>
+      <View style={styles.backdrop}>
+        <View style={styles.sheet}>
+          <T variant="heading">Tu respaldo</T>
+          <T variant="small" muted>
+            Este texto contiene toda tu lista. Guárdalo para importarlo después.
+          </T>
+          <TextInput value={text ?? ''} multiline editable={false} style={styles.textarea} />
+          {note ? <T variant="small" style={{ color: C.success }}>{note}</T> : null}
+          <View style={{ gap: Space.sm }}>
+            <Button label="Copiar" onPress={copy} />
+            {/* Dentro de un marco (como la vista previa) las descargas suelen estar bloqueadas. */}
+            {inFrame ? null : <Button label="Descargar archivo" kind="secondary" onPress={download} />}
+            <Button label="Cerrar" kind="secondary" onPress={() => { setNote(null); onClose(); }} />
+          </View>
+        </View>
+      </View>
+    </Modal>
   );
 }
 

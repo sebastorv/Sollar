@@ -10,7 +10,7 @@ import { Button, Chip, Empty, Loading, Poster, ProgressBar, Section, Stars, T } 
 import { C, MaxContentWidth, Radius, Space } from '@/constants/theme';
 import { itemKey, newItemFromMovie, newItemFromTv, seasonsFromTv } from '@/lib/library-item';
 import { formatEpisode, nextEpisode, progressOf, totalEpisodes, watchedCount } from '@/lib/progress';
-import { getMovie, getSeason, getTv, getWatchProviders, imageUrl } from '@/lib/tmdb';
+import { getMovie, getSeason, getTv, getWatchProviders, imageUrl, isDemo } from '@/lib/tmdb';
 import {
   STATUS_LABEL,
   STATUS_ORDER,
@@ -112,7 +112,7 @@ export default function TitleScreen() {
 
       <SafeAreaView edges={['left', 'right']} style={styles.content}>
         <View style={styles.header}>
-          <Poster path={d.poster_path} width={120} style={styles.headerPoster} />
+          <Poster path={d.poster_path} title={title} width={120} style={styles.headerPoster} />
           <View style={{ flex: 1, gap: Space.xs, justifyContent: 'flex-end' }}>
             <T variant="title" style={{ fontSize: 26, lineHeight: 31 }}>
               {title}
@@ -316,8 +316,8 @@ function EpisodeList({ tvId, season, item }: { tvId: number; season: number; ite
                 {ep.episode_number}. {ep.name}
               </T>
               <T variant="caption" muted>
-                {upcoming ? `Se estrena ${ep.air_date ?? 'pronto'}` : ep.air_date}
-                {ep.runtime ? ` · ${ep.runtime} min` : ''}
+                {upcoming ? `Se estrena ${ep.air_date ?? 'pronto'}` : isDemo ? '' : ep.air_date}
+                {ep.runtime ? `${isDemo ? '' : ' · '}${ep.runtime} min` : ''}
               </T>
             </View>
           </Pressable>
@@ -340,7 +340,9 @@ function WhereToWatch({ providers }: { providers: TmdbWatchProviders | null }) {
     <Section title="Dónde ver">
       {!any ? (
         <T variant="small" muted>
-          No hay plataformas registradas para tu país.
+          {isDemo
+            ? 'En el modo demostración no se muestran plataformas. Aparecen al conectar TMDB.'
+            : 'No hay plataformas registradas para tu país.'}
         </T>
       ) : (
         groups.map(([label, list]) =>
@@ -361,9 +363,11 @@ function WhereToWatch({ providers }: { providers: TmdbWatchProviders | null }) {
           ) : null,
         )
       )}
-      <T variant="caption" muted>
-        Datos de JustWatch.
-      </T>
+      {isDemo ? null : (
+        <T variant="caption" muted>
+          Datos de JustWatch.
+        </T>
+      )}
     </Section>
   );
 }

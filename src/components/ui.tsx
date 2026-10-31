@@ -59,23 +59,52 @@ export function Screen({
 
 // --- Carátula ---
 
+/** Tonos apagados para las carátulas que no tienen imagen. */
+const POSTER_TONES = ['#3B2F4A', '#2E4045', '#4A3A2A', '#2F3A52', '#45302F', '#334433', '#4A4130', '#3A3346'];
+
+function toneFor(text: string): string {
+  let h = 0;
+  for (let i = 0; i < text.length; i++) h = (h * 31 + text.charCodeAt(i)) >>> 0;
+  return POSTER_TONES[h % POSTER_TONES.length];
+}
+
 export function Poster({
   path,
+  title,
   width = 110,
   size = 'w342',
   style,
 }: {
   path: string | null;
+  /** Se muestra sobre un color cuando no hay imagen. */
+  title?: string;
   width?: number;
   size?: ImageSize;
   style?: StyleProp<ViewStyle>;
 }) {
   const uri = imageUrl(path, size);
   const box = { width, height: Math.round(width * 1.5), borderRadius: Radius.md };
+  const small = width < 90;
+  // La palabra más larga debe caber en una línea, para no partir "Oppenheimer".
+  const longest = title ? Math.max(...title.split(/\s+/).map((w) => w.length)) : 1;
+  const fit = Math.floor((width - (small ? 8 : 20)) / (longest * 0.62));
+  const fontSize = Math.max(9, Math.min(small ? 11 : Math.round(width / 7.5), fit));
   return (
-    <View style={[styles.posterBox, box, style]}>
+    <View style={[styles.posterBox, box, !uri && title ? { backgroundColor: toneFor(title) } : null, style]}>
       {uri ? (
         <Image source={{ uri }} style={StyleSheet.absoluteFill} contentFit="cover" transition={150} />
+      ) : title ? (
+        <T
+          numberOfLines={small ? 3 : 4}
+          style={{
+            textAlign: 'center',
+            fontWeight: '700',
+            fontSize,
+            lineHeight: Math.round(fontSize * 1.25),
+            paddingHorizontal: small ? 4 : 10,
+          }}>
+          {title}
+        </T>
       ) : (
         <T variant="caption" muted style={{ textAlign: 'center' }}>
           Sin carátula

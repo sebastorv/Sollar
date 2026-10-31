@@ -8,7 +8,7 @@ import { TokenWarning } from '@/components/token-warning';
 import { Empty, Loading, Screen, Section, T } from '@/components/ui';
 import { C, Radius, Space } from '@/constants/theme';
 import { itemKey } from '@/lib/library-item';
-import { displayTitle, displayYear, getTrending, hasToken, searchTitles } from '@/lib/tmdb';
+import { displayTitle, displayYear, getTrending, isDemo, searchTitles } from '@/lib/tmdb';
 import { STATUS_LABEL, type MediaType, type TmdbSearchResult } from '@/lib/types';
 import { useLibrary } from '@/store/library';
 
@@ -27,7 +27,6 @@ export default function SearchScreen() {
   }, [query]);
 
   useEffect(() => {
-    if (!hasToken) return;
     let cancelled = false;
     setLoading(true);
     setError(null);
@@ -46,7 +45,7 @@ export default function SearchScreen() {
       <TextInput
         value={query}
         onChangeText={setQuery}
-        placeholder="Series y películas"
+        placeholder={isDemo ? 'Prueba: dark, coco, the last of us' : 'Series y películas'}
         placeholderTextColor={C.textFaint}
         style={styles.input}
         autoCorrect={false}
@@ -55,7 +54,7 @@ export default function SearchScreen() {
         accessibilityLabel="Buscar series y películas"
       />
 
-      {!hasToken ? <TokenWarning /> : null}
+      {isDemo ? <TokenWarning /> : null}
 
       {error ? <Empty title="No se pudo buscar" message={error} /> : null}
 
@@ -66,7 +65,7 @@ export default function SearchScreen() {
       ) : null}
 
       {results.length > 0 ? (
-        <Section title={debounced ? 'Resultados' : 'Tendencias de la semana'}>
+        <Section title={debounced ? 'Resultados' : isDemo ? 'Catálogo de ejemplo' : 'Tendencias de la semana'}>
           <Grid>
             {results.map((r) => {
               const type = r.media_type as MediaType;

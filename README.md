@@ -27,6 +27,19 @@ dispositivo, sin cuentas ni servidor.
 - En el celular, la app **Expo Go** (App Store o Play Store) para probar sin compilar nada.
 - Para publicar en la App Store hace falta un Mac (ya lo tienes) o compilar en la nube con EAS.
 
+## Probarla sin nada (modo demostración)
+
+Sin token de TMDB la app arranca en **modo demostración**: 6 series y 6 películas de ejemplo con
+sus temporadas y episodios, para probar todo el flujo. Las carátulas son tarjetas de color y
+"Dónde ver" no aparece hasta conectar TMDB.
+
+## Qué es el token de TMDB
+
+TMDB es una base de datos gratuita de películas y series (como una enciclopedia). Para que la app
+le pueda pedir datos, TMDB te da una **clave personal**, el "token": un texto largo que funciona
+como una contraseña entre la app y TMDB. Se saca gratis con una cuenta y se pega en el archivo
+`.env`. Con eso la app pasa del catálogo de ejemplo al catálogo completo.
+
 ## Primeros pasos
 
 ```bash

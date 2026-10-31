@@ -8,7 +8,7 @@ import { TokenWarning } from '@/components/token-warning';
 import { Button, Empty, Poster, ProgressBar, Screen, Section, T } from '@/components/ui';
 import { C, Radius, Space } from '@/constants/theme';
 import { formatEpisode, nextEpisode, progressOf, totalEpisodes, watchedCount } from '@/lib/progress';
-import { hasToken } from '@/lib/tmdb';
+import { isDemo } from '@/lib/tmdb';
 import type { LibraryItem } from '@/lib/types';
 import { useLibrary } from '@/store/library';
 
@@ -22,7 +22,7 @@ export default function FollowingScreen() {
     <Screen>
       <T variant="title">Siguiendo</T>
 
-      {!hasToken ? <TokenWarning /> : null}
+      {isDemo ? <TokenWarning /> : null}
 
       {items.length === 0 ? (
         <Empty
@@ -66,7 +66,7 @@ function NextEpisodeRow({ item }: { item: LibraryItem }) {
     <View style={styles.row}>
       <Link href={{ pathname: '/titulo/[tipo]/[id]', params: { tipo: 'tv', id: String(item.tmdbId) } }} asChild>
         <Pressable style={{ flexDirection: 'row', gap: Space.md, flex: 1 }}>
-          <Poster path={item.posterPath} width={64} size="w185" />
+          <Poster path={item.posterPath} title={item.title} width={64} size="w185" />
           <View style={{ flex: 1, gap: Space.xs, justifyContent: 'center' }}>
             <T variant="label" numberOfLines={1}>
               {item.title}

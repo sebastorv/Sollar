@@ -4,14 +4,14 @@ import { C, Radius, Space } from '@/constants/theme';
 
 import { T } from './ui';
 
-/** Aviso que aparece mientras no se haya configurado el token de TMDB. */
+/** Aviso del modo demostración (sin token de TMDB). */
 export function TokenWarning() {
   return (
     <View style={styles.warning}>
-      <T variant="label">Falta conectar TMDB</T>
+      <T variant="label">Modo demostración</T>
       <T variant="small" muted>
-        Copia el archivo .env.example como .env, pega tu token de lectura de TMDB y reinicia con
-        &quot;npx expo start --clear&quot;. Los pasos están en el README.
+        Estás probando la app con 12 títulos de ejemplo. Al conectar TMDB aparece el catálogo completo, con
+        carátulas y dónde ver cada título.
       </T>
     </View>
   );
