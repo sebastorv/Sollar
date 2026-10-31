@@ -7,8 +7,17 @@
  * una Edge Function de Supabase) que guarde el token. Ver docs/PLAN.md, sección 6.
  */
 
-import { demoMovie, demoSearch, demoSeason, demoTrending, demoTv } from './demo';
+import {
+  DEMO_PROVIDERS,
+  demoMovie,
+  demoSearch,
+  demoSeason,
+  demoTrending,
+  demoTv,
+  demoWatchProviders,
+} from './demo';
 import type {
+  ProviderInfo,
   TmdbMovie,
   TmdbSearchResult,
   TmdbSeason,
@@ -118,11 +127,38 @@ export async function getWatchProviders(
   type: MediaType,
   id: number,
 ): Promise<TmdbWatchProviders | null> {
-  if (isDemo) return null;
+  if (isDemo) return demoWatchProviders(id);
   const data = await get<{ results: Record<string, TmdbWatchProviders> }>(
     `/${type}/${id}/watch/providers`,
   );
   return data.results[REGION] ?? null;
+}
+
+type TmdbProviderListItem = {
+  provider_id: number;
+  provider_name: string;
+  logo_path: string | null;
+  display_priority: number;
+  display_priorities?: Record<string, number>;
+};
+
+/** Plataformas disponibles en el país, de la más popular a la menos. */
+export async function getProviderDirectory(): Promise<ProviderInfo[]> {
+  if (isDemo) return DEMO_PROVIDERS;
+  const [movie, tv] = await Promise.all(
+    (['movie', 'tv'] as const).map((t) =>
+      get<{ results: TmdbProviderListItem[] }>(`/watch/providers/${t}`, { watch_region: REGION }),
+    ),
+  );
+  const byId = new Map<number, TmdbProviderListItem>();
+  for (const p of [...movie.results, ...tv.results]) if (!byId.has(p.provider_id)) byId.set(p.provider_id, p);
+  return [...byId.values()]
+    .sort(
+      (a, b) =>
+        (a.display_priorities?.[REGION] ?? a.display_priority) -
+        (b.display_priorities?.[REGION] ?? b.display_priority),
+    )
+    .map((p) => ({ id: p.provider_id, name: p.provider_name, logoPath: p.logo_path }));
 }
 
 /** Título y año de un resultado, sin importar si es película o serie. */

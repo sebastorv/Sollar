@@ -21,6 +21,7 @@ import {
 import { nextEpisode } from '@/lib/progress';
 import {
   episodeKey,
+  type Availability,
   type BackupFile,
   type LibraryItem,
   type SeasonSummary,
@@ -38,6 +39,7 @@ type Action =
   | { type: 'patch'; key: string; patch: Partial<LibraryItem> }
   | { type: 'setEpisodes'; key: string; episodes: { season: number; episode: number }[]; watched: boolean }
   | { type: 'refreshSeasons'; key: string; seasons: SeasonSummary[] }
+  | { type: 'availability'; key: string; availability: Availability }
   | { type: 'import'; items: LibraryItem[]; mode: 'merge' | 'replace' };
 
 function touch(item: LibraryItem, patch: Partial<LibraryItem>): LibraryItem {
@@ -97,6 +99,13 @@ function reducer(state: State, action: Action): State {
       return { ...state, items: { ...state.items, [action.key]: { ...next, status: autoStatus(next) } } };
     }
 
+    case 'availability': {
+      const item = state.items[action.key];
+      if (!item) return state;
+      // No cambia updatedAt: es un dato de TMDB, no una decisión del usuario.
+      return { ...state, items: { ...state.items, [action.key]: { ...item, availability: action.availability } } };
+    }
+
     case 'import': {
       const incoming = Object.fromEntries(action.items.map((i) => [i.key, i]));
       if (action.mode === 'replace') return { ...state, items: incoming };
@@ -123,6 +132,7 @@ type LibraryApi = {
   setMovieWatched: (key: string, watched: boolean) => void;
   setEpisodes: (key: string, episodes: { season: number; episode: number }[], watched: boolean) => void;
   refreshSeasons: (key: string, seasons: SeasonSummary[]) => void;
+  setAvailability: (key: string, availability: Availability) => void;
   exportBackup: () => BackupFile;
   importBackup: (backup: BackupFile, mode: 'merge' | 'replace') => void;
 };
@@ -182,6 +192,7 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
         }),
       setEpisodes: (key, episodes, watched) => dispatch({ type: 'setEpisodes', key, episodes, watched }),
       refreshSeasons: (key, seasons) => dispatch({ type: 'refreshSeasons', key, seasons }),
+      setAvailability: (key, availability) => dispatch({ type: 'availability', key, availability }),
       exportBackup: () => ({
         app: 'butaca',
         version: 1,

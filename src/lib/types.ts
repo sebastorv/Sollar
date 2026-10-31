@@ -30,6 +30,29 @@ export type SeasonSummary = {
   name: string;
 };
 
+/** Una plataforma de streaming (Netflix, Disney+...). Los ids son los de TMDB. */
+export type ProviderInfo = {
+  id: number;
+  name: string;
+  logoPath: string | null;
+};
+
+/**
+ * Dónde se puede ver un título en el país configurado, guardado junto al título
+ * para filtrar sin conexión. Se actualiza al abrir la ficha o desde Mi lista.
+ */
+export type Availability = {
+  checkedAt: string;
+  /** Incluido en la suscripción. */
+  flatrate: number[];
+  /** Gratis, con o sin anuncios. */
+  free: number[];
+  rent: number[];
+  buy: number[];
+  /** Nombres de las plataformas, para mostrarlos sin consultar de nuevo. */
+  names: Record<number, string>;
+};
+
 /** Un título guardado en la biblioteca del usuario. */
 export type LibraryItem = {
   /** Clave única: "movie:603" o "tv:1399". */
@@ -53,6 +76,8 @@ export type LibraryItem = {
   watchedEpisodes: Record<EpisodeKey, string>;
   /** Solo películas: fecha en que se marcó como vista. */
   watchedAt: string | null;
+  /** Dónde verlo (puede faltar en títulos guardados antes de esta función). */
+  availability?: Availability | null;
   addedAt: string;
   updatedAt: string;
 };

@@ -14,6 +14,7 @@ export function TitleCard({
   posterPath,
   subtitle,
   badge,
+  highlight,
   width = 120,
 }: {
   id: number;
@@ -22,6 +23,8 @@ export function TitleCard({
   posterPath: string | null;
   subtitle?: string | null;
   badge?: string | null;
+  /** Texto destacado bajo el título, por ejemplo "En Netflix". */
+  highlight?: string | null;
   width?: number;
 }) {
   return (
@@ -43,6 +46,11 @@ export function TitleCard({
         {subtitle ? (
           <T variant="caption" muted numberOfLines={1}>
             {subtitle}
+          </T>
+        ) : null}
+        {highlight ? (
+          <T variant="caption" numberOfLines={1} style={{ color: C.accent, fontWeight: '700' }}>
+            {highlight}
           </T>
         ) : null}
       </Pressable>

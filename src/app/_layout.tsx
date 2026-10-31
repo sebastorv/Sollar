@@ -6,6 +6,7 @@ import { Pressable, Text } from 'react-native';
 
 import { C } from '@/constants/theme';
 import { LibraryProvider, useLibrary } from '@/store/library';
+import { SettingsProvider } from '@/store/settings';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -52,6 +53,7 @@ function BackButton() {
 export default function RootLayout() {
   return (
     <ThemeProvider value={theme}>
+      <SettingsProvider>
       <LibraryProvider>
         <HideSplashWhenReady>
           <StatusBar style="light" />
@@ -69,6 +71,7 @@ export default function RootLayout() {
           </Stack>
         </HideSplashWhenReady>
       </LibraryProvider>
+      </SettingsProvider>
     </ThemeProvider>
   );
 }

@@ -8,15 +8,22 @@ import { TokenWarning } from '@/components/token-warning';
 import { Button, Empty, Poster, ProgressBar, Screen, Section, T } from '@/components/ui';
 import { C, Radius, Space } from '@/constants/theme';
 import { formatEpisode, nextEpisode, progressOf, totalEpisodes, watchedCount } from '@/lib/progress';
+import { availableLabel, myMatches } from '@/lib/providers';
 import { isDemo } from '@/lib/tmdb';
 import type { LibraryItem } from '@/lib/types';
 import { useLibrary } from '@/store/library';
+import { useSettings } from '@/store/settings';
 
 export default function FollowingScreen() {
   const { items } = useLibrary();
   const watching = items.filter((i) => i.mediaType === 'tv' && i.status === 'watching');
   const plannedMovies = items.filter((i) => i.mediaType === 'movie' && i.status === 'planned');
   const plannedShows = items.filter((i) => i.mediaType === 'tv' && i.status === 'planned');
+  const { myProviders } = useSettings();
+  // Pendientes que ya puedes ver con lo que pagas: lo más útil para decidir qué ver hoy.
+  const readyNow = items.filter(
+    (i) => (i.status === 'planned' || i.status === 'paused') && myMatches(i, myProviders).length > 0,
+  );
 
   return (
     <Screen>
@@ -32,6 +39,22 @@ export default function FollowingScreen() {
         />
       ) : null}
 
+      {items.length > 0 && myProviders.length === 0 ? (
+        <View style={styles.tip}>
+          <T variant="label">¿Qué plataformas pagas?</T>
+          <T variant="small" muted>
+            Elígelas una vez y Butaca te muestra qué de tu lista puedes ver ya, sin pagar extra.
+          </T>
+          <Button label="Elegir mis plataformas" kind="secondary" onPress={() => router.navigate('/perfil')} />
+        </View>
+      ) : null}
+
+      {readyNow.length > 0 ? (
+        <Section title="Listo para ver en tus plataformas">
+          <Shelf items={readyNow} myProviders={myProviders} />
+        </Section>
+      ) : null}
+
       {watching.length > 0 ? (
         <Section title="Continúa viendo">
           <View style={{ gap: Space.md }}>
@@ -44,13 +67,13 @@ export default function FollowingScreen() {
 
       {plannedShows.length > 0 ? (
         <Section title="Series por empezar">
-          <Shelf items={plannedShows} />
+          <Shelf items={plannedShows} myProviders={myProviders} />
         </Section>
       ) : null}
 
       {plannedMovies.length > 0 ? (
         <Section title="Películas por ver">
-          <Shelf items={plannedMovies} />
+          <Shelf items={plannedMovies} myProviders={myProviders} />
         </Section>
       ) : null}
     </Screen>
@@ -93,7 +116,7 @@ function NextEpisodeRow({ item }: { item: LibraryItem }) {
   );
 }
 
-function Shelf({ items }: { items: LibraryItem[] }) {
+function Shelf({ items, myProviders }: { items: LibraryItem[]; myProviders: number[] }) {
   return (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: Space.md }}>
       {items.map((i) => (
@@ -104,6 +127,7 @@ function Shelf({ items }: { items: LibraryItem[] }) {
           title={i.title}
           posterPath={i.posterPath}
           subtitle={i.year}
+          highlight={availableLabel(i, myProviders)}
           width={110}
         />
       ))}
@@ -112,6 +136,14 @@ function Shelf({ items }: { items: LibraryItem[] }) {
 }
 
 const styles = StyleSheet.create({
+  tip: {
+    gap: Space.sm,
+    padding: Space.md,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: C.border,
+    backgroundColor: C.surface,
+  },
   row: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import { Modal, Platform, Share, StyleSheet, TextInput, View } from 'react-native';
 
+import { PlatformPicker } from '@/components/platforms';
 import { Button, Screen, Section, T } from '@/components/ui';
 import { C, Radius, Space } from '@/constants/theme';
 import { parseBackup } from '@/lib/library-item';
@@ -31,6 +32,14 @@ export default function ProfileScreen() {
   return (
     <Screen>
       <T variant="title">Perfil</T>
+
+      <Section title="Mis plataformas">
+        <T variant="small" muted>
+          Marca los servicios que pagas. Con eso, en cada título y en tus listas verás al instante si está
+          incluido en tu plan.
+        </T>
+        <PlatformPicker />
+      </Section>
 
       <Section title="Tus números">
         <View style={styles.statsGrid}>

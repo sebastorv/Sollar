@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import { StyleSheet, TextInput } from 'react-native';
 
 import { Grid, TitleCard } from '@/components/title-card';
+import { useAvailabilityFor } from '@/hooks/use-availability';
+import { availableLabel } from '@/lib/providers';
 import { TokenWarning } from '@/components/token-warning';
 import { Empty, Loading, Screen, Section, T } from '@/components/ui';
 import { C, Radius, Space } from '@/constants/theme';
@@ -11,6 +13,7 @@ import { itemKey } from '@/lib/library-item';
 import { displayTitle, displayYear, getTrending, isDemo, searchTitles } from '@/lib/tmdb';
 import { STATUS_LABEL, type MediaType, type TmdbSearchResult } from '@/lib/types';
 import { useLibrary } from '@/store/library';
+import { useSettings } from '@/store/settings';
 
 export default function SearchScreen() {
   const [query, setQuery] = useState('');
@@ -19,6 +22,10 @@ export default function SearchScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { get } = useLibrary();
+  const { myProviders } = useSettings();
+  const availability = useAvailabilityFor(
+    results.map((r) => ({ id: r.id, mediaType: r.media_type as MediaType })),
+  );
 
   // Espera a que el usuario deje de escribir antes de consultar.
   useEffect(() => {
@@ -81,6 +88,7 @@ export default function SearchScreen() {
                   posterPath={r.poster_path}
                   subtitle={year ? `${kind} · ${year}` : kind}
                   badge={saved ? STATUS_LABEL[saved.status] : null}
+                  highlight={availableLabel({ availability: availability[itemKey(type, r.id)] }, myProviders)}
                 />
               );
             })}

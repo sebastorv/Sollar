@@ -6,11 +6,13 @@
  */
 
 import type {
+  ProviderInfo,
   TmdbEpisode,
   TmdbMovie,
   TmdbSearchResult,
   TmdbSeason,
   TmdbTv,
+  TmdbWatchProviders,
 } from './types';
 
 type DemoShow = {
@@ -265,4 +267,40 @@ export function demoSeason(tvId: number, season: number): TmdbSeason | null {
     still_path: null,
   }));
   return { id: tvId * 10 + season, season_number: season, name: `Temporada ${season}`, episodes };
+}
+
+// --- Plataformas de ejemplo ---
+// Ids de TMDB. Solo se asignan a producciones propias de cada plataforma, que es
+// donde la disponibilidad es estable; el resto queda sin plataforma a propósito.
+
+export const DEMO_PROVIDERS: ProviderInfo[] = [
+  { id: 8, name: 'Netflix', logoPath: null },
+  { id: 119, name: 'Amazon Prime Video', logoPath: null },
+  { id: 337, name: 'Disney Plus', logoPath: null },
+  { id: 1899, name: 'HBO Max', logoPath: null },
+  { id: 350, name: 'Apple TV+', logoPath: null },
+  { id: 531, name: 'Paramount Plus', logoPath: null },
+  { id: 283, name: 'Crunchyroll', logoPath: null },
+  { id: 11, name: 'MUBI', logoPath: null },
+];
+
+const DEMO_AVAILABILITY: Record<number, number[]> = {
+  900005: [8], // Dark
+  900006: [8], // Stranger Things
+  910003: [8], // La sociedad de la nieve
+  900002: [350], // Severance
+  900003: [1899], // The Last of Us
+  910005: [337], // Coco
+  910006: [337], // Encanto
+};
+
+export function demoWatchProviders(id: number): TmdbWatchProviders | null {
+  const ids = DEMO_AVAILABILITY[id];
+  if (!ids) return null;
+  return {
+    flatrate: ids.map((pid) => {
+      const p = DEMO_PROVIDERS.find((x) => x.id === pid)!;
+      return { provider_id: p.id, provider_name: p.name, logo_path: '' };
+    }),
+  };
 }

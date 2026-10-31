@@ -6,10 +6,12 @@ import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { ProviderLogo } from '@/components/platforms';
 import { Button, Chip, Empty, Loading, Poster, ProgressBar, Section, Stars, T } from '@/components/ui';
 import { C, MaxContentWidth, Radius, Space } from '@/constants/theme';
 import { itemKey, newItemFromMovie, newItemFromTv, seasonsFromTv } from '@/lib/library-item';
 import { formatEpisode, nextEpisode, progressOf, totalEpisodes, watchedCount } from '@/lib/progress';
+import { availabilityFrom } from '@/lib/providers';
 import { getMovie, getSeason, getTv, getWatchProviders, imageUrl, isDemo } from '@/lib/tmdb';
 import {
   STATUS_LABEL,
@@ -24,6 +26,7 @@ import {
   type WatchStatus,
 } from '@/lib/types';
 import { useLibrary } from '@/store/library';
+import { useSettings } from '@/store/settings';
 
 type Details = { kind: 'movie'; data: TmdbMovie } | { kind: 'tv'; data: TmdbTv };
 
@@ -38,6 +41,7 @@ export default function TitleScreen() {
 
   const [details, setDetails] = useState<Details | null>(null);
   const [providers, setProviders] = useState<TmdbWatchProviders | null>(null);
+  const [providersLoaded, setProvidersLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -48,8 +52,13 @@ export default function TitleScreen() {
         ? getTv(id).then((data): Details => ({ kind: 'tv', data }))
         : getMovie(id).then((data): Details => ({ kind: 'movie', data }));
     load.then((d) => !cancelled && setDetails(d)).catch((e: Error) => !cancelled && setError(e.message));
+    setProvidersLoaded(false);
     getWatchProviders(type, id)
-      .then((p) => !cancelled && setProviders(p))
+      .then((p) => {
+        if (cancelled) return;
+        setProviders(p);
+        setProvidersLoaded(true);
+      })
       .catch(() => {});
     return () => {
       cancelled = true;
@@ -65,6 +74,13 @@ export default function TitleScreen() {
     // lib cambia en cada render; basta con reaccionar a los datos.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [details, savedSeasonsJson, key]);
+
+  // Guarda dónde se puede ver, para que Mi lista filtre por plataforma sin conexión.
+  const saved = Boolean(item);
+  useEffect(() => {
+    if (saved && providersLoaded) lib.setAvailability(key, availabilityFrom(providers));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [saved, providersLoaded, providers, key]);
 
   if (error) {
     return (
@@ -98,7 +114,7 @@ export default function TitleScreen() {
 
   function add(status: WatchStatus) {
     const created = details!.kind === 'tv' ? newItemFromTv(details!.data, status) : newItemFromMovie(details!.data, status);
-    lib.save(created);
+    lib.save(providersLoaded ? { ...created, availability: availabilityFrom(providers) } : created);
   }
 
   const backdrop = imageUrl(d.backdrop_path, 'w780');
@@ -135,11 +151,12 @@ export default function TitleScreen() {
         ) : null}
         {d.overview ? <T>{d.overview}</T> : <T muted>Sin sinopsis en español todavía.</T>}
 
+        {/* Dónde ver va arriba: es lo primero que se quiere saber de un título. */}
+        <WhereToWatch providers={providers} loaded={providersLoaded} />
+
         {item ? <SavedControls item={item} /> : <AddButtons kind={details.kind} onAdd={add} />}
 
         {details.kind === 'tv' ? <Seasons tv={details.data} item={item} /> : null}
-
-        <WhereToWatch providers={providers} />
       </SafeAreaView>
     </ScrollView>
   );
@@ -327,47 +344,75 @@ function EpisodeList({ tvId, season, item }: { tvId: number; season: number; ite
   );
 }
 
-function WhereToWatch({ providers }: { providers: TmdbWatchProviders | null }) {
+function WhereToWatch({ providers, loaded }: { providers: TmdbWatchProviders | null; loaded: boolean }) {
+  const { myProviders } = useSettings();
+  const mine = new Set(myProviders);
   const groups: [string, TmdbWatchProviders['flatrate']][] = [
-    ['Suscripción', providers?.flatrate],
-    ['Gratis', providers?.free ?? providers?.ads],
+    ['Incluido en suscripción', providers?.flatrate],
+    ['Gratis', [...(providers?.free ?? []), ...(providers?.ads ?? [])]],
     ['Alquiler', providers?.rent],
     ['Compra', providers?.buy],
   ];
   const any = groups.some(([, list]) => list && list.length > 0);
+  const included = [...(providers?.flatrate ?? []), ...(providers?.free ?? []), ...(providers?.ads ?? [])];
+  const matches = included.filter((p) => mine.has(p.provider_id));
+  const matchNames = [...new Set(matches.map((p) => p.provider_name))];
 
   return (
     <Section title="Dónde ver">
-      {!any ? (
-        <T variant="small" muted>
-          {isDemo
-            ? 'En el modo demostración no se muestran plataformas. Aparecen al conectar TMDB.'
-            : 'No hay plataformas registradas para tu país.'}
-        </T>
+      {!loaded ? (
+        <Loading />
+      ) : myProviders.length === 0 ? (
+        <View style={styles.verdict}>
+          <T variant="label">¿Qué plataformas pagas?</T>
+          <T variant="small" muted>
+            Elígelas en Perfil y aquí te diremos al instante si este título está incluido en tu plan.
+          </T>
+          <Button label="Elegir mis plataformas" kind="secondary" onPress={() => router.navigate('/perfil')} />
+        </View>
+      ) : matchNames.length > 0 ? (
+        <View style={[styles.verdict, styles.verdictYes]}>
+          <T variant="label" style={{ color: C.accent }}>
+            ✓ Incluido en tu plan
+          </T>
+          <T variant="small">Puedes verlo en {matchNames.join(', ')} sin pagar nada extra.</T>
+        </View>
       ) : (
-        groups.map(([label, list]) =>
-          list && list.length > 0 ? (
-            <View key={label} style={{ gap: Space.sm }}>
-              <T variant="small" muted>
-                {label}
-              </T>
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: Space.sm }}>
-                {list.map((p) => (
-                  <View key={p.provider_id} style={styles.provider}>
-                    <Image source={{ uri: imageUrl(p.logo_path, 'w92') ?? undefined }} style={styles.providerLogo} />
-                    <T variant="caption">{p.provider_name}</T>
-                  </View>
-                ))}
+        <View style={styles.verdict}>
+          <T variant="label">No está en tus plataformas</T>
+          <T variant="small" muted>
+            {any ? 'Abajo ves dónde sí está.' : 'Por ahora no aparece en ningún servicio de tu país.'}
+          </T>
+        </View>
+      )}
+
+      {loaded && any
+        ? groups.map(([label, list]) =>
+            list && list.length > 0 ? (
+              <View key={label} style={{ gap: Space.sm }}>
+                <T variant="small" muted>
+                  {label}
+                </T>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: Space.sm }}>
+                  {list.map((p) => (
+                    <View
+                      key={p.provider_id}
+                      style={[styles.provider, mine.has(p.provider_id) && styles.providerMine]}>
+                      <ProviderLogo name={p.provider_name} logoPath={p.logo_path || null} />
+                      <T variant="caption" style={mine.has(p.provider_id) ? { fontWeight: '700' } : null}>
+                        {p.provider_name}
+                      </T>
+                    </View>
+                  ))}
+                </View>
               </View>
-            </View>
-          ) : null,
-        )
-      )}
-      {isDemo ? null : (
-        <T variant="caption" muted>
-          Datos de JustWatch.
-        </T>
-      )}
+            ) : null,
+          )
+        : null}
+
+      <T variant="caption" muted>
+        {isDemo ? 'Disponibilidad de ejemplo; puede no coincidir con la actual.' : 'Datos de JustWatch.'}
+      </T>
     </Section>
   );
 }
@@ -424,5 +469,14 @@ const styles = StyleSheet.create({
     backgroundColor: C.surface,
     borderRadius: Radius.md,
   },
-  providerLogo: { width: 28, height: 28, borderRadius: 6 },
+  providerMine: { borderWidth: 1, borderColor: C.accent, backgroundColor: C.accentSoft },
+  verdict: {
+    gap: Space.xs,
+    padding: Space.md,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: C.border,
+    backgroundColor: C.surface,
+  },
+  verdictYes: { borderColor: C.accent, backgroundColor: C.accentSoft },
 });

@@ -100,11 +100,12 @@ export function computeStats(items: LibraryItem[]): LibraryStats {
   };
 }
 
-/** "3 d 4 h" o "45 min". */
+/** "45 min", "1 h 45 min", "23 h 50 min" o "3 d 4 h". */
 export function formatDuration(minutes: number): string {
   if (minutes < 60) return `${minutes} min`;
   const days = Math.floor(minutes / 1440);
   const hours = Math.floor((minutes % 1440) / 60);
-  if (days === 0) return `${hours} h`;
+  const mins = minutes % 60;
+  if (days === 0) return mins ? `${hours} h ${mins} min` : `${hours} h`;
   return hours ? `${days} d ${hours} h` : `${days} d`;
 }
