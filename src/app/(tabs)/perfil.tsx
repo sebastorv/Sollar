@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import { Modal, Platform, Share, StyleSheet, TextInput, View } from 'react-native';
 
+import { Glass, relief } from '@/components/glass';
 import { PlatformPicker } from '@/components/platforms';
 import { Button, Screen, Section, T } from '@/components/ui';
 import { C, Radius, Space } from '@/constants/theme';
@@ -155,7 +156,7 @@ function ExportModal({
   return (
     <Modal visible={text != null} animationType="slide" transparent onRequestClose={onClose}>
       <View style={styles.backdrop}>
-        <View style={styles.sheet}>
+        <Glass strong radius={Radius.lg} style={styles.sheet}>
           <T variant="heading">Tu respaldo</T>
           <T variant="small" muted>
             Este texto contiene toda tu lista. Guárdalo para importarlo después.
@@ -168,7 +169,7 @@ function ExportModal({
             {inFrame ? null : <Button label="Descargar archivo" kind="secondary" onPress={download} />}
             <Button label="Cerrar" kind="secondary" onPress={() => { setNote(null); onClose(); }} />
           </View>
-        </View>
+        </Glass>
       </View>
     </Modal>
   );
@@ -199,7 +200,7 @@ function ImportModal({
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <View style={styles.backdrop}>
-        <View style={styles.sheet}>
+        <Glass strong radius={Radius.lg} style={styles.sheet}>
           <T variant="heading">Importar respaldo</T>
           <T variant="small" muted>
             Pega aquí el contenido del archivo que exportaste.
@@ -220,7 +221,7 @@ function ImportModal({
             <Button label="Reemplazar toda mi lista" kind="danger" onPress={() => run('replace')} disabled={!text} />
             <Button label="Cancelar" kind="secondary" onPress={onClose} />
           </View>
-        </View>
+        </Glass>
       </View>
     </Modal>
   );
@@ -229,14 +230,12 @@ function ImportModal({
 const styles = StyleSheet.create({
   statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Space.md },
   stat: {
+    ...relief,
     flexGrow: 1,
     flexBasis: 140,
     padding: Space.lg,
     gap: Space.xs,
-    backgroundColor: C.surface,
     borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: C.border,
   },
   genreRow: {
     flexDirection: 'row',
@@ -245,21 +244,20 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: C.border,
   },
-  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
+  backdrop: { flex: 1, backgroundColor: 'rgba(8,5,12,0.55)', justifyContent: 'flex-end' },
   sheet: {
-    backgroundColor: C.surface,
     padding: Space.xl,
     gap: Space.md,
-    borderTopLeftRadius: Radius.lg,
-    borderTopRightRadius: Radius.lg,
     width: '100%',
     maxWidth: 640,
     alignSelf: 'center',
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
   },
   textarea: {
     minHeight: 160,
     maxHeight: 280,
-    backgroundColor: C.bg,
+    backgroundColor: 'rgba(0,0,0,0.25)',
     borderRadius: Radius.md,
     borderWidth: 1,
     borderColor: C.border,

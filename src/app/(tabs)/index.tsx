@@ -3,6 +3,8 @@
 import { Link, router } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
+import { relief } from '@/components/glass';
+import { Icon } from '@/components/icons';
 import { TitleCard } from '@/components/title-card';
 import { TokenWarning } from '@/components/token-warning';
 import { Button, Empty, Poster, ProgressBar, Screen, Section, T } from '@/components/ui';
@@ -109,7 +111,7 @@ function NextEpisodeRow({ item }: { item: LibraryItem }) {
           accessibilityLabel={`Marcar ${formatEpisode(next.season, next.episode)} como visto`}
           onPress={() => setEpisodes(item.key, [next], true)}
           style={({ pressed }) => [styles.check, pressed && { opacity: 0.7 }]}>
-          <T style={{ color: C.onAccent, fontSize: 20, fontWeight: '800' }}>✓</T>
+          <Icon name="check" size={24} color={C.onAccent} strokeWidth={2.6} />
         </Pressable>
       ) : null}
     </View>
@@ -137,28 +139,26 @@ function Shelf({ items, myProviders }: { items: LibraryItem[]; myProviders: numb
 
 const styles = StyleSheet.create({
   tip: {
+    ...relief,
     gap: Space.sm,
-    padding: Space.md,
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: C.border,
-    backgroundColor: C.surface,
+    padding: Space.lg,
+    borderRadius: Radius.lg,
   },
   row: {
+    ...relief,
     flexDirection: 'row',
     alignItems: 'center',
     gap: Space.md,
     padding: Space.md,
-    backgroundColor: C.surface,
     borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: C.border,
   },
   check: {
     width: 48,
     height: 48,
     borderRadius: 24,
     backgroundColor: C.accent,
+    borderWidth: 1,
+    borderColor: '#F6E2B6',
     alignItems: 'center',
     justifyContent: 'center',
   },

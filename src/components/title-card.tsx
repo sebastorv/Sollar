@@ -34,7 +34,7 @@ export function TitleCard({
           <Poster path={posterPath} title={title} width={width} />
           {badge ? (
             <View style={styles.badge}>
-              <T variant="caption" style={{ color: C.onAccent, fontWeight: '700' }}>
+              <T variant="caption" style={{ color: C.accent, fontWeight: '700' }}>
                 {badge}
               </T>
             </View>
@@ -66,11 +66,13 @@ export function Grid({ children }: { children: React.ReactNode }) {
 const styles = StyleSheet.create({
   badge: {
     position: 'absolute',
-    top: Space.xs,
-    left: Space.xs,
-    backgroundColor: C.accent,
-    borderRadius: Radius.sm,
-    paddingHorizontal: Space.xs + 2,
+    top: Space.xs + 2,
+    left: Space.xs + 2,
+    backgroundColor: 'rgba(18, 13, 23, 0.78)',
+    borderWidth: 1,
+    borderColor: C.accentLine,
+    borderRadius: Radius.pill,
+    paddingHorizontal: Space.sm,
     paddingVertical: 2,
   },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: Space.lg },

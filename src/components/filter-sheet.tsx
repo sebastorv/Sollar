@@ -16,6 +16,7 @@ import {
 } from '@/lib/filters';
 import type { ProviderInfo } from '@/lib/types';
 
+import { Glass } from './glass';
 import { Button, Chip, T } from './ui';
 
 export function FilterSheet({
@@ -44,7 +45,7 @@ export function FilterSheet({
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <View style={styles.backdrop}>
-        <View style={styles.sheet}>
+        <Glass strong radius={Radius.lg} style={styles.sheet}>
           <View style={styles.head}>
             <T variant="heading">Filtros</T>
             <Pressable onPress={() => onChange({ ...DEFAULT_FILTERS, status: filters.status, type: filters.type })}>
@@ -144,7 +145,7 @@ export function FilterSheet({
             label={resultCount === 1 ? 'Ver 1 título' : `Ver ${resultCount} títulos`}
             onPress={onClose}
           />
-        </View>
+        </Glass>
       </View>
     </Modal>
   );
@@ -162,17 +163,16 @@ function Group({ title, children }: { title: string; children: ReactNode }) {
 }
 
 const styles = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
+  backdrop: { flex: 1, backgroundColor: 'rgba(8,5,12,0.55)', justifyContent: 'flex-end' },
   sheet: {
     maxHeight: '88%',
-    backgroundColor: C.surface,
     padding: Space.xl,
     gap: Space.lg,
-    borderTopLeftRadius: Radius.lg,
-    borderTopRightRadius: Radius.lg,
     width: '100%',
     maxWidth: 720,
     alignSelf: 'center',
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
   },
   head: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: Space.sm },

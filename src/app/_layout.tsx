@@ -2,7 +2,10 @@ import { DarkTheme, router, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, type ReactNode } from 'react';
-import { Pressable, Text } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
+
+import { Glass } from '@/components/glass';
+import { Icon } from '@/components/icons';
 
 import { C } from '@/constants/theme';
 import { LibraryProvider, useLibrary } from '@/store/library';
@@ -15,7 +18,7 @@ const theme = {
   colors: {
     ...DarkTheme.colors,
     background: C.bg,
-    card: C.surface,
+    card: C.surfaceSolid,
     text: C.text,
     border: C.border,
     primary: C.accent,
@@ -38,14 +41,13 @@ function BackButton() {
       accessibilityLabel="Volver"
       onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
       hitSlop={8}
-      style={({ pressed }) => ({
-        paddingVertical: 6,
-        paddingHorizontal: 12,
-        borderRadius: 999,
-        backgroundColor: 'rgba(14,14,17,0.7)',
-        opacity: pressed ? 0.7 : 1,
-      })}>
-      <Text style={{ color: C.text, fontSize: 15, fontWeight: '600' }}>‹ Atrás</Text>
+      style={({ pressed }) => ({ opacity: pressed ? 0.75 : 1 })}>
+      <Glass radius={999} style={{ paddingVertical: 7, paddingLeft: 8, paddingRight: 14 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
+          <Icon name="back" size={20} color={C.text} strokeWidth={2.2} />
+          <Text style={{ color: C.text, fontSize: 15, fontWeight: '600' }}>Atrás</Text>
+        </View>
+      </Glass>
     </Pressable>
   );
 }

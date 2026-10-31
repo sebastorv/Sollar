@@ -1,8 +1,10 @@
 /** Pestaña "Buscar": búsqueda en TMDB y, sin texto, las tendencias de la semana. */
 
 import { useEffect, useState } from 'react';
-import { StyleSheet, TextInput } from 'react-native';
+import { StyleSheet, TextInput, View } from 'react-native';
 
+import { relief } from '@/components/glass';
+import { Icon } from '@/components/icons';
 import { Grid, TitleCard } from '@/components/title-card';
 import { useAvailabilityFor } from '@/hooks/use-availability';
 import { availableLabel } from '@/lib/providers';
@@ -49,7 +51,9 @@ export default function SearchScreen() {
   return (
     <Screen>
       <T variant="title">Buscar</T>
-      <TextInput
+      <View style={styles.searchBox}>
+        <Icon name="search" size={20} color={C.textMuted} />
+        <TextInput
         value={query}
         onChangeText={setQuery}
         placeholder={isDemo ? 'Prueba: dark, coco, the last of us' : 'Series y películas'}
@@ -60,6 +64,7 @@ export default function SearchScreen() {
         clearButtonMode="while-editing"
         accessibilityLabel="Buscar series y películas"
       />
+      </View>
 
       {isDemo ? <TokenWarning /> : null}
 
@@ -100,14 +105,20 @@ export default function SearchScreen() {
 }
 
 const styles = StyleSheet.create({
-  input: {
-    backgroundColor: C.surface,
-    borderWidth: 1,
-    borderColor: C.border,
-    borderRadius: Radius.md,
+  searchBox: {
+    ...relief,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Space.sm,
+    borderRadius: Radius.pill,
     paddingHorizontal: Space.lg,
-    paddingVertical: Space.md,
+  },
+  input: {
+    flex: 1,
+    paddingVertical: Space.md + 2,
     color: C.text,
     fontSize: 16,
-  },
+    // En web quita el contorno azul del navegador; el foco lo marca el borde de la caja.
+    outlineStyle: 'none',
+  } as object,
 });

@@ -1,11 +1,14 @@
 /** Ficha de una película o serie: datos, estado, calificación, episodios y dónde verla. */
 
 import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { Backdrop, relief } from '@/components/glass';
+import { Icon } from '@/components/icons';
 import { ProviderLogo } from '@/components/platforms';
 import { Button, Chip, Empty, Loading, Poster, ProgressBar, Section, Stars, T } from '@/components/ui';
 import { C, MaxContentWidth, Radius, Space } from '@/constants/theme';
@@ -120,10 +123,21 @@ export default function TitleScreen() {
   const backdrop = imageUrl(d.backdrop_path, 'w780');
 
   return (
-    <ScrollView style={styles.page} contentContainerStyle={{ paddingBottom: 80 }}>
-      <View style={styles.hero}>
-        {backdrop ? <Image source={{ uri: backdrop }} style={StyleSheet.absoluteFill} contentFit="cover" /> : null}
-        <View style={styles.heroShade} />
+    <View style={styles.page}>
+      <Backdrop />
+    <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 80 }}>
+      <View style={[styles.hero, !backdrop && { height: 200 }]}>
+        {backdrop ? (
+          <>
+            <Image source={{ uri: backdrop }} style={StyleSheet.absoluteFill} contentFit="cover" />
+            {/* La imagen se funde con la noche de la página. */}
+            <LinearGradient
+              colors={['rgba(18,13,23,0.15)', 'rgba(18,13,23,0.55)', C.bg]}
+              locations={[0, 0.55, 1]}
+              style={StyleSheet.absoluteFill}
+            />
+          </>
+        ) : null}
       </View>
 
       <SafeAreaView edges={['left', 'right']} style={styles.content}>
@@ -159,6 +173,7 @@ export default function TitleScreen() {
         {details.kind === 'tv' ? <Seasons tv={details.data} item={item} /> : null}
       </SafeAreaView>
     </ScrollView>
+    </View>
   );
 }
 
@@ -200,7 +215,8 @@ function SavedControls({ item }: { item: LibraryItem }) {
         </View>
       ) : (
         <Button
-          label={item.watchedAt ? '✓ Vista (tocar para desmarcar)' : 'Marcar como vista'}
+          label={item.watchedAt ? 'Vista · tocar para desmarcar' : 'Marcar como vista'}
+          icon="check"
           kind={item.watchedAt ? 'secondary' : 'primary'}
           onPress={() => lib.setMovieWatched(item.key, !item.watchedAt)}
         />
@@ -252,9 +268,12 @@ function Seasons({ tv, item }: { tv: TmdbTv; item: LibraryItem | undefined }) {
                 accessibilityRole="button"
                 accessibilityState={{ expanded: isOpen }}>
                 <T variant="label">{s.name}</T>
-                <T variant="small" muted>
-                  {seen}/{s.episodeCount} {isOpen ? '▲' : '▼'}
-                </T>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: Space.sm }}>
+                  <T variant="small" muted>
+                    {seen}/{s.episodeCount}
+                  </T>
+                  <Icon name={isOpen ? 'chevronUp' : 'chevronDown'} size={18} color={C.textMuted} />
+                </View>
               </Pressable>
               {isOpen ? <EpisodeList tvId={tv.id} season={s.seasonNumber} item={item} /> : null}
             </View>
@@ -326,7 +345,7 @@ function EpisodeList({ tvId, season, item }: { tvId: number; season: number; ite
             accessibilityRole="checkbox"
             accessibilityState={{ checked: seen, disabled: upcoming }}>
             <View style={[styles.checkbox, seen && styles.checkboxOn]}>
-              {seen ? <T style={{ color: C.onAccent, fontWeight: '800' }}>✓</T> : null}
+              {seen ? <Icon name="check" size={16} color={C.onAccent} strokeWidth={2.8} /> : null}
             </View>
             <View style={{ flex: 1 }}>
               <T variant="small" numberOfLines={1} style={{ fontWeight: '600' }}>
@@ -372,9 +391,12 @@ function WhereToWatch({ providers, loaded }: { providers: TmdbWatchProviders | n
         </View>
       ) : matchNames.length > 0 ? (
         <View style={[styles.verdict, styles.verdictYes]}>
-          <T variant="label" style={{ color: C.accent }}>
-            ✓ Incluido en tu plan
-          </T>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: Space.sm }}>
+            <Icon name="check" size={18} color={C.accent} strokeWidth={2.6} />
+            <T variant="label" style={{ color: C.accent }}>
+              Incluido en tu plan
+            </T>
+          </View>
           <T variant="small">Puedes verlo en {matchNames.join(', ')} sin pagar nada extra.</T>
         </View>
       ) : (
@@ -419,8 +441,7 @@ function WhereToWatch({ providers, loaded }: { providers: TmdbWatchProviders | n
 
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: C.bg },
-  hero: { height: 260, backgroundColor: C.surface },
-  heroShade: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(14,14,17,0.55)' },
+  hero: { height: 280 },
   content: {
     width: '100%',
     maxWidth: MaxContentWidth,
@@ -430,18 +451,21 @@ const styles = StyleSheet.create({
     marginTop: -90,
   },
   header: { flexDirection: 'row', gap: Space.lg, alignItems: 'flex-end' },
-  headerPoster: { borderWidth: 2, borderColor: C.border },
+  headerPoster: {
+    shadowColor: '#000',
+    shadowOpacity: 0.5,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: 12 },
+  },
   card: {
+    ...relief,
     gap: Space.md,
     padding: Space.lg,
-    backgroundColor: C.surface,
     borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: C.border,
   },
   note: {
     minHeight: 70,
-    backgroundColor: C.bg,
+    backgroundColor: 'rgba(0,0,0,0.22)',
     borderWidth: 1,
     borderColor: C.border,
     borderRadius: Radius.md,
@@ -454,8 +478,8 @@ const styles = StyleSheet.create({
     width: 26,
     height: 26,
     borderRadius: 13,
-    borderWidth: 2,
-    borderColor: C.border,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.22)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -464,19 +488,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Space.xs,
-    paddingRight: Space.md,
+    ...relief,
     padding: Space.xs,
-    backgroundColor: C.surface,
-    borderRadius: Radius.md,
+    paddingRight: Space.md,
+    borderRadius: Radius.pill,
   },
-  providerMine: { borderWidth: 1, borderColor: C.accent, backgroundColor: C.accentSoft },
+  providerMine: { borderColor: C.accentLine, borderTopColor: C.accent, backgroundColor: C.accentSoft },
   verdict: {
-    gap: Space.xs,
-    padding: Space.md,
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: C.border,
-    backgroundColor: C.surface,
+    ...relief,
+    gap: Space.sm,
+    padding: Space.lg,
+    borderRadius: Radius.lg,
   },
-  verdictYes: { borderColor: C.accent, backgroundColor: C.accentSoft },
+  verdictYes: { borderColor: C.accentLine, borderTopColor: C.accent, backgroundColor: C.accentSoft },
 });

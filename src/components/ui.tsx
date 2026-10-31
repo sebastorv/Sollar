@@ -1,6 +1,7 @@
 /** Piezas de interfaz reutilizables. */
 
 import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
 import type { ReactNode } from 'react';
 import {
   ActivityIndicator,
@@ -9,6 +10,7 @@ import {
   StyleSheet,
   Text,
   View,
+  useWindowDimensions,
   type PressableProps,
   type StyleProp,
   type TextProps,
@@ -16,8 +18,11 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { C, MaxContentWidth, Radius, Space } from '@/constants/theme';
+import { C, MaxContentWidth, Radius, Space, TabBarSpace } from '@/constants/theme';
 import { imageUrl, type ImageSize } from '@/lib/tmdb';
+
+import { Backdrop } from './glass';
+import { Icon } from './icons';
 
 // --- Texto ---
 
@@ -43,11 +48,18 @@ export function Screen({
   scroll?: boolean;
   padded?: boolean;
 }) {
-  const inner = <View style={[styles.inner, padded && styles.padded]}>{children}</View>;
+  // En pantallas anchas la barra de navegación flota arriba; en el celular, abajo.
+  const wide = useWindowDimensions().width >= 720;
+  const inner = (
+    <View style={[styles.inner, padded && styles.padded, padded && wide && { paddingTop: 96 }]}>{children}</View>
+  );
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'left', 'right']}>
+      <Backdrop />
       {scroll ? (
-        <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+        <ScrollView
+          contentContainerStyle={[styles.scrollContent, wide && { paddingBottom: Space.xxl }]}
+          keyboardShouldPersistTaps="handled">
           {inner}
         </ScrollView>
       ) : (
@@ -59,10 +71,17 @@ export function Screen({
 
 // --- Carátula ---
 
-/** Tonos apagados para las carátulas que no tienen imagen. */
-const POSTER_TONES = ['#3B2F4A', '#2E4045', '#4A3A2A', '#2F3A52', '#45302F', '#334433', '#4A4130', '#3A3346'];
+/** Pares de tonos (arriba, abajo) para las carátulas sin imagen, todos dentro de la paleta. */
+const POSTER_TONES: [string, string][] = [
+  ['#5A2140', '#1D1224'],
+  ['#3A2C66', '#16111F'],
+  ['#4B2A55', '#1A1220'],
+  ['#2F3558', '#14111C'],
+  ['#5E2B33', '#1C1218'],
+  ['#41305A', '#17111E'],
+];
 
-function toneFor(text: string): string {
+function toneFor(text: string): [string, string] {
   let h = 0;
   for (let i = 0; i < text.length; i++) h = (h * 31 + text.charCodeAt(i)) >>> 0;
   return POSTER_TONES[h % POSTER_TONES.length];
@@ -90,7 +109,10 @@ export function Poster({
   const fit = Math.floor((width - (small ? 8 : 20)) / (longest * 0.62));
   const fontSize = Math.max(9, Math.min(small ? 11 : Math.round(width / 7.5), fit));
   return (
-    <View style={[styles.posterBox, box, !uri && title ? { backgroundColor: toneFor(title) } : null, style]}>
+    <View style={[styles.posterBox, box, style]}>
+      {!uri && title ? (
+        <LinearGradient colors={toneFor(title)} start={{ x: 0, y: 0 }} end={{ x: 0.6, y: 1 }} style={StyleSheet.absoluteFill} />
+      ) : null}
       {uri ? (
         <Image source={{ uri }} style={StyleSheet.absoluteFill} contentFit="cover" transition={150} />
       ) : title ? (
@@ -98,7 +120,9 @@ export function Poster({
           numberOfLines={small ? 3 : 4}
           style={{
             textAlign: 'center',
-            fontWeight: '700',
+            fontWeight: '800',
+            color: C.accent,
+            letterSpacing: -0.2,
             fontSize,
             lineHeight: Math.round(fontSize * 1.25),
             paddingHorizontal: small ? 4 : 10,
@@ -143,20 +167,41 @@ export function Chip({
 }
 
 // --- Botón ---
+// Principal: latón con degradado. Secundario: contorno de luz. Peligro: texto rojo suave.
 
 export function Button({
   label,
   kind = 'primary',
+  icon,
   style,
   ...rest
-}: PressableProps & { label: string; kind?: 'primary' | 'secondary' | 'danger'; style?: StyleProp<ViewStyle> }) {
-  const bg = kind === 'primary' ? C.accent : C.surfaceHigh;
+}: PressableProps & {
+  label: string;
+  kind?: 'primary' | 'secondary' | 'danger';
+  icon?: React.ComponentProps<typeof Icon>['name'];
+  style?: StyleProp<ViewStyle>;
+}) {
   const fg = kind === 'primary' ? C.onAccent : kind === 'danger' ? C.danger : C.text;
   return (
     <Pressable
       accessibilityRole="button"
-      style={({ pressed }) => [styles.button, { backgroundColor: bg }, pressed && { opacity: 0.8 }, style]}
+      style={({ pressed }) => [
+        styles.button,
+        kind !== 'primary' && styles.buttonOutline,
+        pressed && { opacity: 0.82, transform: [{ scale: 0.985 }] },
+        rest.disabled && { opacity: 0.45 },
+        style,
+      ]}
       {...rest}>
+      {kind === 'primary' ? (
+        <LinearGradient
+          colors={[C.accent, C.accentDeep]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0, y: 1 }}
+          style={[StyleSheet.absoluteFill, { borderRadius: Radius.pill }]}
+        />
+      ) : null}
+      {icon ? <Icon name={icon} size={18} color={fg} strokeWidth={2.2} /> : null}
       <T variant="label" style={{ color: fg }}>
         {label}
       </T>
@@ -170,7 +215,12 @@ export function ProgressBar({ value }: { value: number }) {
   const pct = Math.round(Math.max(0, Math.min(1, value)) * 100);
   return (
     <View style={styles.track} accessibilityRole="progressbar" accessibilityValue={{ now: pct, min: 0, max: 100 }}>
-      <View style={[styles.fill, { width: `${pct}%` }]} />
+      <LinearGradient
+        colors={[C.accentDeep, C.accent]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={[styles.fill, { width: `${pct}%` }]}
+      />
     </View>
   );
 }
@@ -196,10 +246,13 @@ export function Stars({ value, onChange }: { value: number | null; onChange?: (v
               else onChange(n * 2);
             }}
             hitSlop={6}>
-            {/* La media estrella se muestra en ámbar atenuado, para no depender de glifos raros. */}
-            <T style={{ fontSize: 26, color: full ? C.accent : half ? 'rgba(232,165,75,0.45)' : C.border }}>
-              ★
-            </T>
+            <Icon
+              name={half ? 'starHalf' : 'star'}
+              filled={full}
+              size={30}
+              color={full || half ? C.accent : C.textFaint}
+              strokeWidth={1.6}
+            />
           </Pressable>
         );
       })}
@@ -251,39 +304,52 @@ export function Section({ title, children, right }: { title: string; children: R
 }
 
 const styles = StyleSheet.create({
-  title: { color: C.text, fontSize: 30, lineHeight: 36, fontWeight: '700' },
-  heading: { color: C.text, fontSize: 19, lineHeight: 25, fontWeight: '700' },
+  title: { color: C.text, fontSize: 34, lineHeight: 40, fontWeight: '800', letterSpacing: -0.8 },
+  heading: { color: C.text, fontSize: 20, lineHeight: 26, fontWeight: '700', letterSpacing: -0.3 },
   body: { color: C.text, fontSize: 16, lineHeight: 23 },
   small: { color: C.text, fontSize: 14, lineHeight: 20 },
   caption: { color: C.text, fontSize: 12, lineHeight: 16 },
   label: { color: C.text, fontSize: 14, lineHeight: 18, fontWeight: '600' },
   screen: { flex: 1, backgroundColor: C.bg },
-  scrollContent: { flexGrow: 1, paddingBottom: 120 },
+  scrollContent: { flexGrow: 1, paddingBottom: TabBarSpace },
   inner: { width: '100%', maxWidth: MaxContentWidth, alignSelf: 'center', gap: Space.xl, flex: 1 },
   padded: { paddingHorizontal: Space.lg, paddingTop: Space.lg },
   posterBox: {
-    backgroundColor: C.surfaceHigh,
+    backgroundColor: C.surfaceSolid,
     overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
+    borderTopColor: 'rgba(255,255,255,0.18)',
   },
   chip: {
     paddingVertical: Space.sm,
-    paddingHorizontal: Space.md,
+    paddingHorizontal: Space.md + 2,
     borderRadius: Radius.pill,
     borderWidth: 1,
-    borderColor: C.border,
+    borderColor: 'rgba(255,255,255,0.12)',
+    borderTopColor: 'rgba(255,255,255,0.2)',
     backgroundColor: C.surface,
   },
-  chipSelected: { backgroundColor: C.accent, borderColor: C.accent },
+  chipSelected: { backgroundColor: C.accent, borderColor: C.accent, borderTopColor: '#F6E2B6' },
   button: {
-    paddingVertical: Space.md,
-    paddingHorizontal: Space.lg,
-    borderRadius: Radius.md,
+    flexDirection: 'row',
+    gap: Space.sm,
+    paddingVertical: Space.md + 1,
+    paddingHorizontal: Space.xl,
+    borderRadius: Radius.pill,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
   },
-  track: { height: 6, borderRadius: 3, backgroundColor: C.surfaceHigh, overflow: 'hidden' },
-  fill: { height: '100%', backgroundColor: C.accent, borderRadius: 3 },
+  buttonOutline: {
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.14)',
+    borderTopColor: 'rgba(255,255,255,0.24)',
+    backgroundColor: C.surface,
+  },
+  track: { height: 5, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.08)', overflow: 'hidden' },
+  fill: { height: '100%', borderRadius: 3 },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: Space.md, padding: Space.xl },
 });

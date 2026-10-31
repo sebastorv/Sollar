@@ -5,6 +5,8 @@ import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { FilterSheet } from '@/components/filter-sheet';
+import { relief } from '@/components/glass';
+import { Icon } from '@/components/icons';
 import { useProviderDirectory } from '@/components/platforms';
 import { Grid, TitleCard } from '@/components/title-card';
 import { Button, Chip, Empty, Screen, T } from '@/components/ui';
@@ -115,6 +117,7 @@ export default function ListScreen() {
           onPress={() => setSheetOpen(true)}
           accessibilityRole="button"
           style={({ pressed }) => [styles.filterBtn, extra > 0 && styles.filterBtnOn, pressed && { opacity: 0.75 }]}>
+          <Icon name="filter" size={18} color={extra > 0 ? C.onAccent : C.text} strokeWidth={2} />
           <T variant="label" style={{ color: extra > 0 ? C.onAccent : C.text }}>
             {extra > 0 ? `Filtros · ${extra}` : 'Filtros'}
           </T>
@@ -211,18 +214,22 @@ function subtitleFor(i: LibraryItem, sort: Filters['sort']): string | null {
 const styles = StyleSheet.create({
   preset: {
     paddingVertical: Space.sm,
-    paddingHorizontal: Space.md,
+    paddingHorizontal: Space.md + 2,
     borderRadius: Radius.pill,
     borderWidth: 1,
-    borderColor: C.accent,
+    borderColor: C.accentLine,
+    backgroundColor: 'rgba(233, 201, 135, 0.07)',
   },
   filterBtn: {
+    ...relief,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Space.xs + 2,
     paddingVertical: Space.sm,
-    paddingHorizontal: Space.md,
+    paddingHorizontal: Space.md + 2,
     borderRadius: Radius.pill,
-    backgroundColor: C.surfaceHigh,
   },
-  filterBtnOn: { backgroundColor: C.accent },
+  filterBtnOn: { backgroundColor: C.accent, borderColor: C.accent, borderTopColor: '#F6E2B6' },
   // Sin esto, el carrusel horizontal estira las píldoras a lo alto.
   hScroll: { flexGrow: 0 },
   hRow: { gap: Space.sm, alignItems: 'center' },

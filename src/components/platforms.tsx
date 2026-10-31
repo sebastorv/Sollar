@@ -9,6 +9,8 @@ import { getProviderDirectory, imageUrl } from '@/lib/tmdb';
 import type { ProviderInfo } from '@/lib/types';
 import { useSettings } from '@/store/settings';
 
+import { relief } from './glass';
+import { Icon } from './icons';
 import { Loading, T } from './ui';
 
 let directoryCache: ProviderInfo[] | null = null;
@@ -76,7 +78,7 @@ export function PlatformPicker({ limit = 24 }: { limit?: number }) {
               <T variant="small" numberOfLines={1} style={{ flex: 1, fontWeight: on ? '700' : '500' }}>
                 {p.name}
               </T>
-              <T style={{ color: on ? C.accent : C.textFaint, fontWeight: '800' }}>{on ? '✓' : '+'}</T>
+              <Icon name={on ? 'check' : 'plus'} size={18} color={on ? C.accent : C.textFaint} strokeWidth={2.4} />
             </Pressable>
           );
         })}
@@ -95,6 +97,7 @@ export function PlatformPicker({ limit = 24 }: { limit?: number }) {
 const styles = StyleSheet.create({
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: Space.sm },
   tile: {
+    ...relief,
     flexGrow: 1,
     flexBasis: 160,
     flexDirection: 'row',
@@ -103,10 +106,13 @@ const styles = StyleSheet.create({
     padding: Space.sm,
     paddingRight: Space.md,
     borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: C.border,
-    backgroundColor: C.surface,
   },
-  tileOn: { borderColor: C.accent, backgroundColor: C.accentSoft },
-  initials: { backgroundColor: C.surfaceHigh, alignItems: 'center', justifyContent: 'center' },
+  tileOn: { borderColor: C.accentLine, borderTopColor: C.accent, backgroundColor: C.accentSoft },
+  initials: {
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 });

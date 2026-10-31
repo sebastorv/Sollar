@@ -70,6 +70,20 @@ Si cambias el `.env`, reinicia con `npx expo start --clear`.
 | `npx expo export --platform web` | Genera la versión web en `dist/` |
 | `npx eas-cli@latest build` | Compila para tiendas en la nube (fase de publicación) |
 
+## Diseño: terciopelo y latón
+
+La identidad visual sale de la sala de cine: butacas de terciopelo, barandas de latón y la luz
+del proyector en la oscuridad.
+
+- **Colores** (`src/constants/theme.ts`): noche ciruela `#120D17` de fondo, resplandor de
+  terciopelo `#6E2443` y humo violeta `#2F2552`, y latón pálido `#E9C987` como color de la marca.
+- **Vidrio líquido** (`src/components/glass.tsx`): para lo que flota sobre el contenido (barra de
+  navegación, botón Atrás, paneles). En iPhone con iOS 26 usa el vidrio del sistema; en Android y
+  web, desenfoque con tinte y un brillo en el borde superior.
+- **Relieve**: las superficies con información llevan un borde de luz arriba.
+- **Iconos propios** (`src/components/icons.tsx`) y el ícono de la app: una butaca de terciopelo con
+  marco de latón. Se generan con `docs/design/icons.py`; el fondo con `docs/design/aurora.py`.
+
 ## Estructura
 
 ```

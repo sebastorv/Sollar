@@ -8,12 +8,12 @@
     "scheme": "butaca",
     "userInterfaceStyle": "dark",
     "ios": {
-      "icon": "./assets/expo.icon",
+      "icon": "./assets/images/icon.png",
       "bundleIdentifier": "com.tunombre.butaca"
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#0E0E11",
+        "backgroundColor": "#120D17",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
@@ -37,9 +37,9 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#0E0E11",
+          "backgroundColor": "#120D17",
           "image": "./assets/images/splash-icon.png",
-          "imageWidth": 76
+          "imageWidth": 140
         }
       ]
     ],
@@ -47,6 +47,6 @@
       "typedRoutes": true,
       "reactCompiler": true
     },
-    "backgroundColor": "#0E0E11"
+    "backgroundColor": "#120D17"
   }
 }
