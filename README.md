@@ -1,56 +1,96 @@
-# Welcome to your Expo app 👋
+# Butaca
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+App multiplataforma (iPhone, Android y web) para llevar el seguimiento de series y películas:
+qué estás viendo, en qué episodio vas, qué quieres ver, calificaciones, notas y estadísticas.
 
-## Get started
+"Butaca" es un nombre de trabajo; se cambia en `app.json`.
 
-1. Install dependencies
+Este es el código base de la **fase 1** del plan (ver `docs/PLAN.md`): todo funciona en el
+dispositivo, sin cuentas ni servidor.
 
-   ```bash
-   npm install
-   ```
+## Qué hace ya
 
-2. Start the app
+- **Buscar** series y películas (TMDB), con tendencias de la semana cuando no escribes nada.
+- **Ficha** de cada título: sinopsis, géneros, duración, puntuación y **dónde verlo en Colombia**.
+- **Estados**: Quiero ver, Viendo, Vista, En pausa, Abandonada.
+- **Episodios**: marcar uno, una temporada completa, o mantener presionado para marcar hasta ahí.
+- **Siguiendo**: el siguiente episodio de cada serie con un botón para marcarlo en un toque.
+- **Calificación** de 1 a 10 (cinco estrellas con medias) y **nota personal**.
+- **Estadísticas**: películas y episodios vistos, horas frente a la pantalla, géneros favoritos.
+- **Respaldo**: exportar e importar toda tu lista en JSON.
+- Si sale una temporada nueva de una serie que tenías como "Vista", vuelve sola a "Viendo".
 
-   ```bash
-   npx expo start
-   ```
+## Requisitos
 
-In the output, you'll find options to open the app in a
+- Node.js 22 o más reciente.
+- Una cuenta gratuita en [TMDB](https://www.themoviedb.org/signup) para el token de la API.
+- En el celular, la app **Expo Go** (App Store o Play Store) para probar sin compilar nada.
+- Para publicar en la App Store hace falta un Mac (ya lo tienes) o compilar en la nube con EAS.
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **src/app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+## Primeros pasos
 
 ```bash
-npm run reset-project
+npm install
+cp .env.example .env      # en Windows: copy .env.example .env
 ```
 
-This command will move the starter code to the **example** directory and create a blank **src/app** directory where you can start developing.
+1. En TMDB entra a **Configuración > API**, solicita una clave de desarrollador y copia el
+   **API Read Access Token** (el largo, no la "API Key" corta).
+2. Pégalo en `.env` después de `EXPO_PUBLIC_TMDB_TOKEN=`.
+3. Arranca:
 
-### Other setup steps
+```bash
+npx expo start
+```
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+- Escanea el código QR con la cámara (iPhone) o con Expo Go (Android).
+- Presiona `w` para abrirla en el navegador.
 
-## Learn more
+Si cambias el `.env`, reinicia con `npx expo start --clear`.
 
-To learn more about developing your project with Expo, look at the following resources:
+## Comandos
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+| Comando | Qué hace |
+| --- | --- |
+| `npx expo start` | Servidor de desarrollo |
+| `npm run typecheck` | Revisa los tipos de TypeScript |
+| `npx expo export --platform web` | Genera la versión web en `dist/` |
+| `npx eas-cli@latest build` | Compila para tiendas en la nube (fase de publicación) |
 
-## Join the community
+## Estructura
 
-Join our community of developers creating universal apps.
+```
+src/
+  app/                    Pantallas (cada archivo es una ruta de Expo Router)
+    (tabs)/index.tsx      Siguiendo
+    (tabs)/buscar.tsx     Buscar
+    (tabs)/lista.tsx      Mi lista
+    (tabs)/perfil.tsx     Perfil, estadísticas, respaldo y créditos
+    titulo/[tipo]/[id].tsx  Ficha de película o serie
+  components/             Piezas de interfaz (ui.tsx, title-card.tsx, pestañas)
+  constants/theme.ts      Colores, espacios y radios
+  lib/
+    tmdb.ts               Cliente de la API de TMDB
+    types.ts              Tipos del dominio
+    progress.ts           Siguiente episodio, progreso y estadísticas (funciones puras)
+    library-item.ts       Conversión de datos de TMDB y validación de respaldos
+  store/library.tsx       Estado global y guardado local
+supabase/schema.sql       Base de datos para la fase 2 (sincronización y social)
+docs/PLAN.md              Plan del proyecto
+```
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+## Antes de publicar (importante)
+
+- **El token de TMDB no puede ir dentro de la app publicada.** Todo lo que empieza por
+  `EXPO_PUBLIC_` queda visible en la app compilada. En la fase 2 las llamadas pasan por un
+  servidor propio (Edge Function de Supabase) que guarda el token.
+- **Licencia de TMDB:** la API es gratis para uso no comercial con atribución. Si la app va a
+  generar ingresos (anuncios, suscripción), hay que pedir licencia comercial a TMDB.
+- La atribución ya está en Perfil > Créditos, como exige TMDB, y "Datos de JustWatch" en "Dónde ver".
+
+## Limitaciones conocidas
+
+- TMDB a veces cuenta en una temporada episodios anunciados que aún no salen; en ese caso
+  "Siguiendo" puede mostrar como siguiente un episodio sin estrenar.
+- El respaldo en el celular se comparte como texto; en la fase 2 se guardará como archivo.
+- Aún no hay cuentas ni sincronización entre dispositivos (fase 2).

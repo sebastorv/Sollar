@@ -1,115 +1,117 @@
+/**
+ * Pestañas para la versión web: barra superior en pantallas anchas y barra
+ * inferior en el celular. Los TabTrigger deben ser hijos directos de TabList,
+ * por eso el diseño de la barra va dentro de BarLayout.
+ */
+
 import {
   Tabs,
   TabList,
-  TabTrigger,
   TabSlot,
-  TabTriggerSlotProps,
-  TabListProps,
+  TabTrigger,
+  type TabListProps,
+  type TabTriggerSlotProps,
 } from 'expo-router/ui';
-import { SymbolView } from 'expo-symbols';
-import { Pressable, useColorScheme, View, StyleSheet } from 'react-native';
+import { Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 
-import { Colors, MaxContentWidth, Spacing } from '@/constants/theme';
+import { C, MaxContentWidth, Radius, Space } from '@/constants/theme';
 
-import { ExternalLink } from './external-link';
-import { ThemedText } from './themed-text';
-import { ThemedView } from './themed-view';
+import { T } from './ui';
+
+const NARROW = 640;
 
 export default function AppTabs() {
+  const { width } = useWindowDimensions();
+  const narrow = width < NARROW;
+
+  const list = (
+    <TabList asChild>
+      <BarLayout narrow={narrow}>
+        <TabTrigger name="index" href="/" asChild>
+          <TabButton narrow={narrow}>Siguiendo</TabButton>
+        </TabTrigger>
+        <TabTrigger name="buscar" href="/buscar" asChild>
+          <TabButton narrow={narrow}>Buscar</TabButton>
+        </TabTrigger>
+        <TabTrigger name="lista" href="/lista" asChild>
+          <TabButton narrow={narrow}>Mi lista</TabButton>
+        </TabTrigger>
+        <TabTrigger name="perfil" href="/perfil" asChild>
+          <TabButton narrow={narrow}>Perfil</TabButton>
+        </TabTrigger>
+      </BarLayout>
+    </TabList>
+  );
+
   return (
     <Tabs>
-      <TabSlot style={{ height: '100%' }} />
-      <TabList asChild>
-        <CustomTabList>
-          <TabTrigger name="home" href="/" asChild>
-            <TabButton>Home</TabButton>
-          </TabTrigger>
-          <TabTrigger name="explore" href="/explore" asChild>
-            <TabButton>Explore</TabButton>
-          </TabTrigger>
-        </CustomTabList>
-      </TabList>
+      {narrow ? null : list}
+      <TabSlot style={{ flex: 1 }} />
+      {narrow ? list : null}
     </Tabs>
   );
 }
 
-export function TabButton({ children, isFocused, ...props }: TabTriggerSlotProps) {
+function BarLayout({ narrow, children, ...rest }: TabListProps & { narrow: boolean }) {
+  if (narrow) {
+    return (
+      <View {...rest} style={styles.bottomBar}>
+        {children}
+      </View>
+    );
+  }
   return (
-    <Pressable {...props} style={({ pressed }) => pressed && styles.pressed}>
-      <ThemedView
-        type={isFocused ? 'backgroundSelected' : 'backgroundElement'}
-        style={styles.tabButtonView}>
-        <ThemedText type="small" themeColor={isFocused ? 'text' : 'textSecondary'}>
-          {children}
-        </ThemedText>
-      </ThemedView>
-    </Pressable>
-  );
-}
-
-export function CustomTabList(props: TabListProps) {
-  const scheme = useColorScheme();
-  const colors = Colors[scheme === 'dark' ? 'dark' : 'light'];
-
-  return (
-    <View {...props} style={styles.tabListContainer}>
-      <ThemedView type="backgroundElement" style={styles.innerContainer}>
-        <ThemedText type="smallBold" style={styles.brandText}>
-          Expo Starter
-        </ThemedText>
-
-        {props.children}
-
-        <ExternalLink href="https://docs.expo.dev" asChild>
-          <Pressable style={styles.externalPressable}>
-            <ThemedText type="link">Docs</ThemedText>
-            <SymbolView
-              tintColor={colors.text}
-              name={{ ios: 'arrow.up.right.square', web: 'link' }}
-              size={12}
-            />
-          </Pressable>
-        </ExternalLink>
-      </ThemedView>
+    <View {...rest} style={styles.topBar}>
+      <View style={styles.topInner}>
+        <T variant="heading" style={{ color: C.accent, marginRight: 'auto' }}>
+          Butaca
+        </T>
+        {children}
+      </View>
     </View>
   );
 }
 
+function TabButton({
+  children,
+  isFocused,
+  narrow,
+  ref: _ref,
+  ...props
+}: TabTriggerSlotProps & { narrow: boolean }) {
+  return (
+    <Pressable
+      {...props}
+      style={[narrow ? styles.bottomTab : styles.tab, isFocused && !narrow && styles.tabActive]}>
+      <T
+        variant="label"
+        style={{ color: isFocused ? (narrow ? C.accent : C.onAccent) : C.textMuted, textAlign: 'center' }}>
+        {children}
+      </T>
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
-  tabListContainer: {
-    position: 'absolute',
+  topBar: { backgroundColor: C.surface, borderBottomWidth: 1, borderBottomColor: C.border },
+  topInner: {
     width: '100%',
-    padding: Spacing.three,
-    justifyContent: 'center',
-    alignItems: 'center',
-    flexDirection: 'row',
-  },
-  innerContainer: {
-    paddingVertical: Spacing.two,
-    paddingHorizontal: Spacing.five,
-    borderRadius: Spacing.five,
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexGrow: 1,
-    gap: Spacing.two,
     maxWidth: MaxContentWidth,
-  },
-  brandText: {
-    marginRight: 'auto',
-  },
-  pressed: {
-    opacity: 0.7,
-  },
-  tabButtonView: {
-    paddingVertical: Spacing.one,
-    paddingHorizontal: Spacing.three,
-    borderRadius: Spacing.three,
-  },
-  externalPressable: {
+    alignSelf: 'center',
     flexDirection: 'row',
-    justifyContent: 'center',
     alignItems: 'center',
-    gap: Spacing.one,
-    marginLeft: Spacing.three,
+    gap: Space.sm,
+    paddingHorizontal: Space.lg,
+    paddingVertical: Space.md,
   },
+  tab: { paddingVertical: Space.sm, paddingHorizontal: Space.md, borderRadius: Radius.pill },
+  tabActive: { backgroundColor: C.accent },
+  bottomBar: {
+    flexDirection: 'row',
+    backgroundColor: C.surface,
+    borderTopWidth: 1,
+    borderTopColor: C.border,
+    paddingBottom: Space.sm,
+  },
+  bottomTab: { flex: 1, paddingVertical: Space.md, alignItems: 'center' },
 });
