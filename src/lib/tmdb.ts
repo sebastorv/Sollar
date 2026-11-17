@@ -7,9 +7,11 @@
  * una Edge Function de Supabase) que guarde el token. Ver docs/PLAN.md, sección 6.
  */
 
+import { addDays, todayISO } from './dates';
 import {
   DEMO_PROVIDERS,
   demoMovie,
+  demoOnProviders,
   demoSearch,
   demoSeason,
   demoTrending,
@@ -123,14 +125,9 @@ export async function getSeason(tvId: number, season: number): Promise<TmdbSeaso
  * Plataformas donde ver el título en la región configurada.
  * Los datos los aporta JustWatch: hay que mostrar la atribución "Datos de JustWatch".
  */
-export async function getWatchProviders(
-  type: MediaType,
-  id: number,
-): Promise<TmdbWatchProviders | null> {
+export async function getWatchProviders(type: MediaType, id: number): Promise<TmdbWatchProviders | null> {
   if (isDemo) return demoWatchProviders(id);
-  const data = await get<{ results: Record<string, TmdbWatchProviders> }>(
-    `/${type}/${id}/watch/providers`,
-  );
+  const data = await get<{ results: Record<string, TmdbWatchProviders> }>(`/${type}/${id}/watch/providers`);
   return data.results[REGION] ?? null;
 }
 
@@ -155,10 +152,69 @@ export async function getProviderDirectory(): Promise<ProviderInfo[]> {
   return [...byId.values()]
     .sort(
       (a, b) =>
-        (a.display_priorities?.[REGION] ?? a.display_priority) -
-        (b.display_priorities?.[REGION] ?? b.display_priority),
+        (a.display_priorities?.[REGION] ?? a.display_priority) - (b.display_priorities?.[REGION] ?? b.display_priority),
     )
     .map((p) => ({ id: p.provider_id, name: p.provider_name, logoPath: p.logo_path }));
+}
+
+type DiscoverItem = Omit<TmdbSearchResult, 'media_type'>;
+
+/**
+ * Lo más reciente en las plataformas que paga la persona: películas y series estrenadas en los
+ * últimos meses que están incluidas en esas suscripciones en el país. TMDB no informa el día en que
+ * un título llega a una plataforma, así que se usa la fecha de estreno.
+ */
+export async function getNewOnProviders(providerIds: number[]): Promise<TmdbSearchResult[]> {
+  if (providerIds.length === 0) return [];
+  if (isDemo) return demoOnProviders(providerIds);
+  const today = todayISO();
+  const since = addDays(today, -120);
+  const common = {
+    watch_region: REGION,
+    with_watch_providers: providerIds.join('|'),
+    with_watch_monetization_types: 'flatrate',
+    include_adult: 'false',
+  };
+  const [movies, tv] = await Promise.all([
+    get<{ results: DiscoverItem[] }>('/discover/movie', {
+      ...common,
+      sort_by: 'primary_release_date.desc',
+      'primary_release_date.lte': today,
+      'primary_release_date.gte': since,
+      'vote_count.gte': '5',
+    }),
+    get<{ results: DiscoverItem[] }>('/discover/tv', {
+      ...common,
+      sort_by: 'first_air_date.desc',
+      'first_air_date.lte': today,
+      'first_air_date.gte': since,
+      'vote_count.gte': '3',
+    }),
+  ]);
+  const all: TmdbSearchResult[] = [
+    ...movies.results.map((m) => ({ ...m, media_type: 'movie' as const })),
+    ...tv.results.map((t) => ({ ...t, media_type: 'tv' as const })),
+  ];
+  return all.sort((a, b) =>
+    (b.release_date ?? b.first_air_date ?? '').localeCompare(a.release_date ?? a.first_air_date ?? ''),
+  );
+}
+
+/** Películas que se estrenan pronto en el país. */
+export async function getUpcomingMovies(): Promise<TmdbSearchResult[]> {
+  if (isDemo) return [];
+  const today = todayISO();
+  const data = await get<{ results: DiscoverItem[] }>('/discover/movie', {
+    region: REGION,
+    sort_by: 'popularity.desc',
+    'primary_release_date.gte': today,
+    'primary_release_date.lte': addDays(today, 90),
+    with_release_type: '2|3',
+    include_adult: 'false',
+  });
+  return data.results
+    .map((m) => ({ ...m, media_type: 'movie' as const }))
+    .sort((a, b) => (a.release_date ?? '').localeCompare(b.release_date ?? ''));
 }
 
 /** Título y año de un resultado, sin importar si es película o serie. */

@@ -3,7 +3,12 @@
  * se pueda probar de inmediato (y para la vista previa web). Son títulos reales con
  * su número de temporadas y episodios; los nombres de episodio son genéricos y las
  * sinopsis son resúmenes propios. Sin carátulas: se muestran tarjetas de color.
+ *
+ * Las fechas de los episodios que vienen se calculan a partir de hoy, para que el
+ * calendario tenga algo que mostrar. Son de ejemplo, no son fechas reales.
  */
+
+import { addDays, todayISO } from './dates';
 
 import type {
   ProviderInfo,
@@ -24,6 +29,8 @@ type DemoShow = {
   runtime: number;
   seasons: number[]; // episodios por temporada
   status: string;
+  /** Temporada en emisión: desde qué episodio faltan por salir y en cuántos días sale el primero. */
+  airing?: { season: number; from: number; inDays: number };
 };
 
 type DemoMovie = {
@@ -47,6 +54,7 @@ const SHOWS: DemoShow[] = [
     runtime: 52,
     seasons: [10, 10, 10],
     status: 'En emisión',
+    airing: { season: 3, from: 7, inDays: 2 },
   },
   {
     id: 900002,
@@ -56,8 +64,9 @@ const SHOWS: DemoShow[] = [
     overview:
       'Los empleados de Lumon se someten a un procedimiento que separa sus recuerdos del trabajo de los de su vida personal.',
     runtime: 50,
-    seasons: [9, 10],
+    seasons: [9, 10, 10],
     status: 'En emisión',
+    airing: { season: 3, from: 1, inDays: 5 },
   },
   {
     id: 900003,
@@ -67,8 +76,9 @@ const SHOWS: DemoShow[] = [
     overview:
       'Veinte años después de una pandemia causada por un hongo, un contrabandista debe cruzar Estados Unidos escoltando a una adolescente.',
     runtime: 55,
-    seasons: [9, 7],
+    seasons: [9, 7, 8],
     status: 'En emisión',
+    airing: { season: 3, from: 1, inDays: 19 },
   },
   {
     id: 900004,
@@ -135,7 +145,8 @@ const MOVIES: DemoMovie[] = [
     title: 'Interstellar',
     year: 2014,
     genres: ['Ciencia ficción', 'Drama', 'Aventura'],
-    overview: 'Un grupo de astronautas viaja a través de un agujero de gusano en busca de un nuevo hogar para la humanidad.',
+    overview:
+      'Un grupo de astronautas viaja a través de un agujero de gusano en busca de un nuevo hogar para la humanidad.',
     runtime: 169,
   },
   {
@@ -143,7 +154,8 @@ const MOVIES: DemoMovie[] = [
     title: 'Coco',
     year: 2017,
     genres: ['Animación', 'Familia', 'Fantasía'],
-    overview: 'Miguel sueña con ser músico y, en el Día de Muertos, termina en la Tierra de los Muertos buscando a su tatarabuelo.',
+    overview:
+      'Miguel sueña con ser músico y, en el Día de Muertos, termina en la Tierra de los Muertos buscando a su tatarabuelo.',
     runtime: 105,
   },
   {
@@ -151,7 +163,8 @@ const MOVIES: DemoMovie[] = [
     title: 'Encanto',
     year: 2021,
     genres: ['Animación', 'Familia', 'Comedia'],
-    overview: 'En una casa mágica escondida en las montañas de Colombia, Mirabel es la única de la familia Madrigal sin un don.',
+    overview:
+      'En una casa mágica escondida en las montañas de Colombia, Mirabel es la única de la familia Madrigal sin un don.',
     runtime: 102,
   },
 ];
@@ -248,7 +261,31 @@ export function demoTv(id: number): TmdbTv | null {
       name: `Temporada ${i + 1}`,
       air_date: null,
     })),
-    next_episode_to_air: null,
+    next_episode_to_air: demoNextEpisode(s),
+  };
+}
+
+/** Fecha de emisión de un episodio de ejemplo: semanal, alrededor del episodio que viene. */
+function demoAirDate(s: DemoShow, season: number, episode: number): string {
+  const a = s.airing;
+  if (!a || season < a.season) return DEMO_AIRED;
+  if (season > a.season) return addDays(todayISO(), a.inDays + 365);
+  return addDays(todayISO(), a.inDays + (episode - a.from) * 7);
+}
+
+function demoEpisodeType(s: DemoShow, season: number, episode: number): string {
+  return episode === s.seasons[season - 1] ? 'finale' : 'standard';
+}
+
+function demoNextEpisode(s: DemoShow): TmdbTv['next_episode_to_air'] {
+  const a = s.airing;
+  if (!a) return null;
+  return {
+    season_number: a.season,
+    episode_number: a.from,
+    air_date: demoAirDate(s, a.season, a.from),
+    name: `Episodio ${a.from}`,
+    episode_type: demoEpisodeType(s, a.season, a.from),
   };
 }
 
@@ -262,9 +299,10 @@ export function demoSeason(tvId: number, season: number): TmdbSeason | null {
     season_number: season,
     name: `Episodio ${i + 1}`,
     overview: '',
-    air_date: DEMO_AIRED,
+    air_date: demoAirDate(s, season, i + 1),
     runtime: s.runtime,
     still_path: null,
+    episode_type: demoEpisodeType(s, season, i + 1),
   }));
   return { id: tvId * 10 + season, season_number: season, name: `Temporada ${season}`, episodes };
 }
@@ -303,4 +341,10 @@ export function demoWatchProviders(id: number): TmdbWatchProviders | null {
       return { provider_id: p.id, provider_name: p.name, logo_path: '' };
     }),
   };
+}
+
+/** Títulos del catálogo que están en alguna de las plataformas dadas. */
+export function demoOnProviders(providerIds: number[]): TmdbSearchResult[] {
+  const set = new Set(providerIds);
+  return demoTrending().filter((r) => (DEMO_AVAILABILITY[r.id] ?? []).some((id) => set.has(id)));
 }

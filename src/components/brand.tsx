@@ -92,7 +92,14 @@ export function SollarLogo({ size = 32, shape = 'circle' }: { size?: number; sha
 export function Wordmark({ size = 22 }: { size?: number }) {
   const C = useColors();
   return (
-    <T style={{ fontSize: size, lineHeight: size * 1.15, fontWeight: '800', letterSpacing: -0.04 * size, color: C.text }}>
+    <T
+      style={{
+        fontSize: size,
+        lineHeight: size * 1.15,
+        fontWeight: '800',
+        letterSpacing: -0.04 * size,
+        color: C.text,
+      }}>
       Sollar
     </T>
   );
@@ -112,7 +119,18 @@ const STRIPES = [0, 1, 2, 3].map((i) => {
 });
 
 const SMALL_CORN: [number, number][] = [
-  [34, 52], [48, 44], [62, 40], [76, 45], [88, 53], [41, 36], [56, 30], [71, 32], [83, 40], [63, 20], [48, 24], [30, 46],
+  [34, 52],
+  [48, 44],
+  [62, 40],
+  [76, 45],
+  [88, 53],
+  [41, 36],
+  [56, 30],
+  [71, 32],
+  [83, 40],
+  [63, 20],
+  [48, 24],
+  [30, 46],
 ];
 
 /** Una palomita: tres lóbulos redondos con un toque de mantequilla. */
@@ -236,7 +254,10 @@ function OpenMouth({ top, bottom, wide }: { top: number; bottom: number; wide: n
   const r = 60 + wide;
   return (
     <>
-      <Path d={`M${l} ${top} Q60 ${top + 1.2} ${r} ${top} Q${r - 1.5} ${bottom} 60 ${bottom} Q${l + 1.5} ${bottom} ${l} ${top}Z`} fill={INK} />
+      <Path
+        d={`M${l} ${top} Q60 ${top + 1.2} ${r} ${top} Q${r - 1.5} ${bottom} 60 ${bottom} Q${l + 1.5} ${bottom} ${l} ${top}Z`}
+        fill={INK}
+      />
       <Path
         d={`M${l + 3} ${bottom - 3.5} Q60 ${bottom - 6} ${r - 3} ${bottom - 3.5} Q${r - 5} ${bottom - 0.8} 60 ${bottom - 0.8} Q${l + 5} ${bottom - 0.8} ${l + 3} ${bottom - 3.5}Z`}
         fill="#FF6F7D"
@@ -246,7 +267,13 @@ function OpenMouth({ top, bottom, wide }: { top: number; bottom: number; wide: n
 }
 
 function Heart({ x }: { x: number }) {
-  return <Path transform={`translate(${x} 31)`} d="M0 4C-6-1-5-6-2.4-6C-1-6 0-5 0-3.8C0-5 1-6 2.4-6C5-6 6-1 0 4Z" fill="#FF3B5C" />;
+  return (
+    <Path
+      transform={`translate(${x} 31)`}
+      d="M0 4C-6-1-5-6-2.4-6C-1-6 0-5 0-3.8C0-5 1-6 2.4-6C5-6 6-1 0 4Z"
+      fill="#FF3B5C"
+    />
+  );
 }
 
 function Star({ x }: { x: number }) {
@@ -371,7 +398,16 @@ function HeroBag({ value, size }: { value: number; size: number }) {
     }, 4200);
     return () => clearInterval(t);
   }, []);
-  const side: [number, number][] = [[30, 50], [40, 40], [82, 42], [92, 52], [36, 56], [86, 58], [24, 58], [96, 60]];
+  const side: [number, number][] = [
+    [30, 50],
+    [40, 40],
+    [82, 42],
+    [92, 52],
+    [36, 56],
+    [86, 58],
+    [24, 58],
+    [96, 60],
+  ];
   return (
     <Svg width={size} height={(size * 160) / 120} viewBox="0 -14 120 160">
       <BagBody filled={value > 0} id={id}>
@@ -409,7 +445,11 @@ function Burst({ trigger, count }: { trigger: number; count: number }) {
     });
     Animated.stagger(
       25,
-      anims.slice(0, count).map((a) => Animated.timing(a, { toValue: 1, duration: 800, easing: Easing.out(Easing.cubic), useNativeDriver: true })),
+      anims
+        .slice(0, count)
+        .map((a) =>
+          Animated.timing(a, { toValue: 1, duration: 800, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+        ),
     ).start();
   }, [trigger, count, anims, dirs]);
   return (
@@ -489,7 +529,9 @@ export function PopcornRating({ value, onChange }: { value: number | null; onCha
     if (next) {
       setBurst((b) => b + 1);
       bounce.setValue(0);
-      Animated.spring(bounce, { toValue: 1, friction: 4, tension: 160, useNativeDriver: true }).start(() => bounce.setValue(0));
+      Animated.spring(bounce, { toValue: 1, friction: 4, tension: 160, useNativeDriver: true }).start(() =>
+        bounce.setValue(0),
+      );
     }
   }
 
@@ -505,7 +547,14 @@ export function PopcornRating({ value, onChange }: { value: number | null; onCha
         <HeroBag value={v} size={150} />
       </Animated.View>
       <View style={{ alignItems: 'center' }}>
-        <T style={{ fontSize: 22, lineHeight: 28, fontWeight: '800', letterSpacing: -0.6, color: v ? C.accentInk : C.textMuted }}>
+        <T
+          style={{
+            fontSize: 22,
+            lineHeight: 28,
+            fontWeight: '800',
+            letterSpacing: -0.6,
+            color: v ? C.accentInk : C.textMuted,
+          }}>
           {RATING_LABELS[v]}
         </T>
         <T variant="small" muted>

@@ -1,4 +1,4 @@
-/** Pestaña "Siguiendo": el siguiente episodio de cada serie y las películas pendientes. */
+/** Pestaña "Siguiendo": lo que sale esta semana, el siguiente episodio de cada serie y lo pendiente. */
 
 import { Link, router } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
@@ -9,6 +9,8 @@ import { Icon } from '@/components/icons';
 import { TitleCard } from '@/components/title-card';
 import { TokenWarning } from '@/components/token-warning';
 import { Button, Empty, Poster, ProgressBar, Screen, Section, T } from '@/components/ui';
+import { useCalendar, type CalendarEpisode } from '@/hooks/use-calendar';
+import { addDays, dayLabel, todayISO } from '@/lib/dates';
 import { Radius, Space, type Colors } from '@/constants/theme';
 import { useColors, useStyles } from '@/store/theme';
 import { formatEpisode, nextEpisode, progressOf, totalEpisodes, watchedCount } from '@/lib/progress';
@@ -19,12 +21,16 @@ import { useLibrary } from '@/store/library';
 import { useSettings } from '@/store/settings';
 
 export default function FollowingScreen() {
+  const C = useColors();
   const styles = useStyles(makeStyles);
   const { items } = useLibrary();
   const watching = items.filter((i) => i.mediaType === 'tv' && i.status === 'watching');
   const plannedMovies = items.filter((i) => i.mediaType === 'movie' && i.status === 'planned');
   const plannedShows = items.filter((i) => i.mediaType === 'tv' && i.status === 'planned');
   const { myProviders } = useSettings();
+  const calendar = useCalendar();
+  const weekEnd = addDays(todayISO(), 6);
+  const thisWeek = calendar.episodes.filter((e) => e.airDate <= weekEnd);
   // Pendientes que ya puedes ver con lo que pagas: lo más útil para decidir qué ver hoy.
   const readyNow = items.filter(
     (i) => (i.status === 'planned' || i.status === 'paused') && myMatches(i, myProviders).length > 0,
@@ -57,6 +63,26 @@ export default function FollowingScreen() {
         </View>
       ) : null}
 
+      {thisWeek.length > 0 ? (
+        <Section
+          title="Esta semana"
+          right={
+            <Link href="/calendario" asChild>
+              <Pressable hitSlop={8}>
+                <T variant="label" style={{ color: C.accentInk }}>
+                  Ver calendario
+                </T>
+              </Pressable>
+            </Link>
+          }>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: Space.sm }}>
+            {thisWeek.slice(0, 8).map((e) => (
+              <WeekCard key={`${e.key}:${e.season}:${e.episode}`} e={e} />
+            ))}
+          </ScrollView>
+        </Section>
+      ) : null}
+
       {readyNow.length > 0 ? (
         <Section title="Listo para ver en tus plataformas">
           <Shelf items={readyNow} myProviders={myProviders} />
@@ -67,7 +93,7 @@ export default function FollowingScreen() {
         <Section title="Continúa viendo">
           <View style={{ gap: Space.md }}>
             {watching.map((item) => (
-              <NextEpisodeRow key={item.key} item={item} />
+              <NextEpisodeRow key={item.key} item={item} upcoming={calendar.nextByKey[item.key]} />
             ))}
           </View>
         </Section>
@@ -88,11 +114,45 @@ export default function FollowingScreen() {
   );
 }
 
-function NextEpisodeRow({ item }: { item: LibraryItem }) {
+/** Tarjeta compacta de un episodio que sale esta semana. */
+function WeekCard({ e }: { e: CalendarEpisode }) {
+  const C = useColors();
+  const styles = useStyles(makeStyles);
+  return (
+    <Link href={{ pathname: '/titulo/[tipo]/[id]', params: { tipo: 'tv', id: String(e.tmdbId) } }} asChild>
+      <Pressable>
+        {({ pressed }) => (
+          <View style={[styles.week, pressed && { opacity: 0.8 }]}>
+            <Poster path={e.posterPath} title={e.title} width={44} size="w185" />
+            <View style={{ gap: 2, maxWidth: 150 }}>
+              <T variant="caption" style={{ color: C.accentInk, fontWeight: '700' }}>
+                {dayLabel(e.airDate)}
+              </T>
+              <T variant="label" numberOfLines={1}>
+                {e.title}
+              </T>
+              <T variant="caption" muted>
+                {formatEpisode(e.season, e.episode)}
+              </T>
+            </View>
+          </View>
+        )}
+      </Pressable>
+    </Link>
+  );
+}
+
+function NextEpisodeRow({ item, upcoming }: { item: LibraryItem; upcoming?: CalendarEpisode }) {
   const C = useColors();
   const styles = useStyles(makeStyles);
   const { setEpisodes } = useLibrary();
-  const next = nextEpisode(item);
+  const nextRaw = nextEpisode(item);
+  // Si lo que sigue aún no ha salido, se avisa cuándo sale y no se puede marcar como visto.
+  const unaired =
+    !!nextRaw &&
+    !!upcoming &&
+    (nextRaw.season > upcoming.season || (nextRaw.season === upcoming.season && nextRaw.episode >= upcoming.episode));
+  const next = unaired ? null : nextRaw;
   const total = totalEpisodes(item.seasons);
 
   return (
@@ -105,7 +165,11 @@ function NextEpisodeRow({ item }: { item: LibraryItem }) {
               {item.title}
             </T>
             <T variant="small" style={{ color: C.accentInk }}>
-              {next ? `Sigue: ${formatEpisode(next.season, next.episode)}` : 'Al día'}
+              {next
+                ? `Sigue: ${formatEpisode(next.season, next.episode)}`
+                : unaired && upcoming
+                  ? `${formatEpisode(upcoming.season, upcoming.episode)} sale ${dayLabel(upcoming.airDate).toLowerCase()}`
+                  : 'Al día'}
             </T>
             <ProgressBar value={progressOf(item)} />
             <T variant="caption" muted>
@@ -147,26 +211,35 @@ function Shelf({ items, myProviders }: { items: LibraryItem[]; myProviders: numb
 
 const makeStyles = (C: Colors) =>
   StyleSheet.create({
-  tip: {
-    ...card(C),
-    gap: Space.sm,
-    padding: Space.lg,
-    borderRadius: Radius.lg,
-  },
-  row: {
-    ...card(C),
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Space.md,
-    padding: Space.md,
-    borderRadius: Radius.lg,
-  },
-  check: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: C.g2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
+    tip: {
+      ...card(C),
+      gap: Space.sm,
+      padding: Space.lg,
+      borderRadius: Radius.lg,
+    },
+    row: {
+      ...card(C),
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Space.md,
+      padding: Space.md,
+      borderRadius: Radius.lg,
+    },
+    week: {
+      ...card(C),
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Space.sm,
+      padding: Space.sm,
+      paddingRight: Space.md,
+      borderRadius: Radius.lg,
+    },
+    check: {
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+      backgroundColor: C.g2,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+  });

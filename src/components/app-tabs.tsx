@@ -1,18 +1,27 @@
 /**
  * Navegación principal, igual en iPhone, Android y web: una barra de vidrio que flota.
  * En el celular va abajo, como una píldora; en pantallas anchas, arriba con la marca.
+ *
+ * Los botones se contraen: los inactivos muestran solo su ícono y el activo se expande con
+ * su nombre, para que la barra quede limpia sin perder la referencia de dónde estás.
+ * Cada botón conserva su nombre para lectores de pantalla.
+ *
  * Los TabTrigger deben ser hijos directos de TabList: el diseño va dentro de BarLayout.
  */
 
+import { LinearGradient } from 'expo-linear-gradient';
+import { Tabs, TabList, TabSlot, TabTrigger, type TabListProps, type TabTriggerSlotProps } from 'expo-router/ui';
+import { useEffect, useRef } from 'react';
 import {
-  Tabs,
-  TabList,
-  TabSlot,
-  TabTrigger,
-  type TabListProps,
-  type TabTriggerSlotProps,
-} from 'expo-router/ui';
-import { Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
+  Animated,
+  Easing,
+  LayoutAnimation,
+  Platform,
+  Pressable,
+  StyleSheet,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { MaxContentWidth, Radius, Space, type Colors } from '@/constants/theme';
@@ -35,24 +44,19 @@ export default function AppTabs() {
       <TabList asChild>
         <BarLayout narrow={narrow}>
           <TabTrigger name="index" href="/" asChild>
-            <TabButton narrow={narrow} icon="play">
-              Siguiendo
-            </TabButton>
+            <TabButton narrow={narrow} icon="play" label="Siguiendo" />
+          </TabTrigger>
+          <TabTrigger name="calendario" href="/calendario" asChild>
+            <TabButton narrow={narrow} icon="calendar" label="Calendario" />
           </TabTrigger>
           <TabTrigger name="buscar" href="/buscar" asChild>
-            <TabButton narrow={narrow} icon="search">
-              Buscar
-            </TabButton>
+            <TabButton narrow={narrow} icon="search" label="Buscar" />
           </TabTrigger>
           <TabTrigger name="lista" href="/lista" asChild>
-            <TabButton narrow={narrow} icon="ticket">
-              Mi lista
-            </TabButton>
+            <TabButton narrow={narrow} icon="ticket" label="Mi lista" />
           </TabTrigger>
           <TabTrigger name="perfil" href="/perfil" asChild>
-            <TabButton narrow={narrow} icon="person">
-              Perfil
-            </TabButton>
+            <TabButton narrow={narrow} icon="person" label="Perfil" />
           </TabTrigger>
         </BarLayout>
       </TabList>
@@ -65,7 +69,10 @@ function BarLayout({ narrow, children, ...rest }: TabListProps & { narrow: boole
   const styles = useStyles(makeStyles);
   if (narrow) {
     return (
-      <View {...rest} pointerEvents="box-none" style={[styles.bottomWrap, { bottom: Math.max(insets.bottom, Space.md) }]}>
+      <View
+        {...rest}
+        pointerEvents="box-none"
+        style={[styles.bottomWrap, { bottom: Math.max(insets.bottom, Space.md) }]}>
         <Glass radius={Radius.pill} style={styles.bottomBar}>
           <View style={styles.bottomRow}>{children}</View>
         </Glass>
@@ -88,57 +95,87 @@ function BarLayout({ narrow, children, ...rest }: TabListProps & { narrow: boole
 }
 
 function TabButton({
-  children,
   isFocused,
   narrow,
   icon,
+  label,
   ref: _ref,
+  children: _children,
   ...props
-}: TabTriggerSlotProps & { narrow: boolean; icon: IconName }) {
+}: TabTriggerSlotProps & { narrow: boolean; icon: IconName; label: string }) {
   const C = useColors();
   const styles = useStyles(makeStyles);
-  const color = isFocused ? C.accentInk : C.textMuted;
+  const appear = useRef(new Animated.Value(isFocused ? 1 : 0)).current;
+
+  useEffect(() => {
+    // En el teléfono, el cambio de ancho se anima; en web basta con el desvanecido del nombre.
+    if (Platform.OS !== 'web') LayoutAnimation.configureNext(LayoutAnimation.create(220, 'easeInEaseOut', 'opacity'));
+    Animated.timing(appear, {
+      toValue: isFocused ? 1 : 0,
+      duration: 220,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [isFocused, appear]);
+
   return (
     <Pressable
       {...props}
       accessibilityRole="tab"
+      accessibilityLabel={label}
       accessibilityState={{ selected: isFocused }}
       style={({ pressed }) => [
-        narrow ? styles.bottomTab : styles.topTab,
-        isFocused && (narrow ? styles.bottomTabOn : styles.topTabOn),
+        styles.tab,
+        narrow && (isFocused ? styles.tabGrow : styles.tabIcon),
         pressed && { opacity: 0.7 },
       ]}>
-      <Icon name={icon} size={narrow ? 24 : 18} color={color} filled={isFocused} />
-      <T
-        style={{
-          color: isFocused ? C.text : C.textMuted,
-          fontSize: narrow ? 11 : 14,
-          fontWeight: isFocused ? '700' : '600',
-        }}>
-        {children}
-      </T>
+      {isFocused ? (
+        <LinearGradient
+          colors={[C.g1, C.g2]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={[StyleSheet.absoluteFill, { borderRadius: Radius.pill }]}
+        />
+      ) : null}
+      {/* Envuelto en View para que en web quede por encima del degradado. */}
+      <View>
+        <Icon name={icon} size={22} color={isFocused ? C.onAccent : C.textMuted} filled={isFocused} strokeWidth={2} />
+      </View>
+      {isFocused ? (
+        <Animated.View
+          style={{
+            opacity: appear,
+            transform: [{ translateX: appear.interpolate({ inputRange: [0, 1], outputRange: [-6, 0] }) }],
+          }}>
+          <T numberOfLines={1} style={{ color: C.onAccent, fontSize: 14, fontWeight: '700' }}>
+            {label}
+          </T>
+        </Animated.View>
+      ) : null}
     </Pressable>
   );
 }
 
 const makeStyles = (C: Colors) =>
   StyleSheet.create({
-  bottomWrap: { position: 'absolute', left: Space.lg, right: Space.lg, alignItems: 'center' },
-  bottomBar: { width: '100%', maxWidth: 440 },
-  bottomRow: { flexDirection: 'row', padding: Space.xs + 2 },
-  bottomTab: { flex: 1, alignItems: 'center', gap: 2, paddingVertical: Space.sm, borderRadius: Radius.pill },
-  bottomTabOn: { backgroundColor: C.accentSoft },
-  topWrap: { position: 'absolute', left: Space.lg, right: Space.lg, alignItems: 'center' },
-  topBar: { width: '100%', maxWidth: MaxContentWidth },
-  topRow: { flexDirection: 'row', alignItems: 'center', gap: Space.xs, padding: Space.sm, paddingLeft: Space.lg },
-  brand: { flexDirection: 'row', alignItems: 'center', gap: Space.sm, marginRight: 'auto' },
-  topTab: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Space.sm,
-    paddingVertical: Space.sm,
-    paddingHorizontal: Space.lg,
-    borderRadius: Radius.pill,
-  },
-  topTabOn: { backgroundColor: C.accentSoft },
-});
+    bottomWrap: { position: 'absolute', left: Space.lg, right: Space.lg, alignItems: 'center' },
+    bottomBar: { width: '100%', maxWidth: 440 },
+    bottomRow: { flexDirection: 'row', alignItems: 'center', padding: Space.xs + 2, gap: Space.xs },
+    topWrap: { position: 'absolute', left: Space.lg, right: Space.lg, alignItems: 'center' },
+    topBar: { width: '100%', maxWidth: MaxContentWidth },
+    topRow: { flexDirection: 'row', alignItems: 'center', gap: Space.xs, padding: Space.sm, paddingLeft: Space.md },
+    brand: { flexDirection: 'row', alignItems: 'center', gap: Space.sm, marginRight: 'auto' },
+    tab: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: Space.sm,
+      height: 48,
+      paddingHorizontal: Space.md + 2,
+      borderRadius: Radius.pill,
+      overflow: 'hidden',
+    },
+    /** El activo ocupa el espacio que sobra; los demás, solo el de su ícono. */
+    tabGrow: { flexGrow: 1 },
+    tabIcon: { flexGrow: 0, width: 52, paddingHorizontal: 0 },
+  });

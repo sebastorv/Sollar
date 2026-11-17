@@ -124,7 +124,7 @@ export function Poster({
   // La palabra más larga debe caber en una línea, para no partir "Oppenheimer".
   const longest = title ? Math.max(...title.split(/\s+/).map((w) => w.length)) : 1;
   const fit = Math.floor((width - (small ? 8 : 20)) / (longest * 0.62));
-  const fontSize = Math.max(9, Math.min(small ? 11 : Math.round(width / 7.5), fit));
+  const fontSize = Math.max(small ? 7 : 9, Math.min(small ? 11 : Math.round(width / 7.5), fit));
   return (
     <View style={[styles.posterBox, box, style]}>
       {!uri && title ? (
@@ -230,7 +230,11 @@ export function Button({
           style={[StyleSheet.absoluteFill, { borderRadius: Radius.pill }]}
         />
       ) : null}
-      {icon ? <Icon name={icon} size={18} color={fg} strokeWidth={2.2} /> : null}
+      {icon ? (
+        <View>
+          <Icon name={icon} size={18} color={fg} strokeWidth={2.2} />
+        </View>
+      ) : null}
       <T variant="label" style={{ color: fg }}>
         {label}
       </T>

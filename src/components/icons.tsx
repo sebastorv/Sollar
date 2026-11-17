@@ -9,6 +9,7 @@ import { useColors } from '@/store/theme';
 
 export type IconName =
   | 'play'
+  | 'calendar'
   | 'search'
   | 'ticket'
   | 'person'
@@ -50,6 +51,15 @@ export function Icon({
           <Rect x="3" y="4.5" width="18" height="13" rx="3.5" {...s} fill={fill} fillOpacity={fillOpacity} />
           <Path d="M10.3 8.6v4.8a.6.6 0 0 0 .9.5l3.8-2.4a.6.6 0 0 0 0-1l-3.8-2.4a.6.6 0 0 0-.9.5Z" {...s} fill={color} strokeWidth={1.2} />
           <Path d="M9 20.5h6" {...s} />
+        </>
+      ) : null}
+
+      {name === 'calendar' ? (
+        <>
+          {/* Hoja de calendario con dos argollas y un día marcado */}
+          <Rect x="3.5" y="5" width="17" height="15.5" rx="3.5" {...s} fill={fill} fillOpacity={fillOpacity} />
+          <Path d="M3.5 10h17M8 3v4M16 3v4" {...s} />
+          <Circle cx="15.5" cy="15" r="1.7" fill={color} stroke="none" />
         </>
       ) : null}
 

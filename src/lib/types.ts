@@ -65,7 +65,7 @@ export type LibraryItem = {
   year: string | null;
   genres: string[];
   status: WatchStatus;
-  /** Calificación personal de 1 a 10 (en pasos de 1, se muestra como 5 estrellas con medias). */
+  /** Calificación personal de 1 a 10, con bolsas de palomitas. */
   rating: number | null;
   note: string;
   /** Minutos: duración de la película o duración media del episodio. */
@@ -143,7 +143,18 @@ export type TmdbTv = {
   number_of_seasons: number;
   number_of_episodes: number;
   seasons: TmdbSeasonStub[];
-  next_episode_to_air: { season_number: number; episode_number: number; air_date: string } | null;
+  next_episode_to_air: TmdbEpisodeStub | null;
+  last_episode_to_air?: TmdbEpisodeStub | null;
+};
+
+/** Episodio resumido que TMDB incluye en la ficha de la serie. */
+export type TmdbEpisodeStub = {
+  season_number: number;
+  episode_number: number;
+  air_date: string;
+  name?: string;
+  /** 'standard', 'finale' o 'mid_season'. */
+  episode_type?: string;
 };
 
 export type TmdbEpisode = {
@@ -155,6 +166,7 @@ export type TmdbEpisode = {
   air_date: string | null;
   runtime: number | null;
   still_path: string | null;
+  episode_type?: string;
 };
 
 export type TmdbSeason = {
