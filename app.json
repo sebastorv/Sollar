@@ -1,25 +1,25 @@
 {
   "expo": {
-    "name": "Butaca",
-    "slug": "butaca",
+    "name": "Sollar",
+    "slug": "sollar",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "butaca",
-    "userInterfaceStyle": "dark",
+    "scheme": "sollar",
+    "userInterfaceStyle": "automatic",
     "ios": {
       "icon": "./assets/images/icon.png",
-      "bundleIdentifier": "com.tunombre.butaca"
+      "bundleIdentifier": "com.tunombre.sollar"
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#120D17",
+        "backgroundColor": "#F7614F",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.tunombre.butaca"
+      "package": "com.tunombre.sollar"
     },
     "web": {
       "output": "single",
@@ -37,9 +37,13 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#120D17",
+          "backgroundColor": "#F7F6F9",
           "image": "./assets/images/splash-icon.png",
-          "imageWidth": 140
+          "imageWidth": 160,
+          "dark": {
+            "backgroundColor": "#0E0D12",
+            "image": "./assets/images/splash-icon.png"
+          }
         }
       ]
     ],
@@ -47,6 +51,6 @@
       "typedRoutes": true,
       "reactCompiler": true
     },
-    "backgroundColor": "#120D17"
+    "backgroundColor": "#F7F6F9"
   }
 }

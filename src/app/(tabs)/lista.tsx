@@ -5,12 +5,13 @@ import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { FilterSheet } from '@/components/filter-sheet';
-import { relief } from '@/components/glass';
+import { card } from '@/components/glass';
 import { Icon } from '@/components/icons';
 import { useProviderDirectory } from '@/components/platforms';
 import { Grid, TitleCard } from '@/components/title-card';
 import { Button, Chip, Empty, Screen, T } from '@/components/ui';
-import { C, Radius, Space } from '@/constants/theme';
+import { Radius, Space, type Colors } from '@/constants/theme';
+import { useColors, useStyles } from '@/store/theme';
 import { DEFAULT_FILTERS, activeCount, applyFilters, facets, remainingMinutes, type Filters } from '@/lib/filters';
 import { formatDuration, formatEpisode, nextEpisode } from '@/lib/progress';
 import { availabilityFrom, availableLabel, daysSince } from '@/lib/providers';
@@ -32,6 +33,8 @@ const PRESETS: { label: string; filters: Partial<Filters> }[] = [
 ];
 
 export default function ListScreen() {
+  const C = useColors();
+  const styles = useStyles(makeStyles);
   const lib = useLibrary();
   const { items } = lib;
   const { myProviders } = useSettings();
@@ -85,7 +88,7 @@ export default function ListScreen() {
               key={p.label}
               onPress={() => setFilters({ ...DEFAULT_FILTERS, ...p.filters })}
               style={({ pressed }) => [styles.preset, pressed && { opacity: 0.75 }]}>
-              <T variant="label" style={{ color: C.accent }}>
+              <T variant="label" style={{ color: C.accentInk }}>
                 {p.label}
               </T>
             </Pressable>
@@ -124,7 +127,7 @@ export default function ListScreen() {
         </Pressable>
         {extra > 0 || filters.status !== 'all' || filters.type !== 'all' ? (
           <Pressable onPress={() => setFilters(DEFAULT_FILTERS)} accessibilityRole="button">
-            <T variant="small" style={{ color: C.accent }}>
+            <T variant="small" style={{ color: C.accentInk }}>
               Quitar todo
             </T>
           </Pressable>
@@ -211,17 +214,18 @@ function subtitleFor(i: LibraryItem, sort: Filters['sort']): string | null {
   return i.year;
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (C: Colors) =>
+  StyleSheet.create({
   preset: {
     paddingVertical: Space.sm,
     paddingHorizontal: Space.md + 2,
     borderRadius: Radius.pill,
     borderWidth: 1,
     borderColor: C.accentLine,
-    backgroundColor: 'rgba(233, 201, 135, 0.07)',
+    backgroundColor: C.accentSoft,
   },
   filterBtn: {
-    ...relief,
+    ...card(C),
     flexDirection: 'row',
     alignItems: 'center',
     gap: Space.xs + 2,
@@ -229,7 +233,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Space.md + 2,
     borderRadius: Radius.pill,
   },
-  filterBtnOn: { backgroundColor: C.accent, borderColor: C.accent, borderTopColor: '#F6E2B6' },
+  filterBtnOn: { backgroundColor: C.g2, borderColor: C.g2 },
   // Sin esto, el carrusel horizontal estira las píldoras a lo alto.
   hScroll: { flexGrow: 0 },
   hRow: { gap: Space.sm, alignItems: 'center' },

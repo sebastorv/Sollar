@@ -6,7 +6,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 
-const KEY = 'butaca.settings.v1';
+const KEY = 'sollar.settings.v1';
+const OLD_KEY = 'butaca.settings.v1';
 
 type Settings = { myProviders: number[] };
 
@@ -24,6 +25,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     AsyncStorage.getItem(KEY)
+      .then((raw) => raw ?? AsyncStorage.getItem(OLD_KEY))
       .then((raw) => {
         const s = raw ? (JSON.parse(raw) as Partial<Settings>) : {};
         if (Array.isArray(s.myProviders)) setMy(s.myProviders);

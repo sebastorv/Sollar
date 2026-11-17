@@ -72,7 +72,7 @@ export function newItemFromTv(tv: TmdbTv, status: WatchStatus): LibraryItem {
   };
 }
 
-/** Comprueba que un JSON importado tenga la forma de un respaldo de Butaca. */
+/** Comprueba que un JSON importado tenga la forma de un respaldo de Sollar. */
 export function parseBackup(text: string): BackupFile {
   let data: unknown;
   try {
@@ -81,8 +81,8 @@ export function parseBackup(text: string): BackupFile {
     throw new Error('El texto no es un JSON válido.');
   }
   const b = data as Partial<BackupFile>;
-  if (b?.app !== 'butaca' || b.version !== 1 || !Array.isArray(b.items)) {
-    throw new Error('El archivo no es un respaldo de Butaca (versión 1).');
+  if ((b?.app !== 'sollar' && b?.app !== 'butaca') || b.version !== 1 || !Array.isArray(b.items)) {
+    throw new Error('El archivo no es un respaldo de Sollar (versión 1).');
   }
   for (const it of b.items) {
     if (typeof it?.key !== 'string' || typeof it?.tmdbId !== 'number') {

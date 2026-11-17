@@ -1,7 +1,8 @@
 import { Link } from 'expo-router';
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import { C, Radius, Space } from '@/constants/theme';
+import { Radius, Space, type Colors } from '@/constants/theme';
+import { useColors, useStyles } from '@/store/theme';
 import type { MediaType } from '@/lib/types';
 
 import { Poster, T } from './ui';
@@ -27,6 +28,8 @@ export function TitleCard({
   highlight?: string | null;
   width?: number;
 }) {
+  const C = useColors();
+  const styles = useStyles(makeStyles);
   return (
     <Link href={{ pathname: '/titulo/[tipo]/[id]', params: { tipo: mediaType, id: String(id) } }} asChild>
       <Pressable style={({ pressed }) => [{ width, gap: Space.xs }, pressed && { opacity: 0.8 }]}>
@@ -34,7 +37,7 @@ export function TitleCard({
           <Poster path={posterPath} title={title} width={width} />
           {badge ? (
             <View style={styles.badge}>
-              <T variant="caption" style={{ color: C.accent, fontWeight: '700' }}>
+              <T variant="caption" style={{ color: C.accentInk, fontWeight: '700' }}>
                 {badge}
               </T>
             </View>
@@ -49,7 +52,7 @@ export function TitleCard({
           </T>
         ) : null}
         {highlight ? (
-          <T variant="caption" numberOfLines={1} style={{ color: C.accent, fontWeight: '700' }}>
+          <T variant="caption" numberOfLines={1} style={{ color: C.accentInk, fontWeight: '700' }}>
             {highlight}
           </T>
         ) : null}
@@ -60,15 +63,17 @@ export function TitleCard({
 
 /** Rejilla adaptable: tantas columnas como quepan. */
 export function Grid({ children }: { children: React.ReactNode }) {
+  const styles = useStyles(makeStyles);
   return <View style={styles.grid}>{children}</View>;
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (C: Colors) =>
+  StyleSheet.create({
   badge: {
     position: 'absolute',
     top: Space.xs + 2,
     left: Space.xs + 2,
-    backgroundColor: 'rgba(18, 13, 23, 0.78)',
+    backgroundColor: C.glassStrong,
     borderWidth: 1,
     borderColor: C.accentLine,
     borderRadius: Radius.pill,

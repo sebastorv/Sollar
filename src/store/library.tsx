@@ -28,7 +28,9 @@ import {
   type WatchStatus,
 } from '@/lib/types';
 
-const STORAGE_KEY = 'butaca.library.v1';
+const STORAGE_KEY = 'sollar.library.v1';
+/** Clave de cuando la app se llamaba Butaca: se lee una vez para no perder la lista. */
+const OLD_STORAGE_KEY = 'butaca.library.v1';
 
 type State = { ready: boolean; items: Record<string, LibraryItem> };
 
@@ -146,6 +148,7 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
   // Cargar al iniciar.
   useEffect(() => {
     AsyncStorage.getItem(STORAGE_KEY)
+      .then((raw) => raw ?? AsyncStorage.getItem(OLD_STORAGE_KEY))
       .then((raw) => {
         const items = raw ? (JSON.parse(raw) as Record<string, LibraryItem>) : {};
         dispatch({ type: 'hydrate', items });
@@ -194,7 +197,7 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       refreshSeasons: (key, seasons) => dispatch({ type: 'refreshSeasons', key, seasons }),
       setAvailability: (key, availability) => dispatch({ type: 'availability', key, availability }),
       exportBackup: () => ({
-        app: 'butaca',
+        app: 'sollar',
         version: 1,
         exportedAt: new Date().toISOString(),
         items: Object.values(state.items),

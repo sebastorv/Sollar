@@ -4,12 +4,13 @@ import { Image } from 'expo-image';
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import { C, Radius, Space } from '@/constants/theme';
+import { Radius, Space, type Colors } from '@/constants/theme';
+import { useColors, useStyles } from '@/store/theme';
 import { getProviderDirectory, imageUrl } from '@/lib/tmdb';
 import type { ProviderInfo } from '@/lib/types';
 import { useSettings } from '@/store/settings';
 
-import { relief } from './glass';
+import { card } from './glass';
 import { Icon } from './icons';
 import { Loading, T } from './ui';
 
@@ -32,6 +33,8 @@ export function useProviderDirectory() {
 
 /** Logo de la plataforma; si no hay imagen (modo demostración), sus iniciales. */
 export function ProviderLogo({ name, logoPath, size = 28 }: { name: string; logoPath: string | null; size?: number }) {
+  const C = useColors();
+  const styles = useStyles(makeStyles);
   const uri = imageUrl(logoPath || null, 'w92');
   const box = { width: size, height: size, borderRadius: size / 4 };
   if (uri) return <Image source={{ uri }} style={box} />;
@@ -51,6 +54,8 @@ export function ProviderLogo({ name, logoPath, size = 28 }: { name: string; logo
 
 /** Cuadrícula para marcar las plataformas que pagas. */
 export function PlatformPicker({ limit = 24 }: { limit?: number }) {
+  const C = useColors();
+  const styles = useStyles(makeStyles);
   const { list, error } = useProviderDirectory();
   const { myProviders, toggleProvider } = useSettings();
   const [showAll, setShowAll] = useState(false);
@@ -85,7 +90,7 @@ export function PlatformPicker({ limit = 24 }: { limit?: number }) {
       </View>
       {list.length > limit ? (
         <Pressable onPress={() => setShowAll((v) => !v)} accessibilityRole="button">
-          <T variant="small" style={{ color: C.accent }}>
+          <T variant="small" style={{ color: C.accentInk }}>
             {showAll ? 'Ver menos' : `Ver las ${list.length} plataformas`}
           </T>
         </Pressable>
@@ -94,10 +99,11 @@ export function PlatformPicker({ limit = 24 }: { limit?: number }) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (C: Colors) =>
+  StyleSheet.create({
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: Space.sm },
   tile: {
-    ...relief,
+    ...card(C),
     flexGrow: 1,
     flexBasis: 160,
     flexDirection: 'row',
@@ -107,11 +113,9 @@ const styles = StyleSheet.create({
     paddingRight: Space.md,
     borderRadius: Radius.md,
   },
-  tileOn: { borderColor: C.accentLine, borderTopColor: C.accent, backgroundColor: C.accentSoft },
+  tileOn: { borderColor: C.accentLine, backgroundColor: C.accentSoft },
   initials: {
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: C.fill,
     alignItems: 'center',
     justifyContent: 'center',
   },

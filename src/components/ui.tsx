@@ -18,10 +18,11 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { C, MaxContentWidth, Radius, Space, TabBarSpace } from '@/constants/theme';
+import { MaxContentWidth, Radius, Space, TabBarSpace, type Colors } from '@/constants/theme';
+import { useColors, useStyles } from '@/store/theme';
 import { imageUrl, type ImageSize } from '@/lib/tmdb';
 
-import { Backdrop } from './glass';
+import { Backdrop, card } from './glass';
 import { Icon } from './icons';
 
 // --- Texto ---
@@ -34,6 +35,8 @@ export function T({
   style,
   ...rest
 }: TextProps & { variant?: Variant; muted?: boolean }) {
+  const styles = useStyles(makeStyles);
+  const C = useColors();
   return <Text style={[styles[variant], muted && { color: C.textMuted }, style]} {...rest} />;
 }
 
@@ -50,6 +53,7 @@ export function Screen({
 }) {
   // En pantallas anchas la barra de navegación flota arriba; en el celular, abajo.
   const wide = useWindowDimensions().width >= 720;
+  const styles = useStyles(makeStyles);
   const inner = (
     <View style={[styles.inner, padded && styles.padded, padded && wide && { paddingTop: 96 }]}>{children}</View>
   );
@@ -71,20 +75,31 @@ export function Screen({
 
 // --- Carátula ---
 
-/** Pares de tonos (arriba, abajo) para las carátulas sin imagen, todos dentro de la paleta. */
-const POSTER_TONES: [string, string][] = [
-  ['#5A2140', '#1D1224'],
-  ['#3A2C66', '#16111F'],
-  ['#4B2A55', '#1A1220'],
-  ['#2F3558', '#14111C'],
-  ['#5E2B33', '#1C1218'],
-  ['#41305A', '#17111E'],
-];
+/** Pares de tonos (arriba, abajo) para las carátulas sin imagen. */
+const POSTER_TONES: Record<'light' | 'dark', [string, string][]> = {
+  light: [
+    ['#FFE3D3', '#FFC9C9'],
+    ['#FFE9C7', '#FFD0B5'],
+    ['#FFD9E4', '#F8C2D6'],
+    ['#E4E2F7', '#D3D0EE'],
+    ['#DDEFF0', '#C6E2E4'],
+    ['#F3E3D6', '#E7CFBD'],
+  ],
+  dark: [
+    ['#3A2230', '#1E1620'],
+    ['#3C2A22', '#1F1714'],
+    ['#2C2440', '#17141F'],
+    ['#22303A', '#141B20'],
+    ['#3A2026', '#1F1316'],
+    ['#2E2A36', '#18161D'],
+  ],
+};
 
-function toneFor(text: string): [string, string] {
+function toneFor(text: string, mode: 'light' | 'dark'): [string, string] {
   let h = 0;
   for (let i = 0; i < text.length; i++) h = (h * 31 + text.charCodeAt(i)) >>> 0;
-  return POSTER_TONES[h % POSTER_TONES.length];
+  const tones = POSTER_TONES[mode];
+  return tones[h % tones.length];
 }
 
 export function Poster({
@@ -101,6 +116,8 @@ export function Poster({
   size?: ImageSize;
   style?: StyleProp<ViewStyle>;
 }) {
+  const C = useColors();
+  const styles = useStyles(makeStyles);
   const uri = imageUrl(path, size);
   const box = { width, height: Math.round(width * 1.5), borderRadius: Radius.md };
   const small = width < 90;
@@ -111,7 +128,7 @@ export function Poster({
   return (
     <View style={[styles.posterBox, box, style]}>
       {!uri && title ? (
-        <LinearGradient colors={toneFor(title)} start={{ x: 0, y: 0 }} end={{ x: 0.6, y: 1 }} style={StyleSheet.absoluteFill} />
+        <LinearGradient colors={toneFor(title, C.mode)} start={{ x: 0, y: 0 }} end={{ x: 0.6, y: 1 }} style={StyleSheet.absoluteFill} />
       ) : null}
       {uri ? (
         <Image source={{ uri }} style={StyleSheet.absoluteFill} contentFit="cover" transition={150} />
@@ -121,7 +138,7 @@ export function Poster({
           style={{
             textAlign: 'center',
             fontWeight: '800',
-            color: C.accent,
+            color: C.text,
             letterSpacing: -0.2,
             fontSize,
             lineHeight: Math.round(fontSize * 1.25),
@@ -149,6 +166,8 @@ export function Chip({
   selected?: boolean;
   onPress?: () => void;
 }) {
+  const C = useColors();
+  const styles = useStyles(makeStyles);
   return (
     <Pressable
       onPress={onPress}
@@ -159,6 +178,14 @@ export function Chip({
         selected && styles.chipSelected,
         pressed && { opacity: 0.75 },
       ]}>
+      {selected ? (
+        <LinearGradient
+          colors={[C.g1, C.g2]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={[StyleSheet.absoluteFill, { borderRadius: Radius.pill }]}
+        />
+      ) : null}
       <T variant="label" style={{ color: selected ? C.onAccent : C.text }}>
         {label}
       </T>
@@ -167,7 +194,7 @@ export function Chip({
 }
 
 // --- Botón ---
-// Principal: latón con degradado. Secundario: contorno de luz. Peligro: texto rojo suave.
+// Principal: el degradado de la marca. Secundario: relleno suave. Peligro: texto rojo.
 
 export function Button({
   label,
@@ -181,6 +208,8 @@ export function Button({
   icon?: React.ComponentProps<typeof Icon>['name'];
   style?: StyleProp<ViewStyle>;
 }) {
+  const C = useColors();
+  const styles = useStyles(makeStyles);
   const fg = kind === 'primary' ? C.onAccent : kind === 'danger' ? C.danger : C.text;
   return (
     <Pressable
@@ -195,9 +224,9 @@ export function Button({
       {...rest}>
       {kind === 'primary' ? (
         <LinearGradient
-          colors={[C.accent, C.accentDeep]}
+          colors={[C.g1, C.g2]}
           start={{ x: 0, y: 0 }}
-          end={{ x: 0, y: 1 }}
+          end={{ x: 1, y: 1 }}
           style={[StyleSheet.absoluteFill, { borderRadius: Radius.pill }]}
         />
       ) : null}
@@ -212,11 +241,13 @@ export function Button({
 // --- Barra de progreso ---
 
 export function ProgressBar({ value }: { value: number }) {
+  const C = useColors();
+  const styles = useStyles(makeStyles);
   const pct = Math.round(Math.max(0, Math.min(1, value)) * 100);
   return (
     <View style={styles.track} accessibilityRole="progressbar" accessibilityValue={{ now: pct, min: 0, max: 100 }}>
       <LinearGradient
-        colors={[C.accentDeep, C.accent]}
+        colors={[C.g1, C.g2]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0 }}
         style={[styles.fill, { width: `${pct}%` }]}
@@ -225,49 +256,10 @@ export function ProgressBar({ value }: { value: number }) {
   );
 }
 
-// --- Calificación: 5 estrellas que guardan un valor de 1 a 10 ---
-
-export function Stars({ value, onChange }: { value: number | null; onChange?: (v: number | null) => void }) {
-  return (
-    <View style={{ flexDirection: 'row', gap: Space.xs }}>
-      {[1, 2, 3, 4, 5].map((n) => {
-        const full = (value ?? 0) >= n * 2;
-        const half = !full && (value ?? 0) >= n * 2 - 1;
-        return (
-          <Pressable
-            key={n}
-            disabled={!onChange}
-            accessibilityLabel={`${n} estrellas`}
-            // Toque: estrella completa. Si ya estaba completa, pasa a media. Si era media, se borra.
-            onPress={() => {
-              if (!onChange) return;
-              if (value === n * 2) onChange(n * 2 - 1);
-              else if (value === n * 2 - 1) onChange(n === 1 ? null : (n - 1) * 2);
-              else onChange(n * 2);
-            }}
-            hitSlop={6}>
-            <Icon
-              name={half ? 'starHalf' : 'star'}
-              filled={full}
-              size={30}
-              color={full || half ? C.accent : C.textFaint}
-              strokeWidth={1.6}
-            />
-          </Pressable>
-        );
-      })}
-      {value != null ? (
-        <T variant="small" muted style={{ alignSelf: 'center', marginLeft: Space.sm }}>
-          {value}/10
-        </T>
-      ) : null}
-    </View>
-  );
-}
-
 // --- Estados vacíos y de carga ---
 
 export function Empty({ title, message, action }: { title: string; message?: string; action?: ReactNode }) {
+  const styles = useStyles(makeStyles);
   return (
     <View style={styles.empty}>
       <T variant="heading" style={{ textAlign: 'center' }}>
@@ -284,6 +276,8 @@ export function Empty({ title, message, action }: { title: string; message?: str
 }
 
 export function Loading() {
+  const C = useColors();
+  const styles = useStyles(makeStyles);
   return (
     <View style={styles.empty}>
       <ActivityIndicator color={C.accent} />
@@ -303,53 +297,47 @@ export function Section({ title, children, right }: { title: string; children: R
   );
 }
 
-const styles = StyleSheet.create({
-  title: { color: C.text, fontSize: 34, lineHeight: 40, fontWeight: '800', letterSpacing: -0.8 },
-  heading: { color: C.text, fontSize: 20, lineHeight: 26, fontWeight: '700', letterSpacing: -0.3 },
-  body: { color: C.text, fontSize: 16, lineHeight: 23 },
-  small: { color: C.text, fontSize: 14, lineHeight: 20 },
-  caption: { color: C.text, fontSize: 12, lineHeight: 16 },
-  label: { color: C.text, fontSize: 14, lineHeight: 18, fontWeight: '600' },
-  screen: { flex: 1, backgroundColor: C.bg },
-  scrollContent: { flexGrow: 1, paddingBottom: TabBarSpace },
-  inner: { width: '100%', maxWidth: MaxContentWidth, alignSelf: 'center', gap: Space.xl, flex: 1 },
-  padded: { paddingHorizontal: Space.lg, paddingTop: Space.lg },
-  posterBox: {
-    backgroundColor: C.surfaceSolid,
-    overflow: 'hidden',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
-    borderTopColor: 'rgba(255,255,255,0.18)',
-  },
-  chip: {
-    paddingVertical: Space.sm,
-    paddingHorizontal: Space.md + 2,
-    borderRadius: Radius.pill,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
-    borderTopColor: 'rgba(255,255,255,0.2)',
-    backgroundColor: C.surface,
-  },
-  chipSelected: { backgroundColor: C.accent, borderColor: C.accent, borderTopColor: '#F6E2B6' },
-  button: {
-    flexDirection: 'row',
-    gap: Space.sm,
-    paddingVertical: Space.md + 1,
-    paddingHorizontal: Space.xl,
-    borderRadius: Radius.pill,
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-  },
-  buttonOutline: {
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.14)',
-    borderTopColor: 'rgba(255,255,255,0.24)',
-    backgroundColor: C.surface,
-  },
-  track: { height: 5, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.08)', overflow: 'hidden' },
-  fill: { height: '100%', borderRadius: 3 },
-  empty: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: Space.md, padding: Space.xl },
-});
+const makeStyles = (C: Colors) =>
+  StyleSheet.create({
+    title: { color: C.text, fontSize: 34, lineHeight: 40, fontWeight: '800', letterSpacing: -1 },
+    heading: { color: C.text, fontSize: 20, lineHeight: 26, fontWeight: '700', letterSpacing: -0.4 },
+    body: { color: C.text, fontSize: 16, lineHeight: 23 },
+    small: { color: C.text, fontSize: 14, lineHeight: 20 },
+    caption: { color: C.text, fontSize: 12, lineHeight: 16 },
+    label: { color: C.text, fontSize: 14, lineHeight: 18, fontWeight: '600' },
+    screen: { flex: 1, backgroundColor: C.bg },
+    scrollContent: { flexGrow: 1, paddingBottom: TabBarSpace },
+    inner: { width: '100%', maxWidth: MaxContentWidth, alignSelf: 'center', gap: Space.xl, flex: 1 },
+    padded: { paddingHorizontal: Space.lg, paddingTop: Space.lg },
+    posterBox: {
+      backgroundColor: C.fill,
+      overflow: 'hidden',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    chip: {
+      paddingVertical: Space.sm,
+      paddingHorizontal: Space.md + 2,
+      borderRadius: Radius.pill,
+      backgroundColor: C.fill,
+      overflow: 'hidden',
+    },
+    chipSelected: { backgroundColor: C.g2 },
+    button: {
+      flexDirection: 'row',
+      gap: Space.sm,
+      paddingVertical: Space.md + 1,
+      paddingHorizontal: Space.xl,
+      borderRadius: Radius.pill,
+      alignItems: 'center',
+      justifyContent: 'center',
+      overflow: 'hidden',
+    },
+    buttonOutline: { backgroundColor: C.fill },
+    track: { height: 5, borderRadius: 3, backgroundColor: C.fill, overflow: 'hidden' },
+    fill: { height: '100%', borderRadius: 3 },
+    empty: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: Space.md, padding: Space.xl },
+  });
+
+/** Tarjeta plana, para usar en estilos propios. */
+export { card };

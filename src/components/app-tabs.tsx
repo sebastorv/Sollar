@@ -15,8 +15,10 @@ import {
 import { Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { C, MaxContentWidth, Radius, Space } from '@/constants/theme';
+import { MaxContentWidth, Radius, Space, type Colors } from '@/constants/theme';
+import { useColors, useStyles } from '@/store/theme';
 
+import { SollarLogo, Wordmark } from './brand';
 import { Glass } from './glass';
 import { Icon, type IconName } from './icons';
 import { T } from './ui';
@@ -33,7 +35,7 @@ export default function AppTabs() {
       <TabList asChild>
         <BarLayout narrow={narrow}>
           <TabTrigger name="index" href="/" asChild>
-            <TabButton narrow={narrow} icon="seat">
+            <TabButton narrow={narrow} icon="play">
               Siguiendo
             </TabButton>
           </TabTrigger>
@@ -60,6 +62,7 @@ export default function AppTabs() {
 
 function BarLayout({ narrow, children, ...rest }: TabListProps & { narrow: boolean }) {
   const insets = useSafeAreaInsets();
+  const styles = useStyles(makeStyles);
   if (narrow) {
     return (
       <View {...rest} pointerEvents="box-none" style={[styles.bottomWrap, { bottom: Math.max(insets.bottom, Space.md) }]}>
@@ -74,10 +77,8 @@ function BarLayout({ narrow, children, ...rest }: TabListProps & { narrow: boole
       <Glass radius={Radius.pill} style={styles.topBar}>
         <View style={styles.topRow}>
           <View style={styles.brand}>
-            <Icon name="seat" size={22} color={C.accent} filled />
-            <T variant="heading" style={{ color: C.accent }}>
-              Butaca
-            </T>
+            <SollarLogo size={30} />
+            <Wordmark size={21} />
           </View>
           {children}
         </View>
@@ -94,7 +95,9 @@ function TabButton({
   ref: _ref,
   ...props
 }: TabTriggerSlotProps & { narrow: boolean; icon: IconName }) {
-  const color = isFocused ? C.accent : C.textMuted;
+  const C = useColors();
+  const styles = useStyles(makeStyles);
+  const color = isFocused ? C.accentInk : C.textMuted;
   return (
     <Pressable
       {...props}
@@ -118,12 +121,13 @@ function TabButton({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (C: Colors) =>
+  StyleSheet.create({
   bottomWrap: { position: 'absolute', left: Space.lg, right: Space.lg, alignItems: 'center' },
   bottomBar: { width: '100%', maxWidth: 440 },
   bottomRow: { flexDirection: 'row', padding: Space.xs + 2 },
   bottomTab: { flex: 1, alignItems: 'center', gap: 2, paddingVertical: Space.sm, borderRadius: Radius.pill },
-  bottomTabOn: { backgroundColor: 'rgba(233, 201, 135, 0.12)' },
+  bottomTabOn: { backgroundColor: C.accentSoft },
   topWrap: { position: 'absolute', left: Space.lg, right: Space.lg, alignItems: 'center' },
   topBar: { width: '100%', maxWidth: MaxContentWidth },
   topRow: { flexDirection: 'row', alignItems: 'center', gap: Space.xs, padding: Space.sm, paddingLeft: Space.lg },
@@ -136,5 +140,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: Space.lg,
     borderRadius: Radius.pill,
   },
-  topTabOn: { backgroundColor: 'rgba(233, 201, 135, 0.14)' },
+  topTabOn: { backgroundColor: C.accentSoft },
 });

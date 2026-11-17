@@ -3,12 +3,14 @@
 import { Link, router } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
-import { relief } from '@/components/glass';
+import { SollarLogo } from '@/components/brand';
+import { card } from '@/components/glass';
 import { Icon } from '@/components/icons';
 import { TitleCard } from '@/components/title-card';
 import { TokenWarning } from '@/components/token-warning';
 import { Button, Empty, Poster, ProgressBar, Screen, Section, T } from '@/components/ui';
-import { C, Radius, Space } from '@/constants/theme';
+import { Radius, Space, type Colors } from '@/constants/theme';
+import { useColors, useStyles } from '@/store/theme';
 import { formatEpisode, nextEpisode, progressOf, totalEpisodes, watchedCount } from '@/lib/progress';
 import { availableLabel, myMatches } from '@/lib/providers';
 import { isDemo } from '@/lib/tmdb';
@@ -17,6 +19,7 @@ import { useLibrary } from '@/store/library';
 import { useSettings } from '@/store/settings';
 
 export default function FollowingScreen() {
+  const styles = useStyles(makeStyles);
   const { items } = useLibrary();
   const watching = items.filter((i) => i.mediaType === 'tv' && i.status === 'watching');
   const plannedMovies = items.filter((i) => i.mediaType === 'movie' && i.status === 'planned');
@@ -29,13 +32,16 @@ export default function FollowingScreen() {
 
   return (
     <Screen>
-      <T variant="title">Siguiendo</T>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: Space.md }}>
+        <SollarLogo size={40} shape="icon" />
+        <T variant="title">Siguiendo</T>
+      </View>
 
       {isDemo ? <TokenWarning /> : null}
 
       {items.length === 0 ? (
         <Empty
-          title="Tu butaca está vacía"
+          title="Aún no sigues nada"
           message="Busca una serie o película y agrégala a tu lista para empezar a llevar el seguimiento."
           action={<Button label="Buscar títulos" onPress={() => router.navigate('/buscar')} />}
         />
@@ -45,7 +51,7 @@ export default function FollowingScreen() {
         <View style={styles.tip}>
           <T variant="label">¿Qué plataformas pagas?</T>
           <T variant="small" muted>
-            Elígelas una vez y Butaca te muestra qué de tu lista puedes ver ya, sin pagar extra.
+            Elígelas una vez y Sollar te muestra qué de tu lista puedes ver ya, sin pagar extra.
           </T>
           <Button label="Elegir mis plataformas" kind="secondary" onPress={() => router.navigate('/perfil')} />
         </View>
@@ -83,6 +89,8 @@ export default function FollowingScreen() {
 }
 
 function NextEpisodeRow({ item }: { item: LibraryItem }) {
+  const C = useColors();
+  const styles = useStyles(makeStyles);
   const { setEpisodes } = useLibrary();
   const next = nextEpisode(item);
   const total = totalEpisodes(item.seasons);
@@ -96,7 +104,7 @@ function NextEpisodeRow({ item }: { item: LibraryItem }) {
             <T variant="label" numberOfLines={1}>
               {item.title}
             </T>
-            <T variant="small" style={{ color: C.accent }}>
+            <T variant="small" style={{ color: C.accentInk }}>
               {next ? `Sigue: ${formatEpisode(next.season, next.episode)}` : 'Al día'}
             </T>
             <ProgressBar value={progressOf(item)} />
@@ -137,15 +145,16 @@ function Shelf({ items, myProviders }: { items: LibraryItem[]; myProviders: numb
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (C: Colors) =>
+  StyleSheet.create({
   tip: {
-    ...relief,
+    ...card(C),
     gap: Space.sm,
     padding: Space.lg,
     borderRadius: Radius.lg,
   },
   row: {
-    ...relief,
+    ...card(C),
     flexDirection: 'row',
     alignItems: 'center',
     gap: Space.md,
@@ -156,9 +165,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: C.accent,
-    borderWidth: 1,
-    borderColor: '#F6E2B6',
+    backgroundColor: C.g2,
     alignItems: 'center',
     justifyContent: 'center',
   },

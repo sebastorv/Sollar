@@ -3,7 +3,8 @@
 import type { ReactNode } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
-import { C, Radius, Space } from '@/constants/theme';
+import { Radius, Space, type Colors } from '@/constants/theme';
+import { useColors, useStyles } from '@/store/theme';
 import {
   DEFAULT_FILTERS,
   LENGTH_LABEL,
@@ -38,6 +39,8 @@ export function FilterSheet({
   myPlatforms: ProviderInfo[];
   resultCount: number;
 }) {
+  const C = useColors();
+  const styles = useStyles(makeStyles);
   const set = <K extends keyof Filters>(k: K, v: Filters[K]) => onChange({ ...filters, [k]: v });
   const av = filters.availability;
   const isProvider = (id: number) => typeof av === 'object' && av.provider === id;
@@ -49,7 +52,7 @@ export function FilterSheet({
           <View style={styles.head}>
             <T variant="heading">Filtros</T>
             <Pressable onPress={() => onChange({ ...DEFAULT_FILTERS, status: filters.status, type: filters.type })}>
-              <T variant="label" style={{ color: C.accent }}>
+              <T variant="label" style={{ color: C.accentInk }}>
                 Limpiar
               </T>
             </Pressable>
@@ -152,6 +155,7 @@ export function FilterSheet({
 }
 
 function Group({ title, children }: { title: string; children: ReactNode }) {
+  const styles = useStyles(makeStyles);
   return (
     <View style={{ gap: Space.sm }}>
       <T variant="label" muted>
@@ -162,8 +166,9 @@ function Group({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
-const styles = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: 'rgba(8,5,12,0.55)', justifyContent: 'flex-end' },
+const makeStyles = (C: Colors) =>
+  StyleSheet.create({
+  backdrop: { flex: 1, backgroundColor: C.scrim, justifyContent: 'flex-end' },
   sheet: {
     maxHeight: '88%',
     padding: Space.xl,

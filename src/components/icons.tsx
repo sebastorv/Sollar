@@ -1,21 +1,18 @@
 /**
- * Iconos propios de Butaca. Trazo redondeado de 1.8 sobre una cuadrícula de 24,
- * con un motivo común: la butaca de cine (respaldo curvo y brazos), que aparece
- * en el icono de la app y en la pestaña Siguiendo.
+ * Iconos de Sollar: trazo redondeado de 1.8 sobre una cuadrícula de 24, sin puntas.
+ * En la pestaña activa se rellenan con un tinte del mismo color.
  */
 
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
 
-import { C } from '@/constants/theme';
+import { useColors } from '@/store/theme';
 
 export type IconName =
-  | 'seat'
+  | 'play'
   | 'search'
   | 'ticket'
   | 'person'
   | 'check'
-  | 'star'
-  | 'starHalf'
   | 'filter'
   | 'back'
   | 'plus'
@@ -28,7 +25,7 @@ export type IconName =
 export function Icon({
   name,
   size = 22,
-  color = C.text,
+  color,
   filled = false,
   strokeWidth = 1.8,
 }: {
@@ -39,21 +36,20 @@ export function Icon({
   filled?: boolean;
   strokeWidth?: number;
 }) {
+  const C = useColors();
+  color = color ?? C.text;
   const s = { stroke: color, strokeWidth, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const, fill: 'none' };
   const fill = filled ? color : 'none';
   const fillOpacity = filled ? 0.22 : 0;
 
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24">
-      {name === 'seat' ? (
+      {name === 'play' ? (
         <>
-          {/* Respaldo curvo de la butaca */}
-          {/* Rellena, lleva el tapizado de terciopelo de la marca. */}
-          <Path d="M6.5 13V7.5a5.5 5.5 0 0 1 11 0V13" {...s} fill={filled ? '#A8385F' : 'none'} />
-          {/* Asiento */}
-          <Path d="M5 13h14v3.2a1.8 1.8 0 0 1-1.8 1.8H6.8A1.8 1.8 0 0 1 5 16.2Z" {...s} fill={filled ? '#7A2848' : 'none'} />
-          {/* Brazos y patas */}
-          <Path d="M3.5 11.5v5M20.5 11.5v5M8 18v2.5M16 18v2.5" {...s} />
+          {/* Pantalla con el botón de reproducir: lo que estás siguiendo */}
+          <Rect x="3" y="4.5" width="18" height="13" rx="3.5" {...s} fill={fill} fillOpacity={fillOpacity} />
+          <Path d="M10.3 8.6v4.8a.6.6 0 0 0 .9.5l3.8-2.4a.6.6 0 0 0 0-1l-3.8-2.4a.6.6 0 0 0-.9.5Z" {...s} fill={color} strokeWidth={1.2} />
+          <Path d="M9 20.5h6" {...s} />
         </>
       ) : null}
 
@@ -87,19 +83,6 @@ export function Icon({
       ) : null}
 
       {name === 'check' ? <Path d="M5 12.5l4.2 4.2L19 7" {...s} /> : null}
-
-      {name === 'star' || name === 'starHalf' ? (
-        <>
-          <Path
-            d="M12 3.8l2.5 5.1 5.6.8-4 3.9 1 5.6-5.1-2.7-5 2.7 1-5.6-4-3.9 5.6-.8Z"
-            {...s}
-            fill={name === 'star' && filled ? color : 'none'}
-          />
-          {name === 'starHalf' ? (
-            <Path d="M12 3.8v12.7l-5 2.7 1-5.6-4-3.9 5.6-.8Z" fill={color} stroke="none" />
-          ) : null}
-        </>
-      ) : null}
 
       {name === 'filter' ? (
         <>

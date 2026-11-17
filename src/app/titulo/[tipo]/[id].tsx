@@ -7,11 +7,13 @@ import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Backdrop, relief } from '@/components/glass';
+import { Backdrop, card } from '@/components/glass';
 import { Icon } from '@/components/icons';
 import { ProviderLogo } from '@/components/platforms';
-import { Button, Chip, Empty, Loading, Poster, ProgressBar, Section, Stars, T } from '@/components/ui';
-import { C, MaxContentWidth, Radius, Space } from '@/constants/theme';
+import { Button, Chip, Empty, Loading, Poster, ProgressBar, Section, T } from '@/components/ui';
+import { PopcornRating } from '@/components/brand';
+import { MaxContentWidth, Radius, Space, type Colors } from '@/constants/theme';
+import { useColors, useStyles } from '@/store/theme';
 import { itemKey, newItemFromMovie, newItemFromTv, seasonsFromTv } from '@/lib/library-item';
 import { formatEpisode, nextEpisode, progressOf, totalEpisodes, watchedCount } from '@/lib/progress';
 import { availabilityFrom } from '@/lib/providers';
@@ -34,6 +36,8 @@ import { useSettings } from '@/store/settings';
 type Details = { kind: 'movie'; data: TmdbMovie } | { kind: 'tv'; data: TmdbTv };
 
 export default function TitleScreen() {
+  const C = useColors();
+  const styles = useStyles(makeStyles);
   const params = useLocalSearchParams<{ tipo: string; id: string }>();
   const type: MediaType = params.tipo === 'tv' ? 'tv' : 'movie';
   const id = Number(params.id);
@@ -130,9 +134,9 @@ export default function TitleScreen() {
         {backdrop ? (
           <>
             <Image source={{ uri: backdrop }} style={StyleSheet.absoluteFill} contentFit="cover" />
-            {/* La imagen se funde con la noche de la página. */}
+            {/* La imagen se funde con el fondo de la página. */}
             <LinearGradient
-              colors={['rgba(18,13,23,0.15)', 'rgba(18,13,23,0.55)', C.bg]}
+              colors={['transparent', C.mode === 'dark' ? 'rgba(14,13,18,0.5)' : 'rgba(247,246,249,0.4)', C.bg]}
               locations={[0, 0.55, 1]}
               style={StyleSheet.absoluteFill}
             />
@@ -192,6 +196,8 @@ function AddButtons({ kind, onAdd }: { kind: MediaType; onAdd: (s: WatchStatus) 
 }
 
 function SavedControls({ item }: { item: LibraryItem }) {
+  const C = useColors();
+  const styles = useStyles(makeStyles);
   const lib = useLibrary();
   const [note, setNote] = useState(item.note);
   const next = item.mediaType === 'tv' ? nextEpisode(item) : null;
@@ -222,8 +228,8 @@ function SavedControls({ item }: { item: LibraryItem }) {
         />
       )}
 
-      <T variant="label">Tu calificación</T>
-      <Stars value={item.rating} onChange={(v) => lib.setRating(item.key, v)} />
+      <T variant="label">¿Qué tal estuvo?</T>
+      <PopcornRating value={item.rating} onChange={(v) => lib.setRating(item.key, v)} />
 
       <T variant="label">Nota personal</T>
       <TextInput
@@ -246,6 +252,8 @@ function SavedControls({ item }: { item: LibraryItem }) {
 }
 
 function Seasons({ tv, item }: { tv: TmdbTv; item: LibraryItem | undefined }) {
+  const C = useColors();
+  const styles = useStyles(makeStyles);
   const [open, setOpen] = useState<number | null>(null);
   const seasons = seasonsFromTv(tv);
   if (seasons.length === 0) return null;
@@ -285,6 +293,8 @@ function Seasons({ tv, item }: { tv: TmdbTv; item: LibraryItem | undefined }) {
 }
 
 function EpisodeList({ tvId, season, item }: { tvId: number; season: number; item: LibraryItem | undefined }) {
+  const C = useColors();
+  const styles = useStyles(makeStyles);
   const lib = useLibrary();
   const [data, setData] = useState<TmdbSeason | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -364,6 +374,8 @@ function EpisodeList({ tvId, season, item }: { tvId: number; season: number; ite
 }
 
 function WhereToWatch({ providers, loaded }: { providers: TmdbWatchProviders | null; loaded: boolean }) {
+  const C = useColors();
+  const styles = useStyles(makeStyles);
   const { myProviders } = useSettings();
   const mine = new Set(myProviders);
   const groups: [string, TmdbWatchProviders['flatrate']][] = [
@@ -392,8 +404,8 @@ function WhereToWatch({ providers, loaded }: { providers: TmdbWatchProviders | n
       ) : matchNames.length > 0 ? (
         <View style={[styles.verdict, styles.verdictYes]}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: Space.sm }}>
-            <Icon name="check" size={18} color={C.accent} strokeWidth={2.6} />
-            <T variant="label" style={{ color: C.accent }}>
+            <Icon name="check" size={18} color={C.accentInk} strokeWidth={2.6} />
+            <T variant="label" style={{ color: C.accentInk }}>
               Incluido en tu plan
             </T>
           </View>
@@ -439,7 +451,8 @@ function WhereToWatch({ providers, loaded }: { providers: TmdbWatchProviders | n
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (C: Colors) =>
+  StyleSheet.create({
   page: { flex: 1, backgroundColor: C.bg },
   hero: { height: 280 },
   content: {
@@ -458,14 +471,14 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 12 },
   },
   card: {
-    ...relief,
+    ...card(C),
     gap: Space.md,
     padding: Space.lg,
     borderRadius: Radius.lg,
   },
   note: {
     minHeight: 70,
-    backgroundColor: 'rgba(0,0,0,0.22)',
+    backgroundColor: C.fill,
     borderWidth: 1,
     borderColor: C.border,
     borderRadius: Radius.md,
@@ -479,26 +492,26 @@ const styles = StyleSheet.create({
     height: 26,
     borderRadius: 13,
     borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.22)',
+    borderColor: C.textFaint,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  checkboxOn: { backgroundColor: C.accent, borderColor: C.accent },
+  checkboxOn: { backgroundColor: C.g2, borderColor: C.g2 },
   provider: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Space.xs,
-    ...relief,
+    ...card(C),
     padding: Space.xs,
     paddingRight: Space.md,
     borderRadius: Radius.pill,
   },
-  providerMine: { borderColor: C.accentLine, borderTopColor: C.accent, backgroundColor: C.accentSoft },
+  providerMine: { borderColor: C.accentLine, backgroundColor: C.accentSoft },
   verdict: {
-    ...relief,
+    ...card(C),
     gap: Space.sm,
     padding: Space.lg,
     borderRadius: Radius.lg,
   },
-  verdictYes: { borderColor: C.accentLine, borderTopColor: C.accent, backgroundColor: C.accentSoft },
+  verdictYes: { borderColor: C.accentLine, backgroundColor: C.accentSoft },
 });

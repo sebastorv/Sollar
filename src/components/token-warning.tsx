@@ -1,17 +1,20 @@
 import { StyleSheet, View } from 'react-native';
 
-import { C, Radius, Space } from '@/constants/theme';
+import { Radius, Space, type Colors } from '@/constants/theme';
+import { useColors, useStyles } from '@/store/theme';
 
-import { relief } from './glass';
+import { card } from './glass';
 import { Icon } from './icons';
 import { T } from './ui';
 
 /** Aviso del modo demostración (sin token de TMDB). */
 export function TokenWarning() {
+  const C = useColors();
+  const styles = useStyles(makeStyles);
   return (
     <View style={styles.warning}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: Space.sm }}>
-        <Icon name="sparkle" size={18} color={C.accent} filled />
+        <Icon name="sparkle" size={18} color={C.accentInk} filled />
         <T variant="label">Modo demostración</T>
       </View>
       <T variant="small" muted>
@@ -22,12 +25,12 @@ export function TokenWarning() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (C: Colors) =>
+  StyleSheet.create({
   warning: {
-    ...relief,
+    ...card(C),
     gap: Space.xs,
     padding: Space.lg,
     borderRadius: Radius.lg,
-    borderTopColor: C.accentLine,
   },
 });

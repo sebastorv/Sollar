@@ -1,29 +1,16 @@
-import { DarkTheme, router, Stack, ThemeProvider } from 'expo-router';
+import { DarkTheme, DefaultTheme, router, Stack, ThemeProvider as NavThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useMemo, type ReactNode } from 'react';
 import { Pressable, Text, View } from 'react-native';
 
 import { Glass } from '@/components/glass';
 import { Icon } from '@/components/icons';
-
-import { C } from '@/constants/theme';
 import { LibraryProvider, useLibrary } from '@/store/library';
 import { SettingsProvider } from '@/store/settings';
+import { ThemeProvider, useColors } from '@/store/theme';
 
 SplashScreen.preventAutoHideAsync();
-
-const theme = {
-  ...DarkTheme,
-  colors: {
-    ...DarkTheme.colors,
-    background: C.bg,
-    card: C.surfaceSolid,
-    text: C.text,
-    border: C.border,
-    primary: C.accent,
-  },
-};
 
 /** Oculta la pantalla de inicio cuando la biblioteca ya cargó del almacenamiento. */
 function HideSplashWhenReady({ children }: { children: ReactNode }) {
@@ -35,6 +22,7 @@ function HideSplashWhenReady({ children }: { children: ReactNode }) {
 }
 
 function BackButton() {
+  const C = useColors();
   return (
     <Pressable
       accessibilityRole="button"
@@ -52,27 +40,44 @@ function BackButton() {
   );
 }
 
+/** Navegación con los colores del tema elegido. */
+function Navigation() {
+  const C = useColors();
+  const navTheme = useMemo(() => {
+    const base = C.mode === 'dark' ? DarkTheme : DefaultTheme;
+    return {
+      ...base,
+      colors: { ...base.colors, background: C.bg, card: C.surfaceSolid, text: C.text, border: C.border, primary: C.accent },
+    };
+  }, [C]);
+  return (
+    <NavThemeProvider value={navTheme}>
+      <StatusBar style={C.mode === 'dark' ? 'light' : 'dark'} />
+      <Stack screenOptions={{ contentStyle: { backgroundColor: C.bg } }}>
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen
+          name="titulo/[tipo]/[id]"
+          options={{
+            title: '',
+            headerTransparent: true,
+            headerTintColor: C.text,
+            headerLeft: () => <BackButton />,
+          }}
+        />
+      </Stack>
+    </NavThemeProvider>
+  );
+}
+
 export default function RootLayout() {
   return (
-    <ThemeProvider value={theme}>
+    <ThemeProvider>
       <SettingsProvider>
-      <LibraryProvider>
-        <HideSplashWhenReady>
-          <StatusBar style="light" />
-          <Stack screenOptions={{ contentStyle: { backgroundColor: C.bg } }}>
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen
-              name="titulo/[tipo]/[id]"
-              options={{
-                title: '',
-                headerTransparent: true,
-                headerTintColor: C.text,
-                headerLeft: () => <BackButton />,
-              }}
-            />
-          </Stack>
-        </HideSplashWhenReady>
-      </LibraryProvider>
+        <LibraryProvider>
+          <HideSplashWhenReady>
+            <Navigation />
+          </HideSplashWhenReady>
+        </LibraryProvider>
       </SettingsProvider>
     </ThemeProvider>
   );

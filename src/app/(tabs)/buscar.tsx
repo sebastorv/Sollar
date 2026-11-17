@@ -3,14 +3,15 @@
 import { useEffect, useState } from 'react';
 import { StyleSheet, TextInput, View } from 'react-native';
 
-import { relief } from '@/components/glass';
+import { card } from '@/components/glass';
 import { Icon } from '@/components/icons';
 import { Grid, TitleCard } from '@/components/title-card';
 import { useAvailabilityFor } from '@/hooks/use-availability';
 import { availableLabel } from '@/lib/providers';
 import { TokenWarning } from '@/components/token-warning';
 import { Empty, Loading, Screen, Section, T } from '@/components/ui';
-import { C, Radius, Space } from '@/constants/theme';
+import { Radius, Space, type Colors } from '@/constants/theme';
+import { useColors, useStyles } from '@/store/theme';
 import { itemKey } from '@/lib/library-item';
 import { displayTitle, displayYear, getTrending, isDemo, searchTitles } from '@/lib/tmdb';
 import { STATUS_LABEL, type MediaType, type TmdbSearchResult } from '@/lib/types';
@@ -18,6 +19,8 @@ import { useLibrary } from '@/store/library';
 import { useSettings } from '@/store/settings';
 
 export default function SearchScreen() {
+  const C = useColors();
+  const styles = useStyles(makeStyles);
   const [query, setQuery] = useState('');
   const [debounced, setDebounced] = useState('');
   const [results, setResults] = useState<TmdbSearchResult[]>([]);
@@ -104,9 +107,10 @@ export default function SearchScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (C: Colors) =>
+  StyleSheet.create({
   searchBox: {
-    ...relief,
+    ...card(C),
     flexDirection: 'row',
     alignItems: 'center',
     gap: Space.sm,

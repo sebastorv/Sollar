@@ -1,9 +1,10 @@
-# Butaca
+# Sollar
 
 App multiplataforma (iPhone, Android y web) para llevar el seguimiento de series y películas:
 qué estás viendo, en qué episodio vas, qué quieres ver, calificaciones, notas y estadísticas.
 
-"Butaca" es un nombre de trabajo; se cambia en `app.json`.
+"Sollar" es un nombre de trabajo (antes se llamó Butaca); se cambia en `app.json`. Antes de publicar,
+conviene revisar el registro de marca en la SIC y en la base de marcas de la OMPI (clases 9, 41 y 42).
 
 Este es el código base de la **fase 1** del plan (ver `docs/PLAN.md`): todo funciona en el
 dispositivo, sin cuentas ni servidor.
@@ -70,19 +71,21 @@ Si cambias el `.env`, reinicia con `npx expo start --clear`.
 | `npx expo export --platform web` | Genera la versión web en `dist/` |
 | `npx eas-cli@latest build` | Compila para tiendas en la nube (fase de publicación) |
 
-## Diseño: terciopelo y latón
+## Diseño
 
-La identidad visual sale de la sala de cine: butacas de terciopelo, barandas de latón y la luz
-del proyector en la oscuridad.
+Plano y limpio, al estilo de Trakt: superficies lisas, formas redondeadas y un degradado vivo como
+firma de la marca.
 
-- **Colores** (`src/constants/theme.ts`): noche ciruela `#120D17` de fondo, resplandor de
-  terciopelo `#6E2443` y humo violeta `#2F2552`, y latón pálido `#E9C987` como color de la marca.
-- **Vidrio líquido** (`src/components/glass.tsx`): para lo que flota sobre el contenido (barra de
-  navegación, botón Atrás, paneles). En iPhone con iOS 26 usa el vidrio del sistema; en Android y
-  web, desenfoque con tinte y un brillo en el borde superior.
-- **Relieve**: las superficies con información llevan un borde de luz arriba.
-- **Iconos propios** (`src/components/icons.tsx`) y el ícono de la app: una butaca de terciopelo con
-  marco de latón. Se generan con `docs/design/icons.py`; el fondo con `docs/design/aurora.py`.
+- **Tema** (`src/constants/theme.ts` y `src/store/theme.tsx`): modo claro (predeterminado), oscuro
+  o el del teléfono, y tres degradados de marca: Brasa (predeterminado, `#FF8A3D` a `#F0306A`),
+  Atardecer y Cereza. Se eligen en Perfil, Apariencia. Los colores se piden con `useColors()` y los
+  estilos con `useStyles(makeStyles)`, así toda la app cambia al instante.
+- **Logo** (`src/components/brand.tsx`): la palomita sonriente sobre el degradado. El ícono de la
+  app y los demás recursos se generan con `docs/design/iconos.py`.
+- **Calificación**: de 1 a 10 con bolsas de palomitas. La palomita grande reacciona a la nota
+  (llora en 1, sonríe en 7, ojos de corazón en 10) y saltan palomitas al calificar.
+- **Vidrio líquido** (`src/components/glass.tsx`): solo para lo que flota (barra de navegación,
+  botón Atrás, paneles). En iPhone con iOS 26 usa el vidrio del sistema.
 
 ## Estructura
 
@@ -94,14 +97,15 @@ src/
     (tabs)/lista.tsx      Mi lista
     (tabs)/perfil.tsx     Perfil, estadísticas, respaldo y créditos
     titulo/[tipo]/[id].tsx  Ficha de película o serie
-  components/             Piezas de interfaz (ui.tsx, title-card.tsx, pestañas)
-  constants/theme.ts      Colores, espacios y radios
+  components/             Piezas de interfaz (ui.tsx, brand.tsx, title-card.tsx, pestañas)
+  constants/theme.ts      Colores de los temas, espacios y radios
   lib/
     tmdb.ts               Cliente de la API de TMDB
     types.ts              Tipos del dominio
     progress.ts           Siguiente episodio, progreso y estadísticas (funciones puras)
     library-item.ts       Conversión de datos de TMDB y validación de respaldos
   store/library.tsx       Estado global y guardado local
+  store/theme.tsx         Modo y color elegidos
 supabase/schema.sql       Base de datos para la fase 2 (sincronización y social)
 docs/PLAN.md              Plan del proyecto
 ```

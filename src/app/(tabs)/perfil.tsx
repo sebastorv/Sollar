@@ -1,17 +1,22 @@
-/** Pestaña "Perfil": estadísticas, respaldo de datos y créditos. */
+/** Pestaña "Perfil": plataformas, apariencia, estadísticas, respaldo de datos y créditos. */
 
 import { useMemo, useState } from 'react';
-import { Modal, Platform, Share, StyleSheet, TextInput, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Modal, Platform, Pressable, Share, StyleSheet, TextInput, View } from 'react-native';
 
-import { Glass, relief } from '@/components/glass';
+import { SollarLogo } from '@/components/brand';
+import { Glass, card } from '@/components/glass';
 import { PlatformPicker } from '@/components/platforms';
-import { Button, Screen, Section, T } from '@/components/ui';
-import { C, Radius, Space } from '@/constants/theme';
+import { Button, Chip, Screen, Section, T } from '@/components/ui';
+import { ACCENT_ORDER, ACCENTS, Radius, Space, type Colors } from '@/constants/theme';
+import { useColors, useStyles, useThemeSettings, type ModeSetting } from '@/store/theme';
 import { parseBackup } from '@/lib/library-item';
 import { computeStats, formatDuration } from '@/lib/progress';
 import { useLibrary } from '@/store/library';
 
 export default function ProfileScreen() {
+  const C = useColors();
+  const styles = useStyles(makeStyles);
   const { items, exportBackup, importBackup } = useLibrary();
   const stats = useMemo(() => computeStats(items), [items]);
   const [importOpen, setImportOpen] = useState(false);
@@ -20,7 +25,7 @@ export default function ProfileScreen() {
 
   async function onExport() {
     const json = JSON.stringify(exportBackup(), null, 2);
-    const name = `butaca-respaldo-${new Date().toISOString().slice(0, 10)}.json`;
+    const name = `sollar-respaldo-${new Date().toISOString().slice(0, 10)}.json`;
     if (Platform.OS === 'web') {
       // En web se muestra el texto con botones de copiar y descargar: algunos
       // navegadores (o la vista previa) bloquean las descargas.
@@ -41,6 +46,8 @@ export default function ProfileScreen() {
         </T>
         <PlatformPicker />
       </Section>
+
+      <Appearance />
 
       <Section title="Tus números">
         <View style={styles.statsGrid}>
@@ -69,7 +76,7 @@ export default function ProfileScreen() {
       <Section title="Tus datos son tuyos">
         <T variant="small" muted>
           Exporta tu lista cuando quieras como un archivo JSON. Si cambias de teléfono, o si algún día
-          dejas Butaca, te llevas todo.
+          dejas Sollar, te llevas todo.
         </T>
         <View style={{ flexDirection: 'row', gap: Space.sm, flexWrap: 'wrap' }}>
           <Button label="Exportar respaldo" onPress={onExport} />
@@ -105,10 +112,60 @@ export default function ProfileScreen() {
   );
 }
 
+const MODES: { key: ModeSetting; label: string }[] = [
+  { key: 'light', label: 'Claro' },
+  { key: 'dark', label: 'Oscuro' },
+  { key: 'system', label: 'Como el teléfono' },
+];
+
+/** Modo claro u oscuro y color de la marca. Se aplica al instante en toda la app. */
+function Appearance() {
+  const C = useColors();
+  const styles = useStyles(makeStyles);
+  const { mode, setMode, accent, setAccent } = useThemeSettings();
+  return (
+    <Section title="Apariencia">
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: Space.sm }}>
+        {MODES.map((m) => (
+          <Chip key={m.key} label={m.label} selected={mode === m.key} onPress={() => setMode(m.key)} />
+        ))}
+      </View>
+      <View style={styles.accents}>
+        {ACCENT_ORDER.map((key) => {
+          const a = ACCENTS[key];
+          const on = accent === key;
+          return (
+            <Pressable
+              key={key}
+              onPress={() => setAccent(key)}
+              accessibilityRole="button"
+              accessibilityState={{ selected: on }}
+              accessibilityLabel={`Color ${a.label}`}
+              style={({ pressed }) => [styles.accent, on && { borderColor: a.solid }, pressed && { opacity: 0.8 }]}>
+              <LinearGradient colors={[a.g1, a.g2]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.swatch} />
+              <T variant="label" style={{ color: on ? C.text : C.textMuted }}>
+                {a.label}
+              </T>
+            </Pressable>
+          );
+        })}
+      </View>
+      <View style={styles.preview}>
+        <SollarLogo size={44} shape="icon" />
+        <T variant="small" muted style={{ flex: 1 }}>
+          Así se ve el ícono con este color. El modo claro y Brasa vienen por defecto.
+        </T>
+      </View>
+    </Section>
+  );
+}
+
 function Stat({ value, label }: { value: string; label: string }) {
+  const C = useColors();
+  const styles = useStyles(makeStyles);
   return (
     <View style={styles.stat}>
-      <T variant="heading" style={{ color: C.accent }}>
+      <T variant="heading" style={{ color: C.accentInk }}>
         {value}
       </T>
       <T variant="caption" muted>
@@ -127,6 +184,8 @@ function ExportModal({
   onClose: () => void;
   onDone: (msg: string) => void;
 }) {
+  const C = useColors();
+  const styles = useStyles(makeStyles);
   const [note, setNote] = useState<string | null>(null);
   const inFrame = typeof window !== 'undefined' && window.self !== window.top;
 
@@ -144,7 +203,7 @@ function ExportModal({
       const url = URL.createObjectURL(new Blob([text ?? ''], { type: 'application/json' }));
       const a = document.createElement('a');
       a.href = url;
-      a.download = `butaca-respaldo-${new Date().toISOString().slice(0, 10)}.json`;
+      a.download = `sollar-respaldo-${new Date().toISOString().slice(0, 10)}.json`;
       a.click();
       URL.revokeObjectURL(url);
       onDone('Respaldo descargado.');
@@ -184,6 +243,8 @@ function ImportModal({
   onClose: () => void;
   onImport: (text: string, mode: 'merge' | 'replace') => void;
 }) {
+  const C = useColors();
+  const styles = useStyles(makeStyles);
   const [text, setText] = useState('');
   const [error, setError] = useState<string | null>(null);
 
@@ -209,7 +270,7 @@ function ImportModal({
             value={text}
             onChangeText={setText}
             multiline
-            placeholder='{"app": "butaca", ...}'
+            placeholder='{"app": "sollar", ...}'
             placeholderTextColor={C.textFaint}
             style={styles.textarea}
             autoCorrect={false}
@@ -227,10 +288,24 @@ function ImportModal({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (C: Colors) =>
+  StyleSheet.create({
+  accents: { flexDirection: 'row', flexWrap: 'wrap', gap: Space.sm },
+  accent: {
+    ...card(C),
+    flexGrow: 1,
+    flexBasis: 100,
+    alignItems: 'center',
+    gap: Space.sm,
+    padding: Space.md,
+    borderRadius: Radius.lg,
+    borderWidth: 2,
+  },
+  swatch: { width: 40, height: 40, borderRadius: 20 },
+  preview: { flexDirection: 'row', alignItems: 'center', gap: Space.md },
   statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Space.md },
   stat: {
-    ...relief,
+    ...card(C),
     flexGrow: 1,
     flexBasis: 140,
     padding: Space.lg,
@@ -244,7 +319,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: C.border,
   },
-  backdrop: { flex: 1, backgroundColor: 'rgba(8,5,12,0.55)', justifyContent: 'flex-end' },
+  backdrop: { flex: 1, backgroundColor: C.scrim, justifyContent: 'flex-end' },
   sheet: {
     padding: Space.xl,
     gap: Space.md,
@@ -257,7 +332,7 @@ const styles = StyleSheet.create({
   textarea: {
     minHeight: 160,
     maxHeight: 280,
-    backgroundColor: 'rgba(0,0,0,0.25)',
+    backgroundColor: C.fill,
     borderRadius: Radius.md,
     borderWidth: 1,
     borderColor: C.border,

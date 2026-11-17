@@ -1,4 +1,4 @@
-/** Tipos de dominio de Butaca. */
+/** Tipos de dominio de Sollar. */
 
 export type MediaType = 'movie' | 'tv';
 
@@ -84,7 +84,8 @@ export type LibraryItem = {
 
 /** Formato del archivo de respaldo que la app exporta e importa. */
 export type BackupFile = {
-  app: 'butaca';
+  /** 'butaca' en los respaldos hechos antes del cambio de nombre. */
+  app: 'sollar' | 'butaca';
   version: 1;
   exportedAt: string;
   items: LibraryItem[];
