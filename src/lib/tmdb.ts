@@ -56,7 +56,7 @@ export class TmdbError extends Error {
 const cache = new Map<string, { at: number; data: unknown }>();
 const CACHE_MS = 10 * 60 * 1000;
 
-async function get<T>(path: string, params: Record<string, string> = {}): Promise<T> {
+async function get<T>(path: string, params: Record<string, string> = {}, useCache = true): Promise<T> {
   if (isDemo) {
     throw new TmdbError('Falta configurar TMDB. Copia .env.example como .env.');
   }
@@ -83,7 +83,7 @@ async function get<T>(path: string, params: Record<string, string> = {}): Promis
     throw new TmdbError(`TMDB respondió ${res.status}`, res.status);
   }
   const data = (await res.json()) as T;
-  cache.set(url, { at: Date.now(), data });
+  if (useCache) cache.set(url, { at: Date.now(), data });
   return data;
 }
 
@@ -115,14 +115,15 @@ function notFound(): never {
   throw new TmdbError('Este título no está en el catálogo de demostración.', 404);
 }
 
-export async function getMovie(id: number): Promise<TmdbMovie> {
+/** useCache = false para consultas masivas (importar miles de títulos sin llenar la memoria). */
+export async function getMovie(id: number, useCache = true): Promise<TmdbMovie> {
   if (isDemo) return demoMovie(id) ?? notFound();
-  return get<TmdbMovie>(`/movie/${id}`);
+  return get<TmdbMovie>(`/movie/${id}`, {}, useCache);
 }
 
-export async function getTv(id: number): Promise<TmdbTv> {
+export async function getTv(id: number, useCache = true): Promise<TmdbTv> {
   if (isDemo) return demoTv(id) ?? notFound();
-  return get<TmdbTv>(`/tv/${id}`);
+  return get<TmdbTv>(`/tv/${id}`, {}, useCache);
 }
 
 export async function getSeason(tvId: number, season: number): Promise<TmdbSeason> {

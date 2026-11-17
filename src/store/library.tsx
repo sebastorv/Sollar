@@ -46,6 +46,7 @@ type State = {
 type Action =
   | { type: 'hydrate'; items: Record<string, LibraryItem>; tombstones: Record<string, string> }
   | { type: 'remote'; rows: RemoteRow[] }
+  | { type: 'mergeImported'; items: LibraryItem[] }
   | { type: 'upsert'; item: LibraryItem }
   | { type: 'remove'; key: string }
   | { type: 'patch'; key: string; patch: Partial<LibraryItem> }
@@ -144,6 +145,37 @@ function reducer(state: State, action: Action): State {
       return { ...state, items: { ...state.items, [action.key]: { ...item, availability: action.availability } } };
     }
 
+    case 'mergeImported': {
+      // Historial traído de otra app: se suma a lo que ya hay sin perder nada.
+      const items = { ...state.items };
+      const tombstones = { ...state.tombstones };
+      const now = new Date().toISOString();
+      for (const inc of action.items) {
+        const cur = items[inc.key];
+        delete tombstones[inc.key];
+        if (!cur) {
+          items[inc.key] = { ...inc, status: autoStatus(inc) };
+          continue;
+        }
+        const watchedEpisodes: Record<string, string> = { ...inc.watchedEpisodes };
+        for (const [k, at] of Object.entries(cur.watchedEpisodes)) {
+          if (!watchedEpisodes[k] || at < watchedEpisodes[k]) watchedEpisodes[k] = at;
+        }
+        const merged: LibraryItem = {
+          ...cur,
+          // Lo que ya decidiste en Sollar manda; lo importado llena lo que falta.
+          status: cur.status === 'planned' ? inc.status : cur.status,
+          rating: cur.rating ?? inc.rating,
+          watchedAt: cur.watchedAt ?? inc.watchedAt,
+          addedAt: inc.addedAt < cur.addedAt ? inc.addedAt : cur.addedAt,
+          watchedEpisodes: watchedEpisodes as LibraryItem['watchedEpisodes'],
+          updatedAt: now,
+        };
+        items[inc.key] = { ...merged, status: autoStatus(merged) };
+      }
+      return { ...state, items, tombstones };
+    }
+
     case 'import': {
       const incoming = Object.fromEntries(action.items.map((i) => [i.key, i]));
       if (action.mode === 'replace') {
@@ -170,6 +202,8 @@ type LibraryApi = {
   /** Para la sincronización: todo el estado y la forma de aplicar cambios remotos. */
   raw: { items: Record<string, LibraryItem>; tombstones: Record<string, string> };
   applyRemote: (rows: RemoteRow[]) => void;
+  /** Suma títulos importados de otra app (une episodios vistos, no pisa tus decisiones). */
+  mergeImported: (items: LibraryItem[]) => void;
   get: (key: string) => LibraryItem | undefined;
   save: (item: LibraryItem) => void;
   remove: (key: string) => void;
@@ -221,6 +255,7 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       ready: state.ready,
       raw: { items: state.items, tombstones: state.tombstones },
       applyRemote: (rows) => dispatch({ type: 'remote', rows }),
+      mergeImported: (items) => dispatch({ type: 'mergeImported', items }),
       items: Object.values(state.items).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
       get,
       save: (item) => dispatch({ type: 'upsert', item }),

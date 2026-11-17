@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
+import { router } from 'expo-router';
 import { Modal, Platform, Pressable, Share, StyleSheet, TextInput, View } from 'react-native';
 
 import { SollarLogo } from '@/components/brand';
@@ -76,6 +77,16 @@ export default function ProfileScreen() {
           </View>
         </Section>
       ) : null}
+
+      <Section title="Trae tu historial">
+        <T variant="small" muted>
+          Importa lo que ya marcaste en otras apps para no empezar de cero. Por ahora: WeTrakr. Pronto
+          Trakt, TV Time, Letterboxd e IMDb.
+        </T>
+        <View style={{ flexDirection: 'row' }}>
+          <Button label="Importar historial" onPress={() => router.push('/importar')} />
+        </View>
+      </Section>
 
       <Section title="Tus datos son tuyos">
         <T variant="small" muted>

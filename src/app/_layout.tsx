@@ -63,6 +63,10 @@ function Navigation() {
       <Stack screenOptions={{ contentStyle: { backgroundColor: C.bg } }}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen
+          name="importar"
+          options={{ title: '', headerTransparent: true, headerTintColor: C.text, headerLeft: () => <BackButton /> }}
+        />
+        <Stack.Screen
           name="titulo/[tipo]/[id]"
           options={{
             title: '',
