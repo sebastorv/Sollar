@@ -45,7 +45,7 @@
     "lint": "expo lint",
     "typecheck": "tsc --noEmit",
     "build:web": "node scripts/build-web.mjs",
-    "build:pages": "WEB_BASE=/sollar node scripts/build-web.mjs"
+    "build:pages": "WEB_BASE=/Sollar node scripts/build-web.mjs"
   },
   "private": true
 }

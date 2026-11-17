@@ -1,0 +1,48 @@
+# Publica Sollar en GitHub Pages cada vez que se sube un cambio a main.
+# Los datos de Supabase de aquí son públicos (la seguridad la dan las reglas de la base de datos).
+name: Publicar web
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: node scripts/build-web.mjs
+        env:
+          WEB_BASE: /Sollar
+          EXPO_PUBLIC_SUPABASE_URL: https://ggkuaijrfynsnaegpxoh.supabase.co
+          EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_F2dVq_iEN4QZsT21B8bSQA_eTlts5qu
+          EXPO_PUBLIC_LANGUAGE: es-MX
+          EXPO_PUBLIC_REGION: CO
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
