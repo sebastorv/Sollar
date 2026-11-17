@@ -1,9 +1,11 @@
 /**
  * Biblioteca del usuario: estado global + persistencia local.
  *
- * Fase 1 (este código): todo vive en el dispositivo (AsyncStorage; en web usa localStorage).
- * Fase 2: sincronizar con Supabase usando supabase/schema.sql. La interfaz de este
- * contexto (useLibrary) no tiene que cambiar; solo se añade la capa de sincronización.
+ * Todo se guarda en el dispositivo (AsyncStorage; en web, localStorage), así la app abre al
+ * instante y funciona sin conexión. Con cuenta, store/sync.tsx sube y baja los cambios.
+ *
+ * Al borrar un título queda una marca de borrado (tombstones) para que el borrado también
+ * llegue a los demás dispositivos.
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -18,6 +20,7 @@ import {
   type ReactNode,
 } from 'react';
 
+import type { RemoteRow } from '@/lib/cloud';
 import { nextEpisode } from '@/lib/progress';
 import {
   episodeKey,
@@ -31,11 +34,18 @@ import {
 const STORAGE_KEY = 'sollar.library.v1';
 /** Clave de cuando la app se llamaba Butaca: se lee una vez para no perder la lista. */
 const OLD_STORAGE_KEY = 'butaca.library.v1';
+const TOMBSTONES_KEY = 'sollar.deleted.v1';
 
-type State = { ready: boolean; items: Record<string, LibraryItem> };
+type State = {
+  ready: boolean;
+  items: Record<string, LibraryItem>;
+  /** Títulos borrados, con la fecha del borrado. */
+  tombstones: Record<string, string>;
+};
 
 type Action =
-  | { type: 'hydrate'; items: Record<string, LibraryItem> }
+  | { type: 'hydrate'; items: Record<string, LibraryItem>; tombstones: Record<string, string> }
+  | { type: 'remote'; rows: RemoteRow[] }
   | { type: 'upsert'; item: LibraryItem }
   | { type: 'remove'; key: string }
   | { type: 'patch'; key: string; patch: Partial<LibraryItem> }
@@ -63,14 +73,40 @@ function autoStatus(item: LibraryItem): WatchStatus {
 function reducer(state: State, action: Action): State {
   switch (action.type) {
     case 'hydrate':
-      return { ready: true, items: action.items };
+      return { ready: true, items: action.items, tombstones: action.tombstones };
 
-    case 'upsert':
-      return { ...state, items: { ...state.items, [action.item.key]: action.item } };
+    case 'upsert': {
+      const { [action.item.key]: _gone, ...tombstones } = state.tombstones;
+      return { ...state, tombstones, items: { ...state.items, [action.item.key]: action.item } };
+    }
 
     case 'remove': {
       const { [action.key]: _removed, ...rest } = state.items;
-      return { ...state, items: rest };
+      return { ...state, items: rest, tombstones: { ...state.tombstones, [action.key]: new Date().toISOString() } };
+    }
+
+    case 'remote': {
+      // Cambios que llegan de otro dispositivo: se aplican solo si son más recientes.
+      const items = { ...state.items };
+      const tombstones = { ...state.tombstones };
+      let changed = false;
+      for (const row of action.rows) {
+        const local = items[row.key];
+        const localTime = local?.updatedAt ?? tombstones[row.key] ?? '';
+        if (row.deleted) {
+          if (local && localTime <= row.client_updated_at) {
+            delete items[row.key];
+            tombstones[row.key] = row.client_updated_at;
+            changed = true;
+          }
+        } else if (row.data && localTime < row.data.updatedAt) {
+          // La disponibilidad es un dato del dispositivo: se conserva si la remota no la trae.
+          items[row.key] = { ...row.data, availability: row.data.availability ?? local?.availability ?? null };
+          delete tombstones[row.key];
+          changed = true;
+        }
+      }
+      return changed ? { ...state, items, tombstones } : state;
     }
 
     case 'patch': {
@@ -110,7 +146,13 @@ function reducer(state: State, action: Action): State {
 
     case 'import': {
       const incoming = Object.fromEntries(action.items.map((i) => [i.key, i]));
-      if (action.mode === 'replace') return { ...state, items: incoming };
+      if (action.mode === 'replace') {
+        // Lo que no viene en el respaldo queda como borrado, también en los demás dispositivos.
+        const now = new Date().toISOString();
+        const tombstones = { ...state.tombstones };
+        for (const k of Object.keys(state.items)) if (!incoming[k]) tombstones[k] = now;
+        return { ...state, items: incoming, tombstones };
+      }
       // Al combinar, gana la versión modificada más recientemente.
       const merged = { ...state.items };
       for (const it of action.items) {
@@ -125,6 +167,9 @@ function reducer(state: State, action: Action): State {
 type LibraryApi = {
   ready: boolean;
   items: LibraryItem[];
+  /** Para la sincronización: todo el estado y la forma de aplicar cambios remotos. */
+  raw: { items: Record<string, LibraryItem>; tombstones: Record<string, string> };
+  applyRemote: (rows: RemoteRow[]) => void;
   get: (key: string) => LibraryItem | undefined;
   save: (item: LibraryItem) => void;
   remove: (key: string) => void;
@@ -142,18 +187,21 @@ type LibraryApi = {
 const LibraryContext = createContext<LibraryApi | null>(null);
 
 export function LibraryProvider({ children }: { children: ReactNode }) {
-  const [state, dispatch] = useReducer(reducer, { ready: false, items: {} });
+  const [state, dispatch] = useReducer(reducer, { ready: false, items: {}, tombstones: {} });
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Cargar al iniciar.
   useEffect(() => {
-    AsyncStorage.getItem(STORAGE_KEY)
-      .then((raw) => raw ?? AsyncStorage.getItem(OLD_STORAGE_KEY))
-      .then((raw) => {
+    Promise.all([
+      AsyncStorage.getItem(STORAGE_KEY).then((raw) => raw ?? AsyncStorage.getItem(OLD_STORAGE_KEY)),
+      AsyncStorage.getItem(TOMBSTONES_KEY),
+    ])
+      .then(([raw, dead]) => {
         const items = raw ? (JSON.parse(raw) as Record<string, LibraryItem>) : {};
-        dispatch({ type: 'hydrate', items });
+        const tombstones = dead ? (JSON.parse(dead) as Record<string, string>) : {};
+        dispatch({ type: 'hydrate', items, tombstones });
       })
-      .catch(() => dispatch({ type: 'hydrate', items: {} }));
+      .catch(() => dispatch({ type: 'hydrate', items: {}, tombstones: {} }));
   }, []);
 
   // Guardar con un pequeño retraso para agrupar cambios seguidos (marcar varios episodios).
@@ -162,6 +210,7 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
       AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(state.items)).catch(() => {});
+      AsyncStorage.setItem(TOMBSTONES_KEY, JSON.stringify(state.tombstones)).catch(() => {});
     }, 300);
   }, [state]);
 
@@ -170,6 +219,8 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
   const api = useMemo<LibraryApi>(
     () => ({
       ready: state.ready,
+      raw: { items: state.items, tombstones: state.tombstones },
+      applyRemote: (rows) => dispatch({ type: 'remote', rows }),
       items: Object.values(state.items).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
       get,
       save: (item) => dispatch({ type: 'upsert', item }),

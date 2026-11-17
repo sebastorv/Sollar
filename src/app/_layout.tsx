@@ -5,19 +5,26 @@ import { useEffect, useMemo, type ReactNode } from 'react';
 import { Pressable, Text, View } from 'react-native';
 
 import { Glass } from '@/components/glass';
+import { LoginScreen } from '@/components/login';
 import { Icon } from '@/components/icons';
+import { AuthProvider, useAuth } from '@/store/auth';
 import { LibraryProvider, useLibrary } from '@/store/library';
 import { SettingsProvider } from '@/store/settings';
+import { SyncProvider } from '@/store/sync';
 import { ThemeProvider, useColors } from '@/store/theme';
 
 SplashScreen.preventAutoHideAsync();
 
-/** Oculta la pantalla de inicio cuando la biblioteca ya cargó del almacenamiento. */
+/** Oculta la pantalla de inicio cuando la biblioteca y la sesión ya cargaron. */
 function HideSplashWhenReady({ children }: { children: ReactNode }) {
   const { ready } = useLibrary();
+  const auth = useAuth();
   useEffect(() => {
-    if (ready) SplashScreen.hideAsync();
-  }, [ready]);
+    if (ready && auth.ready) SplashScreen.hideAsync();
+  }, [ready, auth.ready]);
+  if (!auth.ready) return null;
+  // Con servidor configurado, se entra con la cuenta para sincronizar.
+  if (auth.cloud && !auth.session) return <LoginScreen />;
   return children;
 }
 
@@ -72,13 +79,17 @@ function Navigation() {
 export default function RootLayout() {
   return (
     <ThemeProvider>
-      <SettingsProvider>
-        <LibraryProvider>
-          <HideSplashWhenReady>
-            <Navigation />
-          </HideSplashWhenReady>
-        </LibraryProvider>
-      </SettingsProvider>
+      <AuthProvider>
+        <SettingsProvider>
+          <LibraryProvider>
+            <SyncProvider>
+              <HideSplashWhenReady>
+                <Navigation />
+              </HideSplashWhenReady>
+            </SyncProvider>
+          </LibraryProvider>
+        </SettingsProvider>
+      </AuthProvider>
     </ThemeProvider>
   );
 }

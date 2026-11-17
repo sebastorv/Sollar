@@ -1,11 +1,13 @@
 /**
  * Cliente mínimo de la API de TMDB (https://developer.themoviedb.org).
  *
- * Durante el desarrollo el token se lee de EXPO_PUBLIC_TMDB_TOKEN (archivo .env).
- * IMPORTANTE: todo lo que empieza por EXPO_PUBLIC_ queda dentro de la app compilada.
- * Antes de publicar, las llamadas deben pasar por un servidor propio (por ejemplo
- * una Edge Function de Supabase) que guarde el token. Ver docs/PLAN.md, sección 6.
+ * Con Supabase configurado, las llamadas pasan por la función "tmdb" del servidor
+ * (supabase/functions/tmdb), que guarda el token en secreto y solo atiende a usuarios
+ * con sesión iniciada. Sin Supabase, para desarrollo, se usa EXPO_PUBLIC_TMDB_TOKEN.
+ * Sin ninguno de los dos, la app usa el catálogo de demostración.
  */
+
+import { accessToken, hasCloud, SUPABASE_KEY, SUPABASE_URL } from './supabase';
 
 import { addDays, todayISO } from './dates';
 import {
@@ -37,8 +39,8 @@ export const REGION = process.env.EXPO_PUBLIC_REGION ?? 'CO';
 
 export const hasToken = TOKEN.length > 0;
 
-/** Sin token, la app usa el catálogo de demostración de demo.ts. */
-export const isDemo = !hasToken;
+/** Sin token ni servidor, la app usa el catálogo de demostración de demo.ts. */
+export const isDemo = !hasToken && !hasCloud;
 
 export class TmdbError extends Error {
   constructor(
@@ -55,18 +57,25 @@ const cache = new Map<string, { at: number; data: unknown }>();
 const CACHE_MS = 10 * 60 * 1000;
 
 async function get<T>(path: string, params: Record<string, string> = {}): Promise<T> {
-  if (!hasToken) {
-    throw new TmdbError('Falta el token de TMDB. Copia .env.example como .env y pon tu token.');
+  if (isDemo) {
+    throw new TmdbError('Falta configurar TMDB. Copia .env.example como .env.');
   }
   const query = new URLSearchParams({ language: LANGUAGE, ...params }).toString();
-  const url = `${API}${path}?${query}`;
+  const viaServer = !hasToken && hasCloud;
+  const url = viaServer ? `${SUPABASE_URL}/functions/v1/tmdb${path}?${query}` : `${API}${path}?${query}`;
 
   const hit = cache.get(url);
   if (hit && Date.now() - hit.at < CACHE_MS) return hit.data as T;
 
-  const res = await fetch(url, {
-    headers: { Authorization: `Bearer ${TOKEN}`, Accept: 'application/json' },
-  });
+  let headers: Record<string, string>;
+  if (viaServer) {
+    const session = await accessToken();
+    if (!session) throw new TmdbError('Inicia sesión para ver el catálogo.', 401);
+    headers = { apikey: SUPABASE_KEY, Authorization: `Bearer ${session}`, Accept: 'application/json' };
+  } else {
+    headers = { Authorization: `Bearer ${TOKEN}`, Accept: 'application/json' };
+  }
+  const res = await fetch(url, { headers });
   if (res.status === 429) {
     throw new TmdbError('Demasiadas solicitudes a TMDB. Espera unos segundos.', 429);
   }

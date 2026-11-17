@@ -5,6 +5,7 @@
   "dependencies": {
     "@expo/ui": "~58.0.26",
     "@react-native-async-storage/async-storage": "2.2.0",
+    "@supabase/supabase-js": "^2.119.0",
     "expo": "~58.0.22",
     "expo-blur": "~58.0.5",
     "expo-constants": "~58.0.14",
@@ -16,6 +17,7 @@
     "expo-linking": "~58.0.15",
     "expo-router": "~58.0.29",
     "expo-splash-screen": "~58.0.12",
+    "expo-sqlite": "~58.0.15",
     "expo-status-bar": "~58.0.4",
     "expo-symbols": "~58.0.4",
     "expo-system-ui": "~58.0.7",
@@ -41,7 +43,9 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "lint": "expo lint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "build:web": "node scripts/build-web.mjs",
+    "build:pages": "WEB_BASE=/sollar node scripts/build-web.mjs"
   },
   "private": true
 }

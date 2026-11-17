@@ -12,7 +12,9 @@ import { ACCENT_ORDER, ACCENTS, Radius, Space, type Colors } from '@/constants/t
 import { useColors, useStyles, useThemeSettings, type ModeSetting } from '@/store/theme';
 import { parseBackup } from '@/lib/library-item';
 import { computeStats, formatDuration } from '@/lib/progress';
+import { useAuth } from '@/store/auth';
 import { useLibrary } from '@/store/library';
+import { useSync } from '@/store/sync';
 
 export default function ProfileScreen() {
   const C = useColors();
@@ -38,6 +40,8 @@ export default function ProfileScreen() {
   return (
     <Screen>
       <T variant="title">Perfil</T>
+
+      <Account />
 
       <Section title="Mis plataformas">
         <T variant="small" muted>
@@ -109,6 +113,59 @@ export default function ProfileScreen() {
         }}
       />
     </Screen>
+  );
+}
+
+/** Cuenta y estado de la sincronización. Solo aparece si la app usa servidor. */
+function Account() {
+  const C = useColors();
+  const styles = useStyles(makeStyles);
+  const { cloud, email, signOut } = useAuth();
+  const { status, lastSync, error, syncNow } = useSync();
+  if (!cloud || !email) return null;
+  const time = lastSync ? new Date(lastSync).toLocaleTimeString('es-CO', { hour: 'numeric', minute: '2-digit' }) : null;
+  const label =
+    status === 'syncing'
+      ? 'Sincronizando…'
+      : status === 'offline'
+        ? 'Sin conexión: se sincroniza al volver'
+        : time
+          ? `Sincronizado a las ${time}`
+          : 'Sincronización activa';
+  return (
+    <Section title="Tu cuenta">
+      <View style={styles.account}>
+        <View style={{ flex: 1, gap: 2 }}>
+          <T variant="label" numberOfLines={1}>
+            {email}
+          </T>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: Space.xs }}>
+            <View
+              style={[
+                styles.statusDot,
+                { backgroundColor: status === 'offline' ? C.danger : status === 'syncing' ? C.accent : C.success },
+              ]}
+            />
+            <T variant="caption" muted>
+              {label}
+            </T>
+          </View>
+          {status === 'offline' && error ? (
+            <T variant="caption" muted numberOfLines={2}>
+              {error}
+            </T>
+          ) : null}
+        </View>
+        <Button label="Sincronizar" kind="secondary" onPress={syncNow} />
+      </View>
+      <T variant="small" muted>
+        Tu lista, tus episodios vistos, tus calificaciones y tus plataformas se guardan en tu cuenta y
+        se actualizan solos en todos los dispositivos donde entres con este correo.
+      </T>
+      <View style={{ flexDirection: 'row' }}>
+        <Button label="Cerrar sesión" kind="danger" onPress={() => signOut()} />
+      </View>
+    </Section>
   );
 }
 
@@ -290,6 +347,15 @@ function ImportModal({
 
 const makeStyles = (C: Colors) =>
   StyleSheet.create({
+  account: {
+    ...card(C),
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Space.md,
+    padding: Space.lg,
+    borderRadius: Radius.lg,
+  },
+  statusDot: { width: 8, height: 8, borderRadius: 4 },
   accents: { flexDirection: 'row', flexWrap: 'wrap', gap: Space.sm },
   accent: {
     ...card(C),

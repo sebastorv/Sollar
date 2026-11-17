@@ -23,6 +23,10 @@ jobs={
  'android-icon-foreground.png':(svg(POP,False,.56),512),
  'android-icon-monochrome.png':(svg(None,False,.56,True),512),
  'splash-icon.png':(f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">{GRAD}<circle cx="50" cy="50" r="50" fill="url(#g)"/><g transform="translate(7 7) scale(.86)">{POP}</g></svg>',512),
+ 'web/logo192.png':(svg(POP,True,.82),192),
+ 'web/logo512.png':(svg(POP,True,.82),512),
+ 'web/maskable512.png':(svg(POP,True,.64),512),
+ 'web/apple-touch-icon.png':(svg(POP,True,.8),180),
  'favicon.png':(f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">{GRAD}<circle cx="50" cy="50" r="50" fill="url(#g)"/><g transform="translate(5 5) scale(.9)">{POP}</g></svg>',96),
 }
 import sys
@@ -33,7 +37,7 @@ with sync_playwright() as p:
         pg=b.new_page(viewport={'width':size,'height':size})
         sized = s.replace('<svg ', '<svg width="%d" height="%d" ' % (size, size), 1)
         pg.set_content('<html><body style="margin:0;background:transparent">' + sized + '</body></html>')
-        pg.screenshot(path=f'{out}/{name}', omit_background=(name!='icon.png'), clip={'x':0,'y':0,'width':size,'height':size})
+        pg.screenshot(path=f'{out}/{name}', omit_background=not (name=='icon.png' or name.startswith('web/')), clip={'x':0,'y':0,'width':size,'height':size})
         pg.close()
     b.close()
 print('ok')
