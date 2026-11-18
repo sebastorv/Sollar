@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { Modal, Platform, Pressable, Share, StyleSheet, TextInput, View } from 'react-native';
+import { Modal, Platform, Share, StyleSheet, TextInput, View } from 'react-native';
 
 import { SollarLogo } from '@/components/brand';
 import { Glass, card } from '@/components/glass';
@@ -16,6 +16,7 @@ import { computeStats, formatDuration } from '@/lib/progress';
 import { useAuth } from '@/store/auth';
 import { useLibrary } from '@/store/library';
 import { useSync } from '@/store/sync';
+import { Touchable } from '@/components/touch';
 
 export default function ProfileScreen() {
   const C = useColors();
@@ -203,7 +204,7 @@ function Appearance() {
           const a = ACCENTS[key];
           const on = accent === key;
           return (
-            <Pressable
+            <Touchable
               key={key}
               onPress={() => setAccent(key)}
               accessibilityRole="button"
@@ -214,7 +215,7 @@ function Appearance() {
               <T variant="label" style={{ color: on ? C.text : C.textMuted }}>
                 {a.label}
               </T>
-            </Pressable>
+            </Touchable>
           );
         })}
       </View>

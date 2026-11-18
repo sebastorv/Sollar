@@ -7,6 +7,8 @@
  * Sin ninguno de los dos, la app usa el catálogo de demostración.
  */
 
+import { PixelRatio } from 'react-native';
+
 import { accessToken, hasCloud, SUPABASE_KEY, SUPABASE_URL } from './supabase';
 
 import { addDays, todayISO } from './dates';
@@ -87,10 +89,35 @@ async function get<T>(path: string, params: Record<string, string> = {}, useCach
   return data;
 }
 
-export type ImageSize = 'w92' | 'w185' | 'w342' | 'w500' | 'w780' | 'original';
+export type ImageSize = 'w92' | 'w154' | 'w185' | 'w300' | 'w342' | 'w500' | 'w780' | 'w1280' | 'original';
 
 export function imageUrl(path: string | null | undefined, size: ImageSize = 'w342'): string | null {
   return path ? `${IMG}/${size}${path}` : null;
+}
+
+/** Tamaños que TMDB ofrece por tipo de imagen, de menor a mayor (en píxeles de ancho). */
+const SIZES: Record<'poster' | 'backdrop' | 'still' | 'logo', [ImageSize, number][]> = {
+  poster: [['w154', 154], ['w185', 185], ['w342', 342], ['w500', 500], ['w780', 780], ['original', 2000]],
+  backdrop: [['w300', 300], ['w780', 780], ['w1280', 1280], ['original', 3840]],
+  still: [['w185', 185], ['w300', 300], ['original', 1920]],
+  logo: [['w92', 92], ['w154', 154], ['w185', 185], ['w300', 300], ['w500', 500], ['original', 1000]],
+};
+
+/**
+ * La imagen más liviana que se ve nítida: el ancho en pantalla por la densidad de píxeles
+ * (2x o 3x en celulares), con un margen. En pantallas 4K los fondos usan el original.
+ */
+export function sharpImage(
+  path: string | null | undefined,
+  kind: keyof typeof SIZES,
+  widthOnScreen: number,
+): string | null {
+  if (!path) return null;
+  const density = Math.min(PixelRatio.get() || 2, 3);
+  const needed = widthOnScreen * density * 1.1;
+  const options = SIZES[kind];
+  const pick = options.find(([, w]) => w >= needed) ?? options[options.length - 1];
+  return `${IMG}/${pick[0]}${path}`;
 }
 
 export async function searchTitles(query: string, page = 1): Promise<TmdbSearchResult[]> {

@@ -12,16 +12,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { Tabs, TabList, TabSlot, TabTrigger, type TabListProps, type TabTriggerSlotProps } from 'expo-router/ui';
 import { useEffect, useRef } from 'react';
-import {
-  Animated,
-  Easing,
-  LayoutAnimation,
-  Platform,
-  Pressable,
-  StyleSheet,
-  useWindowDimensions,
-  View,
-} from 'react-native';
+import { Animated, Easing, LayoutAnimation, Platform, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { MaxContentWidth, Radius, Space, type Colors } from '@/constants/theme';
@@ -31,6 +22,7 @@ import { SollarLogo, Wordmark } from './brand';
 import { Glass } from './glass';
 import { Icon, type IconName } from './icons';
 import { T } from './ui';
+import { Touchable } from './touch';
 
 const NARROW = 720;
 
@@ -119,7 +111,9 @@ function TabButton({
   }, [isFocused, appear]);
 
   return (
-    <Pressable
+    <Touchable
+      haptic="select"
+      pressScale={0.92}
       {...props}
       accessibilityRole="tab"
       accessibilityLabel={label}
@@ -152,7 +146,7 @@ function TabButton({
           </T>
         </Animated.View>
       ) : null}
-    </Pressable>
+    </Touchable>
   );
 }
 

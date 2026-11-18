@@ -55,23 +55,54 @@ export function Glass({
       </GlassView>
     );
   }
+  const light = C.mode === 'light';
   return (
     <View
       style={[
-        { overflow: 'hidden', borderRadius: radius, borderWidth: 1, borderColor: C.glassEdge },
-        shadow(C),
+        {
+          overflow: 'hidden',
+          borderRadius: radius,
+          borderWidth: 1,
+          borderColor: C.glassEdge,
+          // Borde de luz arriba: la luz cae sobre el vidrio.
+          borderTopColor: light ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.18)',
+        },
+        floating(C),
         style,
       ]}>
       <BlurView
-        intensity={strong ? 60 : 40}
-        tint={C.mode === 'light' ? 'light' : 'dark'}
+        intensity={strong ? 90 : 70}
+        tint={light ? 'light' : 'dark'}
         experimentalBlurMethod="dimezisBlurView"
         style={StyleSheet.absoluteFill}
       />
       <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: strong ? C.glassStrong : C.glass }]} />
+      {/* Reflejo: brillo suave en la mitad de arriba, como la luz sobre una gota. */}
+      <LinearGradient
+        pointerEvents="none"
+        colors={light ? ['rgba(255,255,255,0.75)', 'rgba(255,255,255,0)'] : ['rgba(255,255,255,0.10)', 'rgba(255,255,255,0)']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 0.6 }}
+        style={StyleSheet.absoluteFill}
+      />
+      {/* Un toque del color de la marca refractado en el borde de abajo. */}
+      <LinearGradient
+        pointerEvents="none"
+        colors={['transparent', C.glow]}
+        start={{ x: 0.5, y: 0.55 }}
+        end={{ x: 0.5, y: 1 }}
+        style={StyleSheet.absoluteFill}
+      />
       {children}
     </View>
   );
+}
+
+/** Sombra de lo que flota: más amplia que la de las tarjetas. */
+function floating(C: Colors) {
+  return C.mode === 'light'
+    ? { shadowColor: '#1E1032', shadowOpacity: 0.14, shadowRadius: 28, shadowOffset: { width: 0, height: 10 }, elevation: 8 }
+    : { shadowColor: '#000', shadowOpacity: 0.5, shadowRadius: 28, shadowOffset: { width: 0, height: 10 }, elevation: 8 };
 }
 
 export function Surface({

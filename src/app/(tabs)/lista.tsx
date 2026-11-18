@@ -2,7 +2,7 @@
 
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { FilterSheet } from '@/components/filter-sheet';
 import { card } from '@/components/glass';
@@ -19,6 +19,7 @@ import { getWatchProviders } from '@/lib/tmdb';
 import { STATUS_LABEL, STATUS_ORDER, type LibraryItem, type WatchStatus } from '@/lib/types';
 import { useLibrary } from '@/store/library';
 import { useSettings } from '@/store/settings';
+import { Touchable } from '@/components/touch';
 
 /** Atajos: combinaciones de filtros que responden preguntas comunes. */
 const PRESETS: { label: string; filters: Partial<Filters> }[] = [
@@ -84,14 +85,14 @@ export default function ListScreen() {
           style={styles.hScroll}
           contentContainerStyle={styles.hRow}>
           {PRESETS.map((p) => (
-            <Pressable
+            <Touchable
               key={p.label}
               onPress={() => setFilters({ ...DEFAULT_FILTERS, ...p.filters })}
               style={({ pressed }) => [styles.preset, pressed && { opacity: 0.75 }]}>
               <T variant="label" style={{ color: C.accentInk }}>
                 {p.label}
               </T>
-            </Pressable>
+            </Touchable>
           ))}
         </ScrollView>
       ) : null}
@@ -116,7 +117,7 @@ export default function ListScreen() {
         <Chip label="Todo" selected={filters.type === 'all'} onPress={() => set('type', 'all')} />
         <Chip label="Series" selected={filters.type === 'tv'} onPress={() => set('type', 'tv')} />
         <Chip label="Películas" selected={filters.type === 'movie'} onPress={() => set('type', 'movie')} />
-        <Pressable
+        <Touchable
           onPress={() => setSheetOpen(true)}
           accessibilityRole="button"
           style={({ pressed }) => [styles.filterBtn, extra > 0 && styles.filterBtnOn, pressed && { opacity: 0.75 }]}>
@@ -124,13 +125,13 @@ export default function ListScreen() {
           <T variant="label" style={{ color: extra > 0 ? C.onAccent : C.text }}>
             {extra > 0 ? `Filtros · ${extra}` : 'Filtros'}
           </T>
-        </Pressable>
+        </Touchable>
         {extra > 0 || filters.status !== 'all' || filters.type !== 'all' ? (
-          <Pressable onPress={() => setFilters(DEFAULT_FILTERS)} accessibilityRole="button">
+          <Touchable onPress={() => setFilters(DEFAULT_FILTERS)} accessibilityRole="button">
             <T variant="small" style={{ color: C.accentInk }}>
               Quitar todo
             </T>
-          </Pressable>
+          </Touchable>
         ) : null}
       </View>
 
@@ -145,11 +146,11 @@ export default function ListScreen() {
                   ? 'Disponibilidad revisada hoy.'
                   : `Disponibilidad revisada hace ${oldest} ${oldest === 1 ? 'día' : 'días'}.`}
           </T>
-          <Pressable onPress={refreshAvailability} disabled={Boolean(refreshing)} accessibilityRole="button">
+          <Touchable onPress={refreshAvailability} disabled={Boolean(refreshing)} accessibilityRole="button">
             <T variant="small" style={{ color: refreshing ? C.textFaint : C.accent, fontWeight: '600' }}>
               Revisar ahora
             </T>
-          </Pressable>
+          </Touchable>
         </View>
       ) : null}
 

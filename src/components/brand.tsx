@@ -5,13 +5,15 @@
  */
 
 import { useEffect, useId, useRef, useState } from 'react';
-import { Animated, Easing, Pressable, StyleSheet, View } from 'react-native';
+import { Animated, Easing, StyleSheet, View } from 'react-native';
 import Svg, { Circle, ClipPath, Defs, Ellipse, G, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
 
 import { Space } from '@/constants/theme';
+import { haptic } from '@/lib/haptics';
 import { useColors } from '@/store/theme';
 
 import { T } from './ui';
+import { Touchable } from './touch';
 
 const INK = '#3B2410';
 const CREAM = '#FFF7EA';
@@ -491,7 +493,9 @@ function MiniBag({ n, on, onPress, burst }: { n: number; on: boolean; onPress: (
     ]).start();
   }, [burst, on, n, hop]);
   return (
-    <Pressable
+    <Touchable
+      haptic="select"
+      pressScale={0.88}
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={`${n} de 10`}
@@ -508,7 +512,7 @@ function MiniBag({ n, on, onPress, burst }: { n: number; on: boolean; onPress: (
         <PopcornBag filled={on} size={26} />
       </Animated.View>
       <T style={{ fontSize: 11, fontWeight: '700', color: on ? C.text : C.textFaint, marginTop: 2 }}>{n}</T>
-    </Pressable>
+    </Touchable>
   );
 }
 
@@ -527,6 +531,8 @@ export function PopcornRating({ value, onChange }: { value: number | null; onCha
     const next = n === v ? null : n;
     onChange(next);
     if (next) {
+      // Las notas altas se celebran con una vibración doble.
+      if (next >= 9) haptic('success');
       setBurst((b) => b + 1);
       bounce.setValue(0);
       Animated.spring(bounce, { toValue: 1, friction: 4, tension: 160, useNativeDriver: true }).start(() =>

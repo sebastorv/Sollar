@@ -4,7 +4,7 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { ScrollView, StyleSheet, TextInput, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Backdrop, card } from '@/components/glass';
@@ -17,7 +17,7 @@ import { useColors, useStyles } from '@/store/theme';
 import { itemKey, newItemFromMovie, newItemFromTv, seasonsFromTv } from '@/lib/library-item';
 import { formatEpisode, nextEpisode, progressOf, totalEpisodes, watchedCount } from '@/lib/progress';
 import { availabilityFrom } from '@/lib/providers';
-import { getMovie, getSeason, getTv, getWatchProviders, imageUrl, isDemo } from '@/lib/tmdb';
+import { getMovie, getSeason, getTv, getWatchProviders, isDemo, sharpImage } from '@/lib/tmdb';
 import {
   STATUS_LABEL,
   STATUS_ORDER,
@@ -32,11 +32,13 @@ import {
 } from '@/lib/types';
 import { useLibrary } from '@/store/library';
 import { useSettings } from '@/store/settings';
+import { Touchable } from '@/components/touch';
 
 type Details = { kind: 'movie'; data: TmdbMovie } | { kind: 'tv'; data: TmdbTv };
 
 export default function TitleScreen() {
   const C = useColors();
+  const { width: screenWidth } = useWindowDimensions();
   const styles = useStyles(makeStyles);
   const params = useLocalSearchParams<{ tipo: string; id: string }>();
   const type: MediaType = params.tipo === 'tv' ? 'tv' : 'movie';
@@ -124,7 +126,8 @@ export default function TitleScreen() {
     lib.save(providersLoaded ? { ...created, availability: availabilityFrom(providers) } : created);
   }
 
-  const backdrop = imageUrl(d.backdrop_path, 'w780');
+  // Fondo a lo ancho de la pantalla: nítido también en monitores 4K.
+  const backdrop = sharpImage(d.backdrop_path, 'backdrop', screenWidth);
 
   return (
     <View style={styles.page}>
@@ -270,7 +273,7 @@ function Seasons({ tv, item }: { tv: TmdbTv; item: LibraryItem | undefined }) {
           const isOpen = open === s.seasonNumber;
           return (
             <View key={s.seasonNumber} style={styles.card}>
-              <Pressable
+              <Touchable
                 onPress={() => setOpen(isOpen ? null : s.seasonNumber)}
                 style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
                 accessibilityRole="button"
@@ -282,7 +285,7 @@ function Seasons({ tv, item }: { tv: TmdbTv; item: LibraryItem | undefined }) {
                   </T>
                   <Icon name={isOpen ? 'chevronUp' : 'chevronDown'} size={18} color={C.textMuted} />
                 </View>
-              </Pressable>
+              </Touchable>
               {isOpen ? <EpisodeList tvId={tv.id} season={s.seasonNumber} item={item} /> : null}
             </View>
           );
@@ -338,8 +341,10 @@ function EpisodeList({ tvId, season, item }: { tvId: number; season: number; ite
         const seen = Boolean(item.watchedEpisodes[episodeKey(season, ep.episode_number)]);
         const upcoming = !ep.air_date || ep.air_date > today;
         return (
-          <Pressable
+          <Touchable
             key={ep.id}
+            haptic="medium"
+            pressScale={0.98}
             disabled={upcoming}
             onPress={() => lib.setEpisodes(item.key, [{ season, episode: ep.episode_number }], !seen)}
             onLongPress={() =>
@@ -366,7 +371,7 @@ function EpisodeList({ tvId, season, item }: { tvId: number; season: number; ite
                 {ep.runtime ? `${isDemo ? '' : ' · '}${ep.runtime} min` : ''}
               </T>
             </View>
-          </Pressable>
+          </Touchable>
         );
       })}
     </View>

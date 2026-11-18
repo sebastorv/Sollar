@@ -9,7 +9,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { Link, router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { card } from '@/components/glass';
 import { Grid, TitleCard } from '@/components/title-card';
@@ -25,6 +25,7 @@ import { getNewOnProviders, getUpcomingMovies, isDemo } from '@/lib/tmdb';
 import type { MediaType, TmdbSearchResult } from '@/lib/types';
 import { useSettings } from '@/store/settings';
 import { useColors, useStyles } from '@/store/theme';
+import { Touchable } from '@/components/touch';
 
 type Tab = 'series' | 'estrenos';
 
@@ -132,7 +133,7 @@ function WeekStrip({
         const on = selected === d;
         const has = marked.has(d);
         return (
-          <Pressable
+          <Touchable
             key={d}
             onPress={() => onSelect(d)}
             accessibilityRole="button"
@@ -154,7 +155,7 @@ function WeekStrip({
               {fromISO(d).getDate()}
             </T>
             <View style={[styles.dot, { backgroundColor: has ? (on ? C.onAccent : C.accent) : 'transparent' }]} />
-          </Pressable>
+          </Touchable>
         );
       })}
     </View>
@@ -169,7 +170,7 @@ function EpisodeRow({ e }: { e: CalendarEpisode }) {
   const badge = KIND_LABEL[e.kind];
   return (
     <Link href={{ pathname: '/titulo/[tipo]/[id]', params: { tipo: 'tv', id: String(e.tmdbId) } }} asChild>
-      <Pressable>
+      <Touchable>
         {({ pressed }) => (
           <View style={[styles.row, pressed && { opacity: 0.8 }]}>
             <Poster path={e.posterPath} title={e.title} width={52} size="w185" />
@@ -194,7 +195,7 @@ function EpisodeRow({ e }: { e: CalendarEpisode }) {
             </T>
           </View>
         )}
-      </Pressable>
+      </Touchable>
     </Link>
   );
 }
@@ -307,7 +308,7 @@ function MovieRow({ m }: { m: CalendarMovie }) {
   const styles = useStyles(makeStyles);
   return (
     <Link href={{ pathname: '/titulo/[tipo]/[id]', params: { tipo: 'movie', id: String(m.tmdbId) } }} asChild>
-      <Pressable>
+      <Touchable>
         {({ pressed }) => (
           <View style={[styles.row, pressed && { opacity: 0.8 }]}>
             <Poster path={m.posterPath} title={m.title} width={52} size="w185" />
@@ -324,7 +325,7 @@ function MovieRow({ m }: { m: CalendarMovie }) {
             </T>
           </View>
         )}
-      </Pressable>
+      </Touchable>
     </Link>
   );
 }

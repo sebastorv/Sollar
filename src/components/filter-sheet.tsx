@@ -1,7 +1,7 @@
 /** Panel de filtros de "Mi lista". */
 
 import type { ReactNode } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Modal, ScrollView, StyleSheet, View } from 'react-native';
 
 import { Radius, Space, type Colors } from '@/constants/theme';
 import { useColors, useStyles } from '@/store/theme';
@@ -19,6 +19,7 @@ import type { ProviderInfo } from '@/lib/types';
 
 import { Glass } from './glass';
 import { Button, Chip, T } from './ui';
+import { Touchable } from './touch';
 
 export function FilterSheet({
   visible,
@@ -51,11 +52,11 @@ export function FilterSheet({
         <Glass strong radius={Radius.lg} style={styles.sheet}>
           <View style={styles.head}>
             <T variant="heading">Filtros</T>
-            <Pressable onPress={() => onChange({ ...DEFAULT_FILTERS, status: filters.status, type: filters.type })}>
+            <Touchable onPress={() => onChange({ ...DEFAULT_FILTERS, status: filters.status, type: filters.type })}>
               <T variant="label" style={{ color: C.accentInk }}>
                 Limpiar
               </T>
-            </Pressable>
+            </Touchable>
           </View>
 
           <ScrollView contentContainerStyle={{ gap: Space.xl, paddingBottom: Space.lg }}>

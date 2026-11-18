@@ -3,27 +3,16 @@
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import type { ReactNode } from 'react';
-import {
-  ActivityIndicator,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-  useWindowDimensions,
-  type PressableProps,
-  type StyleProp,
-  type TextProps,
-  type ViewStyle,
-} from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, View, useWindowDimensions, type PressableProps, type StyleProp, type TextProps, type ViewStyle } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { MaxContentWidth, Radius, Space, TabBarSpace, type Colors } from '@/constants/theme';
 import { useColors, useStyles } from '@/store/theme';
-import { imageUrl, type ImageSize } from '@/lib/tmdb';
+import { sharpImage } from '@/lib/tmdb';
 
 import { Backdrop, card } from './glass';
 import { Icon } from './icons';
+import { Touchable } from './touch';
 
 // --- Texto ---
 
@@ -106,19 +95,19 @@ export function Poster({
   path,
   title,
   width = 110,
-  size = 'w342',
   style,
 }: {
   path: string | null;
   /** Se muestra sobre un color cuando no hay imagen. */
   title?: string;
   width?: number;
-  size?: ImageSize;
+  /** Ya no hace falta: el tamaño se elige solo según la pantalla. Se acepta por compatibilidad. */
+  size?: string;
   style?: StyleProp<ViewStyle>;
 }) {
   const C = useColors();
   const styles = useStyles(makeStyles);
-  const uri = imageUrl(path, size);
+  const uri = sharpImage(path, 'poster', width);
   const box = { width, height: Math.round(width * 1.5), borderRadius: Radius.md };
   const small = width < 90;
   // La palabra más larga debe caber en una línea, para no partir "Oppenheimer".
@@ -131,7 +120,7 @@ export function Poster({
         <LinearGradient colors={toneFor(title, C.mode)} start={{ x: 0, y: 0 }} end={{ x: 0.6, y: 1 }} style={StyleSheet.absoluteFill} />
       ) : null}
       {uri ? (
-        <Image source={{ uri }} style={StyleSheet.absoluteFill} contentFit="cover" transition={150} />
+        <Image source={{ uri }} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} recyclingKey={uri} />
       ) : title ? (
         <T
           numberOfLines={small ? 3 : 4}
@@ -169,7 +158,8 @@ export function Chip({
   const C = useColors();
   const styles = useStyles(makeStyles);
   return (
-    <Pressable
+    <Touchable
+      haptic="select"
       onPress={onPress}
       accessibilityRole="button"
       accessibilityState={{ selected }}
@@ -189,7 +179,7 @@ export function Chip({
       <T variant="label" style={{ color: selected ? C.onAccent : C.text }}>
         {label}
       </T>
-    </Pressable>
+    </Touchable>
   );
 }
 
@@ -212,12 +202,13 @@ export function Button({
   const styles = useStyles(makeStyles);
   const fg = kind === 'primary' ? C.onAccent : kind === 'danger' ? C.danger : C.text;
   return (
-    <Pressable
+    <Touchable
+      haptic={kind === 'primary' ? 'medium' : 'light'}
       accessibilityRole="button"
       style={({ pressed }) => [
         styles.button,
         kind !== 'primary' && styles.buttonOutline,
-        pressed && { opacity: 0.82, transform: [{ scale: 0.985 }] },
+        pressed && { opacity: 0.9 },
         rest.disabled && { opacity: 0.45 },
         style,
       ]}
@@ -238,7 +229,7 @@ export function Button({
       <T variant="label" style={{ color: fg }}>
         {label}
       </T>
-    </Pressable>
+    </Touchable>
   );
 }
 

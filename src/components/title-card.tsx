@@ -1,13 +1,19 @@
 import { Link } from 'expo-router';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Children, cloneElement, isValidElement, useState, type ReactElement, type ReactNode } from 'react';
+import { StyleSheet, View } from 'react-native';
 
 import { Radius, Space, type Colors } from '@/constants/theme';
 import { useColors, useStyles } from '@/store/theme';
 import type { MediaType } from '@/lib/types';
 
 import { Poster, T } from './ui';
+import { Touchable } from './touch';
 
-/** Tarjeta vertical (carátula + título) que abre la ficha del título. */
+/**
+ * Tarjeta vertical (carátula + título) que abre la ficha del título.
+ * El texto ocupa siempre el mismo alto (título de hasta dos líneas, subtítulo y destacado de una),
+ * así las tarjetas quedan parejas en filas y en estantes aunque los títulos tengan largos distintos.
+ */
 export function TitleCard({
   id,
   mediaType,
@@ -32,7 +38,7 @@ export function TitleCard({
   const styles = useStyles(makeStyles);
   return (
     <Link href={{ pathname: '/titulo/[tipo]/[id]', params: { tipo: mediaType, id: String(id) } }} asChild>
-      <Pressable style={({ pressed }) => [{ width, gap: Space.xs }, pressed && { opacity: 0.8 }]}>
+      <Touchable style={{ width, gap: Space.xs }} accessibilityLabel={title}>
         <View>
           <Poster path={posterPath} title={title} width={width} />
           {badge ? (
@@ -43,28 +49,41 @@ export function TitleCard({
             </View>
           ) : null}
         </View>
-        <T variant="small" numberOfLines={2} style={{ fontWeight: '600' }}>
-          {title}
-        </T>
-        {subtitle ? (
-          <T variant="caption" muted numberOfLines={1}>
-            {subtitle}
+        <View style={styles.text}>
+          <T variant="small" numberOfLines={2} style={styles.title}>
+            {title}
           </T>
-        ) : null}
-        {highlight ? (
-          <T variant="caption" numberOfLines={1} style={{ color: C.accentInk, fontWeight: '700' }}>
-            {highlight}
+          <T variant="caption" muted numberOfLines={1} style={styles.line}>
+            {subtitle ?? ' '}
           </T>
-        ) : null}
-      </Pressable>
+          <T variant="caption" numberOfLines={1} style={[styles.line, { color: C.accentInk, fontWeight: '700' }]}>
+            {highlight ?? ' '}
+          </T>
+        </View>
+      </Touchable>
     </Link>
   );
 }
 
-/** Rejilla adaptable: tantas columnas como quepan. */
-export function Grid({ children }: { children: React.ReactNode }) {
+/**
+ * Rejilla pareja: calcula cuántas columnas caben y reparte el ancho exacto entre ellas, para que
+ * no quede un hueco irregular a la derecha. Ajusta el ancho de cada TitleCard.
+ */
+export function Grid({ children, minWidth = 108 }: { children: ReactNode; minWidth?: number }) {
   const styles = useStyles(makeStyles);
-  return <View style={styles.grid}>{children}</View>;
+  const [width, setWidth] = useState(0);
+  const gap = Space.md;
+  const columns = Math.max(2, Math.floor((width + gap) / (minWidth + gap)));
+  const cardWidth = width ? Math.floor((width - gap * (columns - 1)) / columns) : minWidth;
+  return (
+    <View style={[styles.grid, { columnGap: gap }]} onLayout={(e) => setWidth(e.nativeEvent.layout.width)}>
+      {width
+        ? Children.map(children, (child) =>
+            isValidElement(child) ? cloneElement(child as ReactElement<{ width?: number }>, { width: cardWidth }) : child,
+          )
+        : null}
+    </View>
+  );
 }
 
 const makeStyles = (C: Colors) =>
@@ -80,5 +99,9 @@ const makeStyles = (C: Colors) =>
     paddingHorizontal: Space.sm,
     paddingVertical: 2,
   },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: Space.lg },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', rowGap: Space.lg },
+  text: { gap: 1 },
+  /** Dos líneas de título reservadas siempre. */
+  title: { fontWeight: '600', minHeight: 40, lineHeight: 20 },
+  line: { minHeight: 16 },
 });

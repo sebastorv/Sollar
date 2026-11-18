@@ -2,17 +2,18 @@
 
 import { Image } from 'expo-image';
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { Radius, Space, type Colors } from '@/constants/theme';
 import { useColors, useStyles } from '@/store/theme';
-import { getProviderDirectory, imageUrl } from '@/lib/tmdb';
+import { getProviderDirectory, sharpImage } from '@/lib/tmdb';
 import type { ProviderInfo } from '@/lib/types';
 import { useSettings } from '@/store/settings';
 
 import { card } from './glass';
 import { Icon } from './icons';
 import { Loading, T } from './ui';
+import { Touchable } from './touch';
 
 let directoryCache: ProviderInfo[] | null = null;
 
@@ -35,7 +36,7 @@ export function useProviderDirectory() {
 export function ProviderLogo({ name, logoPath, size = 28 }: { name: string; logoPath: string | null; size?: number }) {
   const C = useColors();
   const styles = useStyles(makeStyles);
-  const uri = imageUrl(logoPath || null, 'w92');
+  const uri = sharpImage(logoPath || null, 'logo', size);
   const box = { width: size, height: size, borderRadius: size / 4 };
   if (uri) return <Image source={{ uri }} style={box} />;
   const initials = name
@@ -73,7 +74,7 @@ export function PlatformPicker({ limit = 24 }: { limit?: number }) {
         {shown.map((p) => {
           const on = myProviders.includes(p.id);
           return (
-            <Pressable
+            <Touchable
               key={p.id}
               onPress={() => toggleProvider(p.id)}
               accessibilityRole="checkbox"
@@ -84,16 +85,16 @@ export function PlatformPicker({ limit = 24 }: { limit?: number }) {
                 {p.name}
               </T>
               <Icon name={on ? 'check' : 'plus'} size={18} color={on ? C.accent : C.textFaint} strokeWidth={2.4} />
-            </Pressable>
+            </Touchable>
           );
         })}
       </View>
       {list.length > limit ? (
-        <Pressable onPress={() => setShowAll((v) => !v)} accessibilityRole="button">
+        <Touchable onPress={() => setShowAll((v) => !v)} accessibilityRole="button">
           <T variant="small" style={{ color: C.accentInk }}>
             {showAll ? 'Ver menos' : `Ver las ${list.length} plataformas`}
           </T>
-        </Pressable>
+        </Touchable>
       ) : null}
     </View>
   );

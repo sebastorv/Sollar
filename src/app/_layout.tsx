@@ -2,7 +2,7 @@ import { DarkTheme, DefaultTheme, router, Stack, ThemeProvider as NavThemeProvid
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useMemo, type ReactNode } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 
 import { Glass } from '@/components/glass';
 import { LoginScreen } from '@/components/login';
@@ -12,6 +12,7 @@ import { LibraryProvider, useLibrary } from '@/store/library';
 import { SettingsProvider } from '@/store/settings';
 import { SyncProvider } from '@/store/sync';
 import { ThemeProvider, useColors } from '@/store/theme';
+import { Touchable } from '@/components/touch';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -31,7 +32,7 @@ function HideSplashWhenReady({ children }: { children: ReactNode }) {
 function BackButton() {
   const C = useColors();
   return (
-    <Pressable
+    <Touchable
       accessibilityRole="button"
       accessibilityLabel="Volver"
       onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
@@ -43,7 +44,7 @@ function BackButton() {
           <Text style={{ color: C.text, fontSize: 15, fontWeight: '600' }}>Atrás</Text>
         </View>
       </Glass>
-    </Pressable>
+    </Touchable>
   );
 }
 
