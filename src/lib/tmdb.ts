@@ -110,7 +110,7 @@ async function cleanListPosters(path: string, params: Record<string, string>, da
   }
 }
 
-type RawImage = { file_path: string; iso_639_1: string | null; vote_average: number; vote_count: number };
+type RawImage = { file_path: string; iso_639_1: string | null; vote_average: number; vote_count: number; aspect_ratio?: number };
 
 /** La carátula original del título: en inglés o sin texto, la mejor votada. */
 function bestPoster(posters: RawImage[] | undefined): string | null {
@@ -316,6 +316,8 @@ export type TitleExtras = {
   backdrop: string | null;
   /** Logo con el nombre del título, para la portada. */
   logo: string | null;
+  /** Ancho entre alto del logo, para darle el espacio justo. */
+  logoAspect: number;
 };
 
 type RawVideo = { key: string; site: string; type: string; official?: boolean; iso_639_1?: string };
@@ -357,6 +359,7 @@ const EMPTY_EXTRAS: TitleExtras = {
   poster: null,
   backdrop: null,
   logo: null,
+  logoAspect: 3,
 };
 
 export async function getExtras(type: MediaType, id: number): Promise<TitleExtras> {
@@ -409,7 +412,10 @@ export async function getExtras(type: MediaType, id: number): Promise<TitleExtra
     voteCount: raw.vote_count ?? 0,
     poster: bestPoster(raw.images?.posters),
     backdrop: raw.images?.backdrops?.find((b) => b.iso_639_1 === null)?.file_path ?? null,
-    logo: raw.images?.logos?.find((l) => l.iso_639_1 === 'es')?.file_path ?? raw.images?.logos?.find((l) => l.iso_639_1 === 'en')?.file_path ?? null,
+    ...(() => {
+      const l = raw.images?.logos?.find((x) => x.iso_639_1 === 'es') ?? raw.images?.logos?.find((x) => x.iso_639_1 === 'en');
+      return { logo: l?.file_path ?? null, logoAspect: l?.aspect_ratio || 3 };
+    })(),
   };
 }
 

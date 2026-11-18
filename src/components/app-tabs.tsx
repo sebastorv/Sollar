@@ -21,12 +21,13 @@ import { useColors, useStyles } from '@/store/theme';
 import { SollarLogo } from './brand';
 import { Glass } from './glass';
 import { Icon, type IconName } from './icons';
+import { TabScrollProvider, useTabScroll } from './tab-scroll';
 import { Touchable } from './touch';
 import { RailContext } from './ui';
 
 /** Las pestañas de la píldora, en orden. Buscar va aparte. */
 const PILL = ['/', '/calendario', '/lista', '/perfil'];
-const SLOT = 56;
+const SLOT = 46;
 const PAD = 6;
 const native = Platform.OS !== 'web';
 
@@ -34,6 +35,7 @@ export default function AppTabs() {
   const { width } = useWindowDimensions();
   const narrow = width < WIDE;
   return (
+    <TabScrollProvider>
     <Tabs>
       <RailContext value={true}>
         <TabSlot style={{ flex: 1 }} />
@@ -58,6 +60,7 @@ export default function AppTabs() {
         </BarLayout>
       </TabList>
     </Tabs>
+    </TabScrollProvider>
   );
 }
 
@@ -66,6 +69,7 @@ function BarLayout({ narrow, children, ...rest }: TabListProps & { narrow: boole
   const styles = useStyles(makeStyles);
   const C = useColors();
   const pathname = usePathname();
+  const vertical0 = !narrow;
   const index = PILL.findIndex((r) => (r === '/' ? pathname === '/' : pathname.startsWith(r)));
 
   const items = Children.toArray(children).filter(isValidElement) as ReactElement<{ name: string; children: ReactNode }>[];
@@ -87,6 +91,14 @@ function BarLayout({ narrow, children, ...rest }: TabListProps & { narrow: boole
       ]),
     ]).start();
   }, [index, pos, stretch, show]);
+
+  const { collapsed, setCollapsed } = useTabScroll();
+  const fold = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.spring(fold, { toValue: collapsed && !vertical0 ? 1 : 0, useNativeDriver: false, speed: 18, bounciness: 5 }).start();
+  }, [collapsed, fold, vertical0]);
+  // Al cambiar de pestaña se abre otra vez.
+  useEffect(() => setCollapsed(false), [pathname, setCollapsed]);
 
   const dropColor = C.mode === 'light' ? 'rgba(20,18,23,0.08)' : 'rgba(255,255,255,0.14)';
   const vertical = !narrow;
@@ -128,20 +140,39 @@ function BarLayout({ narrow, children, ...rest }: TabListProps & { narrow: boole
     );
   }
 
+  // Celular: al bajar, la píldora se encoge hasta dejar solo la pestaña actual (como iOS 26);
+  // al subir o al tocarla, vuelve a abrirse. La lupa siempre queda aparte, a la derecha.
+  const full = PILL.length * SLOT + PAD * 2;
+  const small = SLOT + PAD * 2;
+  const at = Math.max(index, 0);
+  const width = fold.interpolate({ inputRange: [0, 1], outputRange: [full, small] });
+  const shift = fold.interpolate({ inputRange: [0, 1], outputRange: [0, -at * SLOT] });
   return (
     <View
       {...rest}
       pointerEvents="box-none"
-      style={[styles.bottomWrap, { bottom: Math.max(insets.bottom - 4, Space.md) }]}>
-      <Glass radius={999}>
-        <View style={{ flexDirection: 'row', padding: PAD }}>
-          {drop}
-          {pill}
-        </View>
-      </Glass>
-      <Glass radius={999} style={styles.circle}>
-        {search}
-      </Glass>
+      style={[styles.bottomWrap, { bottom: Math.max(insets.bottom - 6, Space.md) }]}>
+      <View pointerEvents="box-none" style={{ width: full + Space.sm + small, flexDirection: 'row', justifyContent: 'space-between' }}>
+        <Animated.View style={{ width, borderRadius: 999 }}>
+          <Glass radius={999} style={{ width: '100%' }}>
+            <Animated.View style={{ flexDirection: 'row', padding: PAD, width: full, transform: [{ translateX: shift }] }}>
+              {drop}
+              {pill}
+            </Animated.View>
+            {collapsed ? (
+              <Touchable
+                style={StyleSheet.absoluteFill}
+                haptic="select"
+                accessibilityLabel="Mostrar todas las pestañas"
+                onPress={() => setCollapsed(false)}
+              />
+            ) : null}
+          </Glass>
+        </Animated.View>
+        <Glass radius={999} style={styles.circle}>
+          {search}
+        </Glass>
+      </View>
     </View>
   );
 }
@@ -167,7 +198,7 @@ function TabButton({
       accessibilityState={{ selected: isFocused }}
       style={[round ? styles.roundBtn : styles.slot, round && isFocused && { backgroundColor: C.accentSoft }]}>
       <View>
-        <Icon name={icon} size={24} color={isFocused ? C.accentInk : C.text} filled={isFocused && icon !== 'search'} strokeWidth={2} />
+        <Icon name={icon} size={22} color={isFocused ? C.accentInk : C.text} filled={isFocused && icon !== 'search'} strokeWidth={2} />
       </View>
     </Touchable>
   );

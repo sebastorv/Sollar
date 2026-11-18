@@ -224,6 +224,11 @@ function TitleScreenBody() {
   const heroH = wide ? Math.min(Math.round(screenWidth * 0.36), 600) : Math.round(Math.min(screenWidth, 520) * 0.95);
   const backdrop = sharpImage(extras?.backdrop ?? d.backdrop_path, 'backdrop', screenWidth);
   const logo = extras?.logo ? sharpImage(extras.logo, 'logo', wide ? 520 : 300) : null;
+  // El logo ocupa solo su tamaño real: ancho limitado y alto según su proporción, sin huecos.
+  const logoAspect = extras?.logoAspect || 3;
+  const logoMaxW = wide ? 520 : Math.min(screenWidth, 520) * 0.82;
+  const logoMaxH = wide ? 170 : 120;
+  const logoW = Math.min(logoMaxW, logoMaxH * logoAspect);
   const posterW = wide ? 330 : Math.round(Math.min(screenWidth, 520) * 0.48);
   const tvStatus = isTv ? STATUS_TV[details.data.status] : null;
   const makers = extras?.makers ?? [];
@@ -235,7 +240,7 @@ function TitleScreenBody() {
     <Image
       source={{ uri: logo }}
       accessibilityLabel={title}
-      style={{ width: wide ? 520 : '86%', maxWidth: '100%', height: wide ? 150 : 110, alignSelf: wide ? 'flex-start' : 'center' }}
+      style={{ width: logoW, height: logoW / logoAspect, maxWidth: '100%', alignSelf: wide ? 'flex-start' : 'center' }}
       contentFit="contain"
       contentPosition={wide ? 'left' : 'center'}
     />
@@ -656,16 +661,7 @@ function ScoreRow({ tmdb, votes, item, isTv }: { tmdb: number; votes: number; it
       ),
       label: `TMDB${votes ? ` · ${votes >= 1000 ? `${(votes / 1000).toFixed(votes >= 10000 ? 0 : 1)} mil` : votes} votos` : ''}`,
     });
-  if (item?.rating)
-    cells.push({
-      value: (
-        <>
-          {item.rating}
-          <T style={styles.scoreOf}>/10</T>
-        </>
-      ),
-      label: RATING_LABELS[item.rating],
-    });
+  // Tu nota ya se ve arriba, con los soles; aquí no se repite.
   if (isTv && item && total)
     cells.push({
       value: (

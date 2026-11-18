@@ -43,27 +43,49 @@ function useId(prefix: string) {
   return ref.current;
 }
 
-/** El grano: cinco lóbulos redondos alrededor de un centro, como una estrella inflada. */
+const RAYS = Array.from({ length: 8 }, (_, i) => {
+  const r = ((i * 45 - 90) * Math.PI) / 180;
+  return { x1: 20 + Math.cos(r) * 15.2, y1: 21 + Math.sin(r) * 15.2, x2: 20 + Math.cos(r) * 18.4, y2: 21 + Math.sin(r) * 18.4 };
+});
+
+/**
+ * El sol de Sollar: un círculo con ocho rayos redondeados. Lleno, con el degradado de la marca y
+ * un brillo; vacío, solo el contorno, para que la fila se lea limpia.
+ */
 export function Puff({ size = 28, filled, children }: { size?: number; filled: boolean; children?: React.ReactNode }) {
   const C = useColors();
-  const id = useId('puff');
-  const fill = filled ? `url(#${id})` : C.mode === 'dark' ? '#3B3846' : '#DCD8E2';
+  const id = useId('sun');
+  const empty = C.mode === 'dark' ? 'rgba(255,255,255,0.28)' : 'rgba(20,18,23,0.22)';
   return (
-    <Svg width={size} height={size} viewBox="0 0 40 40">
+    <Svg width={size} height={size} viewBox="0 0 40 41">
       <Defs>
-        <SvgGradient id={id} x1="0.1" y1="0" x2="0.8" y2="1">
-          <Stop offset="0" stopColor="#FFC24B" />
-          <Stop offset="0.55" stopColor="#FF8A3D" />
+        {/* En coordenadas de la figura: así el degradado también pinta los rayos rectos. */}
+        <SvgGradient id={id} x1="6" y1="3" x2="34" y2="39" gradientUnits="userSpaceOnUse">
+          <Stop offset="0" stopColor="#FFD25A" />
+          <Stop offset="0.5" stopColor="#FF9A3D" />
           <Stop offset="1" stopColor="#F0306A" />
         </SvgGradient>
       </Defs>
       <G>
-        <Circle cx={20} cy={21} r={11} fill={fill} />
-        {LOBES.map((l, i) => (
-          <Circle key={i} cx={l.x} cy={l.y} r={8} fill={fill} />
+        {RAYS.map((r, i) => (
+          <Path
+            key={i}
+            d={`M${r.x1} ${r.y1}L${r.x2} ${r.y2}`}
+            stroke={filled ? `url(#${id})` : empty}
+            strokeWidth={filled ? 3.4 : 2.2}
+            strokeLinecap="round"
+          />
         ))}
+        <Circle
+          cx={20}
+          cy={21}
+          r={filled ? 12.6 : 11.6}
+          fill={filled ? `url(#${id})` : 'none'}
+          stroke={filled ? 'none' : empty}
+          strokeWidth={2.2}
+        />
       </G>
-      {filled ? <Ellipse cx={14.5} cy={11.5} rx={4.2} ry={2.6} fill="#fff" opacity={0.55} transform="rotate(-25 14.5 11.5)" /> : null}
+      {filled ? <Ellipse cx={15} cy={15.2} rx={4} ry={2.4} fill="#fff" opacity={0.5} transform="rotate(-30 15 15.2)" /> : null}
       {children}
     </Svg>
   );
@@ -254,15 +276,20 @@ function PuffButton({
   trigger: number;
 }) {
   const scale = useRef(new Animated.Value(1)).current;
+  const spin = useRef(new Animated.Value(0)).current;
   const prev = useRef(on);
   useEffect(() => {
-    // Al encenderse, cada grano revienta con un saltito.
+    // Al encenderse, cada sol salta y gira sus rayos.
     if (on && !prev.current) {
-      scale.setValue(0.6);
-      Animated.spring(scale, { toValue: 1, friction: 3.5, tension: 220, useNativeDriver: Platform.OS !== 'web' }).start();
+      scale.setValue(0.55);
+      spin.setValue(0);
+      Animated.parallel([
+        Animated.spring(scale, { toValue: 1, friction: 3.5, tension: 220, useNativeDriver: Platform.OS !== 'web' }),
+        Animated.timing(spin, { toValue: 1, duration: 520, easing: Easing.out(Easing.back(2)), useNativeDriver: Platform.OS !== 'web' }),
+      ]).start();
     }
     prev.current = on;
-  }, [on, scale]);
+  }, [on, scale, spin]);
   return (
     <Touchable
       haptic="light"
@@ -273,7 +300,8 @@ function PuffButton({
       accessibilityRole="button"
       accessibilityLabel={`${n} de 10`}
       style={{ padding: 1 }}>
-      <Animated.View style={{ transform: [{ scale }] }}>
+      <Animated.View
+        style={{ transform: [{ scale }, { rotate: spin.interpolate({ inputRange: [0, 1], outputRange: ['-90deg', '0deg'] }) }] }}>
         <Puff size={size} filled={on} />
       </Animated.View>
       {trigger ? <Sparks trigger={trigger} count={n >= 9 ? 8 : 5} /> : null}
@@ -346,16 +374,46 @@ export function Rating({
     return (
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: Space.md, flexWrap: 'wrap' }}>
         {row}
-        {label}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: Space.sm }}>
+          <Reacting value={shown} size={34} />
+          {label}
+        </View>
       </View>
     );
   }
   return (
     <View style={{ alignItems: 'center', gap: Space.md }}>
-      <PuffMascot size={110} face={faceFor(shown)} filled={shown > 0} />
+      <Reacting value={shown} size={110} />
       {label}
       {row}
     </View>
+  );
+}
+
+/** El sol con cara: cambia de gesto con la nota y da un salto cada vez que cambia. */
+function Reacting({ value, size }: { value: number; size: number }) {
+  const pop = useRef(new Animated.Value(1)).current;
+  const first = useRef(true);
+  useEffect(() => {
+    if (first.current) {
+      first.current = false;
+      return;
+    }
+    pop.setValue(0.8);
+    Animated.spring(pop, { toValue: 1, friction: 3.2, tension: 200, useNativeDriver: Platform.OS !== 'web' }).start();
+  }, [value, pop]);
+  return (
+    <Animated.View
+      style={{
+        transform: [
+          { scale: pop },
+          { rotate: pop.interpolate({ inputRange: [0.8, 1], outputRange: ['-12deg', '0deg'] }) },
+        ],
+      }}>
+      <View style={{ opacity: value > 0 ? 1 : 0.45 }}>
+        <PuffMascot size={size} face={faceFor(value)} />
+      </View>
+    </Animated.View>
   );
 }
 

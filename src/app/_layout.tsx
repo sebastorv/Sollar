@@ -7,6 +7,7 @@ import { Platform, View } from 'react-native';
 
 import { Glass } from '@/components/glass';
 import { FONT_FILES } from '@/lib/fonts';
+import { FixedInsets } from '@/lib/insets';
 import { LoginScreen } from '@/components/login';
 import { Icon } from '@/components/icons';
 import { AuthProvider, useAuth } from '@/store/auth';
@@ -132,7 +133,9 @@ export default function RootLayout() {
           <LibraryProvider>
             <SyncProvider>
               <HideSplashWhenReady>
-                <Navigation />
+                <FixedInsets>
+                  <Navigation />
+                </FixedInsets>
               </HideSplashWhenReady>
             </SyncProvider>
           </LibraryProvider>
