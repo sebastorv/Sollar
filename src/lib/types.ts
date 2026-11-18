@@ -82,6 +82,10 @@ export type LibraryItem = {
   completedRuns?: number;
   /** Marcado como favorito (corazón). */
   favorite?: boolean;
+  /** Reacciones ("¿Cómo te sentiste?"): "title" para el título, "2:5" para un episodio. */
+  reactions?: Record<string, string[]>;
+  /** Notas de 1 a 10 por episodio, con la clave "temporada:episodio". */
+  episodeRatings?: Record<string, number>;
   /** Dónde verlo (puede faltar en títulos guardados antes de esta función). */
   availability?: Availability | null;
   addedAt: string;
@@ -133,6 +137,7 @@ export type TmdbSeasonStub = {
   episode_count: number;
   name: string;
   air_date: string | null;
+  poster_path?: string | null;
   /** Promedio de votos de la temporada en TMDB (0 si no hay). */
   vote_average?: number;
 };
@@ -177,6 +182,9 @@ export type TmdbEpisode = {
   runtime: number | null;
   still_path: string | null;
   episode_type?: string;
+  vote_average?: number;
+  crew?: { id: number; job: string; name: string }[];
+  guest_stars?: { id: number; name: string; character: string; profile_path: string | null }[];
 };
 
 export type TmdbSeason = {

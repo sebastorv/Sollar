@@ -301,6 +301,9 @@ type LibraryApi = {
   setEpisodes: (key: string, episodes: { season: number; episode: number }[], watched: boolean) => void;
   refreshSeasons: (key: string, seasons: SeasonSummary[]) => void;
   setAvailability: (key: string, availability: Availability) => void;
+  /** Reacciones del título ("title") o de un episodio ("2:5"). */
+  setReactions: (key: string, scope: string, list: string[]) => void;
+  setEpisodeRating: (key: string, ep: string, rating: number | null) => void;
   /** Cambia la carátula guardada por la original (sin letreros de plataforma). */
   setPoster: (key: string, posterPath: string) => void;
   exportBackup: () => BackupFile;
@@ -438,6 +441,19 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       setEpisodes: (key, episodes, watched) => dispatch({ type: 'setEpisodes', key, episodes, watched }),
       refreshSeasons: (key, seasons) => dispatch({ type: 'refreshSeasons', key, seasons }),
       setAvailability: (key, availability) => dispatch({ type: 'availability', key, availability }),
+      setReactions: (key, scope, list) => {
+        const it = state.items[key];
+        if (!it) return;
+        dispatch({ type: 'patch', key, patch: { reactions: { ...(it.reactions ?? {}), [scope]: list } } });
+      },
+      setEpisodeRating: (key, ep, rating) => {
+        const it = state.items[key];
+        if (!it) return;
+        const episodeRatings = { ...(it.episodeRatings ?? {}) };
+        if (rating) episodeRatings[ep] = rating;
+        else delete episodeRatings[ep];
+        dispatch({ type: 'patch', key, patch: { episodeRatings } });
+      },
       setPoster: (key, posterPath) => dispatch({ type: 'patch', key, patch: { posterPath } }),
       exportBackup: () => ({
         app: 'sollar',

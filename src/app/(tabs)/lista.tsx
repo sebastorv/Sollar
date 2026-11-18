@@ -211,7 +211,7 @@ export default function ListScreen() {
                 posterPath={i.posterPath}
                 subtitle={subtitleFor(i, filters.sort)}
                 highlight={availableLabel(i, myProviders)}
-                badge={filters.status === 'all' ? STATUS_LABEL[i.status] : null}
+                badge={filters.status === 'all' ? i.status : null}
               />
             ))}
           </Grid>

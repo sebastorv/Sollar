@@ -31,7 +31,11 @@ export type IconName =
   | 'chevronDown'
   | 'chevronUp'
   | 'sparkle'
-  | 'more';
+  | 'more'
+  | 'bookmark'
+  | 'pause'
+  | 'close'
+  | 'playSolid';
 
 export function Icon({
   name,
@@ -180,6 +184,10 @@ export function Icon({
           fillOpacity={fillOpacity}
         />
       ) : null}
+      {name === 'bookmark' ? <Path d="M7 4h10a1 1 0 0 1 1 1v15l-6-4-6 4V5a1 1 0 0 1 1-1Z" {...s} fill={fill} fillOpacity={fillOpacity} /> : null}
+      {name === 'pause' ? <Path d="M9 6v12M15 6v12" {...s} strokeWidth={strokeWidth + 0.8} /> : null}
+      {name === 'close' ? <Path d="M7 7l10 10M17 7 7 17" {...s} /> : null}
+      {name === 'playSolid' ? <Path d="M8.5 5.8v12.4a1 1 0 0 0 1.5.86l10-6.2a1 1 0 0 0 0-1.72l-10-6.2a1 1 0 0 0-1.5.86Z" {...s} fill={color} /> : null}
       {name === 'more' ? <Path d="M5.5 12h.01M12 12h.01M18.5 12h.01" {...s} strokeWidth={3.2} /> : null}
     </Svg>
   );

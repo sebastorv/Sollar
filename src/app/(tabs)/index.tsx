@@ -54,13 +54,15 @@ export default function FollowingScreen() {
     () => items.filter((i) => (i.status === 'planned' || i.status === 'paused') && myMatches(i, myProviders).length > 0),
     [items, myProviders],
   );
+  const wideScreen = useWindowDimensions().width >= 720;
   const weekEnd = addDays(todayISO(), 6);
   const thisWeek = calendar.episodes.filter((e) => e.airDate <= weekEnd);
 
   return (
     <Screen>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: Space.md }}>
-        <SollarLogo size={40} shape="icon" />
+        {/* En computador el logo ya está suelto arriba a la izquierda. */}
+        {wideScreen ? null : <SollarLogo size={40} shape="icon" />}
         <T variant="title">Siguiendo</T>
       </View>
 

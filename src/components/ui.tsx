@@ -3,12 +3,13 @@
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { createContext, useContext, type ReactNode } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View, useWindowDimensions, type PressableProps, type StyleProp, type TextProps, type ViewStyle } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, View, useWindowDimensions, type PressableProps, type StyleProp, type TextProps, type TextStyle, type ViewStyle } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { MaxContentWidth, RAIL_WIDTH, Radius, Space, TabBarSpace, WIDE, type Colors } from '@/constants/theme';
 import { useColors, useStyles } from '@/store/theme';
 import { sharpImage } from '@/lib/tmdb';
+import { fontFamilyFor } from '@/lib/fonts';
 
 import { Backdrop, card } from './glass';
 import { Icon } from './icons';
@@ -27,7 +28,9 @@ export function T({
 }: TextProps & { variant?: Variant; muted?: boolean }) {
   const styles = useStyles(makeStyles);
   const C = useColors();
-  return <Text style={[styles[variant], muted && { color: C.textMuted }, style]} {...rest} />;
+  // Una sola letra en toda la app: el grosor pedido elige el archivo de la fuente.
+  const flat = StyleSheet.flatten([styles[variant], muted && { color: C.textMuted }, style]);
+  return <Text style={[flat, { fontFamily: fontFamilyFor((flat as TextStyle | undefined)?.fontWeight), fontWeight: undefined }]} {...rest} />;
 }
 
 // --- Contenedor de pantalla ---

@@ -148,7 +148,7 @@ export default function DiscoverScreen() {
                   title={r.title ?? r.name ?? ''}
                   posterPath={r.poster_path}
                   subtitle={[year, r.vote_average ? `TMDB ${r.vote_average.toFixed(1)}` : null].filter(Boolean).join(' · ')}
-                  badge={saved ? STATUS_LABEL[saved.status] : null}
+                  badge={saved ? saved.status : null}
                 />
               );
             })}

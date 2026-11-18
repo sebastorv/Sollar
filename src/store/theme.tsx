@@ -66,3 +66,14 @@ export function useStyles<T>(factory: (c: Colors) => T): T {
   const c = useColors();
   return useMemo(() => factory(c), [c, factory]);
 }
+
+/**
+ * Fuerza el modo oscuro en una parte de la pantalla: para el texto que va sobre una imagen de
+ * fondo, que siempre necesita letras claras para leerse bien.
+ */
+export function DarkScope({ children }: { children: ReactNode }) {
+  const parent = useThemeSettings();
+  const colors = useMemo(() => makeColors('dark', parent.accent), [parent.accent]);
+  const value = useMemo(() => ({ ...parent, colors }), [parent, colors]);
+  return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
+}

@@ -1,10 +1,12 @@
 import { DarkTheme, DefaultTheme, router, Stack, ThemeProvider as NavThemeProvider } from 'expo-router';
+import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useMemo, type ReactNode } from 'react';
 import { Platform, View } from 'react-native';
 
 import { Glass } from '@/components/glass';
+import { FONT_FILES } from '@/lib/fonts';
 import { LoginScreen } from '@/components/login';
 import { Icon } from '@/components/icons';
 import { AuthProvider, useAuth } from '@/store/auth';
@@ -20,10 +22,12 @@ SplashScreen.preventAutoHideAsync();
 function HideSplashWhenReady({ children }: { children: ReactNode }) {
   const { ready } = useLibrary();
   const auth = useAuth();
+  const [fontsLoaded, fontError] = useFonts(FONT_FILES);
+  const fonts = fontsLoaded || !!fontError;
   useEffect(() => {
-    if (ready && auth.ready) SplashScreen.hideAsync();
-  }, [ready, auth.ready]);
-  if (!auth.ready) return null;
+    if (ready && auth.ready && fonts) SplashScreen.hideAsync();
+  }, [ready, auth.ready, fonts]);
+  if (!auth.ready || !fonts) return null;
   // Con servidor configurado, se entra con la cuenta para sincronizar.
   if (auth.cloud && !auth.session) return <LoginScreen />;
   return children;
@@ -100,6 +104,10 @@ function Navigation() {
         />
         <Stack.Screen
           name="importar"
+          options={{ title: '', headerTransparent: true, headerTintColor: C.text, headerLeft: () => <BackButton /> }}
+        />
+        <Stack.Screen
+          name="episodio/[id]/[temporada]/[episodio]"
           options={{ title: '', headerTransparent: true, headerTintColor: C.text, headerLeft: () => <BackButton /> }}
         />
         <Stack.Screen

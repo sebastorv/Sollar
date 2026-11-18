@@ -104,7 +104,7 @@ export default function SearchScreen() {
                   title={displayTitle(r)}
                   posterPath={r.poster_path}
                   subtitle={year ? `${kind} · ${year}` : kind}
-                  badge={saved ? STATUS_LABEL[saved.status] : null}
+                  badge={saved ? saved.status : null}
                   highlight={availableLabel({ availability: availability[itemKey(type, r.id)] }, myProviders)}
                 />
               );

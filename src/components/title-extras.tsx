@@ -109,12 +109,12 @@ export function QuickActions({ entry, extras, title }: { entry: ListEntry; extra
 }
 
 /** Reparto en el mismo formato que las carátulas (2:3), con el nombre y el personaje debajo. */
-export function CastShelf({ cast }: { cast: CastMember[] }) {
+export function CastShelf({ cast, title = 'Reparto' }: { cast: CastMember[]; title?: string }) {
   const C = useColors();
   if (!cast.length) return null;
   const W = 112;
   return (
-    <Section title="Reparto">
+    <Section title={title}>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: Space.md }}>
         {cast.map((p) => {
           const uri = sharpImage(p.profilePath, 'poster', W);

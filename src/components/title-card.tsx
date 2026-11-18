@@ -4,9 +4,9 @@ import { StyleSheet, View } from 'react-native';
 
 import { Radius, Space, type Colors } from '@/constants/theme';
 import { useColors, useStyles } from '@/store/theme';
-import type { MediaType } from '@/lib/types';
+import { STATUS_LABEL, type MediaType, type WatchStatus } from '@/lib/types';
 
-import { Icon } from './icons';
+import { Icon, type IconName } from './icons';
 import { Poster, T } from './ui';
 import { Touchable } from './touch';
 
@@ -32,7 +32,8 @@ export function TitleCard({
   title: string;
   posterPath: string | null;
   subtitle?: string | null;
-  badge?: string | null;
+  /** Estado en tu lista: se muestra como un ícono pequeño sobre la carátula. */
+  badge?: WatchStatus | null;
   /** Texto destacado bajo el título, por ejemplo "En Netflix". */
   highlight?: string | null;
   width?: number;
@@ -47,13 +48,7 @@ export function TitleCard({
       <Touchable style={{ width, gap: Space.xs }} accessibilityLabel={title}>
         <View>
           <Poster path={posterPath} title={title} width={width} />
-          {badge ? (
-            <View style={styles.badge}>
-              <T variant="caption" style={{ color: C.accentInk, fontWeight: '700' }}>
-                {badge}
-              </T>
-            </View>
-          ) : null}
+          {badge ? <StatusBadge status={badge} /> : null}
         </View>
         <View style={styles.textRow}>
           <View style={styles.text}>
@@ -103,6 +98,39 @@ export function Grid({ children, minWidth = 108 }: { children: ReactNode; minWid
             isValidElement(child) ? cloneElement(child as ReactElement<{ width?: number }>, { width: cardWidth }) : child,
           )
         : null}
+    </View>
+  );
+}
+
+const STATUS_ICON: Record<WatchStatus, IconName> = {
+  watching: 'playSolid',
+  completed: 'check',
+  planned: 'bookmark',
+  paused: 'pause',
+  dropped: 'close',
+};
+
+/** Burbuja de vidrio con el ícono del estado: dice "viendo", "vista"… sin tapar la carátula. */
+export function StatusBadge({ status, size = 26 }: { status: WatchStatus; size?: number }) {
+  const C = useColors();
+  const done = status === 'completed';
+  return (
+    <View
+      accessibilityLabel={STATUS_LABEL[status]}
+      style={{
+        position: 'absolute',
+        top: 6,
+        right: 6,
+        width: size,
+        height: size,
+        borderRadius: size / 2,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: done ? C.accent : 'rgba(14,13,18,0.62)',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.28)',
+      }}>
+      <Icon name={STATUS_ICON[status]} size={size * 0.55} color="#fff" filled={status === 'planned'} strokeWidth={2.6} />
     </View>
   );
 }
