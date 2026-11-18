@@ -9,7 +9,6 @@
  */
 
 import { Image } from 'expo-image';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Link, router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { FlatList, StyleSheet, useWindowDimensions, View } from 'react-native';
@@ -227,7 +226,7 @@ function UpNextCard({ item, upcoming }: { item: LibraryItem; upcoming?: Calendar
           {still ? (
             <Image source={{ uri: still }} style={StyleSheet.absoluteFill} contentFit="cover" transition={250} />
           ) : (
-            <LinearGradient colors={[C.g1, C.g2]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: C.fill }]} />
           )}
           {/* Píldora de vidrio con la duración y el avance de la serie. */}
           <View style={styles.pill}>
@@ -293,9 +292,8 @@ function StreakCard({ items }: { items: LibraryItem[] }) {
   return (
     <View style={styles.streak}>
       <View style={styles.flame}>
-        <LinearGradient colors={[C.g1, C.g2]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
         <View>
-          <Icon name="flame" size={26} color="#fff" filled strokeWidth={1.6} />
+          <Icon name="flame" size={26} color={streak > 0 ? C.accent : C.textFaint} filled strokeWidth={1.6} />
         </View>
       </View>
       <View style={{ flex: 1 }}>
@@ -314,7 +312,7 @@ function StreakCard({ items }: { items: LibraryItem[] }) {
               width: 7,
               height: k === 6 ? 26 : 20,
               borderRadius: 4,
-              backgroundColor: on ? C.accent : C.fill,
+              backgroundColor: on ? C.ink : C.fill,
               borderWidth: k === 6 ? 1.5 : 0,
               borderColor: C.accentLine,
             }}
@@ -455,6 +453,7 @@ const makeStyles = (C: Colors) =>
       overflow: 'hidden',
       alignItems: 'center',
       justifyContent: 'center',
+      backgroundColor: C.fill,
     },
     week: {
       ...card(C),

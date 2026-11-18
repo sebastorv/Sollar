@@ -294,8 +294,8 @@ function ToggleRow({
           </T>
         ) : null}
       </View>
-      <View style={[styles.box, on && { backgroundColor: C.g2, borderColor: C.g2 }]}>
-        {on ? <Icon name="check" size={14} color={C.onAccent} strokeWidth={3} /> : null}
+      <View style={[styles.box, on && { backgroundColor: C.ink, borderColor: C.ink }]}>
+        {on ? <Icon name="check" size={14} color={C.onInk} strokeWidth={3} /> : null}
       </View>
     </Touchable>
   );

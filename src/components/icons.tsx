@@ -30,7 +30,8 @@ export type IconName =
   | 'clock'
   | 'chevronDown'
   | 'chevronUp'
-  | 'sparkle';
+  | 'sparkle'
+  | 'more';
 
 export function Icon({
   name,
@@ -179,6 +180,7 @@ export function Icon({
           fillOpacity={fillOpacity}
         />
       ) : null}
+      {name === 'more' ? <Path d="M5.5 12h.01M12 12h.01M18.5 12h.01" {...s} strokeWidth={3.2} /> : null}
     </Svg>
   );
 }

@@ -301,6 +301,8 @@ type LibraryApi = {
   setEpisodes: (key: string, episodes: { season: number; episode: number }[], watched: boolean) => void;
   refreshSeasons: (key: string, seasons: SeasonSummary[]) => void;
   setAvailability: (key: string, availability: Availability) => void;
+  /** Cambia la carátula guardada por la original (sin letreros de plataforma). */
+  setPoster: (key: string, posterPath: string) => void;
   exportBackup: () => BackupFile;
   importBackup: (backup: BackupFile, mode: 'merge' | 'replace') => void;
 };
@@ -436,6 +438,7 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       setEpisodes: (key, episodes, watched) => dispatch({ type: 'setEpisodes', key, episodes, watched }),
       refreshSeasons: (key, seasons) => dispatch({ type: 'refreshSeasons', key, seasons }),
       setAvailability: (key, availability) => dispatch({ type: 'availability', key, availability }),
+      setPoster: (key, posterPath) => dispatch({ type: 'patch', key, patch: { posterPath } }),
       exportBackup: () => ({
         app: 'sollar',
         version: 1,

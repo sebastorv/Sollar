@@ -62,6 +62,17 @@ export default function ListScreen() {
     return it && (it.status === 'completed' || (it.mediaType === 'movie' && it.watchedAt));
   }).length;
 
+  function pickRandom() {
+    // Prefiere lo que aún no has visto.
+    const pending = list!.entries.filter((e) => {
+      const it = lib.get(e.key);
+      return !(it && (it.status === 'completed' || (it.mediaType === 'movie' && it.watchedAt)));
+    });
+    const pool = pending.length ? pending : list!.entries;
+    const pick = pool[Math.floor(Math.random() * pool.length)];
+    router.push({ pathname: '/titulo/[tipo]/[id]', params: { tipo: pick.mediaType, id: String(pick.tmdbId) } });
+  }
+
   return (
     <Screen>
       <View style={{ paddingTop: 52, gap: Space.xs }}>
@@ -72,6 +83,11 @@ export default function ListScreen() {
         </T>
       </View>
 
+      {isFav && list.entries.length > 1 ? (
+        <View style={{ flexDirection: 'row' }}>
+          <Button label="Elegir al azar" icon="sparkle" kind="secondary" onPress={pickRandom} />
+        </View>
+      ) : null}
       {!isFav ? (
         <View style={{ flexDirection: 'row', gap: Space.sm, flexWrap: 'wrap' }}>
           <Button
@@ -83,6 +99,9 @@ export default function ListScreen() {
             }}
           />
           <Button label="Renombrar" kind="secondary" onPress={() => setRenaming(true)} />
+          {list.entries.length > 1 ? (
+            <Button label="Elegir al azar" icon="sparkle" kind="secondary" onPress={pickRandom} />
+          ) : null}
           <Button label="Borrar lista" kind="danger" onPress={() => setConfirmDelete(true)} />
         </View>
       ) : null}

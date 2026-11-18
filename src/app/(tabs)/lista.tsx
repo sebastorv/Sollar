@@ -184,9 +184,23 @@ export default function ListScreen() {
         />
       ) : (
         <>
-          <T variant="small" muted>
-            {filtered.length === 1 ? '1 título' : `${filtered.length} títulos`}
-          </T>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <T variant="small" muted>
+              {filtered.length === 1 ? '1 título' : `${filtered.length} títulos`}
+            </T>
+            {filtered.length > 1 ? (
+              // Como en WeTrakr y Bingebase: que la suerte elija qué ver.
+              <Button
+                label="Elegir al azar"
+                icon="sparkle"
+                kind="secondary"
+                onPress={() => {
+                  const pick = filtered[Math.floor(Math.random() * filtered.length)];
+                  router.push({ pathname: '/titulo/[tipo]/[id]', params: { tipo: pick.mediaType, id: String(pick.tmdbId) } });
+                }}
+              />
+            ) : null}
+          </View>
           <Grid>
             {filtered.slice(0, limit).map((i) => (
               <TitleCard

@@ -2,11 +2,11 @@
 
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import type { ReactNode } from 'react';
+import { createContext, useContext, type ReactNode } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View, useWindowDimensions, type PressableProps, type StyleProp, type TextProps, type ViewStyle } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { MaxContentWidth, Radius, Space, TabBarSpace, type Colors } from '@/constants/theme';
+import { MaxContentWidth, RAIL_WIDTH, Radius, Space, TabBarSpace, WIDE, type Colors } from '@/constants/theme';
 import { useColors, useStyles } from '@/store/theme';
 import { sharpImage } from '@/lib/tmdb';
 
@@ -31,6 +31,9 @@ export function T({
 
 // --- Contenedor de pantalla ---
 
+/** Verdadero dentro de las pestañas principales: ahí la barra lateral ocupa el borde izquierdo. */
+export const RailContext = createContext(false);
+
 export function Screen({
   children,
   scroll = true,
@@ -41,10 +44,19 @@ export function Screen({
   padded?: boolean;
 }) {
   // En pantallas anchas la barra de navegación flota arriba; en el celular, abajo.
-  const wide = useWindowDimensions().width >= 720;
+  const wide = useWindowDimensions().width >= WIDE;
+  const rail = useContext(RailContext);
   const styles = useStyles(makeStyles);
   const inner = (
-    <View style={[styles.inner, padded && styles.padded, padded && wide && { paddingTop: 96 }]}>{children}</View>
+    <View
+      style={[
+        styles.inner,
+        padded && styles.padded,
+        // En pantallas anchas se deja lugar a la barra lateral y se da más aire a los lados.
+        padded && wide && { paddingTop: Space.xxl, paddingLeft: rail ? RAIL_WIDTH + Space.lg * 2 + Space.md : Space.xxl, paddingRight: Space.xxl },
+      ]}>
+      {children}
+    </View>
   );
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'left', 'right']}>
@@ -168,15 +180,7 @@ export function Chip({
         selected && styles.chipSelected,
         pressed && { opacity: 0.75 },
       ]}>
-      {selected ? (
-        <LinearGradient
-          colors={[C.g1, C.g2]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={[StyleSheet.absoluteFill, { borderRadius: Radius.pill }]}
-        />
-      ) : null}
-      <T variant="label" style={{ color: selected ? C.onAccent : C.text }}>
+      <T variant="label" style={{ color: selected ? C.onInk : C.text }}>
         {label}
       </T>
     </Touchable>
@@ -184,7 +188,7 @@ export function Chip({
 }
 
 // --- Botón ---
-// Principal: el degradado de la marca. Secundario: relleno suave. Peligro: texto rojo.
+// Principal: tinta sólida (sobria). Secundario: relleno suave. Peligro: texto rojo.
 
 export function Button({
   label,
@@ -200,27 +204,19 @@ export function Button({
 }) {
   const C = useColors();
   const styles = useStyles(makeStyles);
-  const fg = kind === 'primary' ? C.onAccent : kind === 'danger' ? C.danger : C.text;
+  const fg = kind === 'primary' ? C.onInk : kind === 'danger' ? C.danger : C.text;
   return (
     <Touchable
       haptic={kind === 'primary' ? 'medium' : 'light'}
       accessibilityRole="button"
       style={({ pressed }) => [
         styles.button,
-        kind !== 'primary' && styles.buttonOutline,
+        kind === 'primary' ? { backgroundColor: C.ink } : styles.buttonOutline,
         pressed && { opacity: 0.9 },
         rest.disabled && { opacity: 0.45 },
         style,
       ]}
       {...rest}>
-      {kind === 'primary' ? (
-        <LinearGradient
-          colors={[C.g1, C.g2]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={[StyleSheet.absoluteFill, { borderRadius: Radius.pill }]}
-        />
-      ) : null}
       {icon ? (
         <View>
           <Icon name={icon} size={18} color={fg} strokeWidth={2.2} />
@@ -241,12 +237,7 @@ export function ProgressBar({ value }: { value: number }) {
   const pct = Math.round(Math.max(0, Math.min(1, value)) * 100);
   return (
     <View style={styles.track} accessibilityRole="progressbar" accessibilityValue={{ now: pct, min: 0, max: 100 }}>
-      <LinearGradient
-        colors={[C.g1, C.g2]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
-        style={[styles.fill, { width: `${pct}%` }]}
-      />
+      <View style={[styles.fill, { width: `${pct}%`, backgroundColor: C.accent }]} />
     </View>
   );
 }
@@ -338,7 +329,7 @@ const makeStyles = (C: Colors) =>
       backgroundColor: C.fill,
       overflow: 'hidden',
     },
-    chipSelected: { backgroundColor: C.g2 },
+    chipSelected: { backgroundColor: C.ink },
     button: {
       flexDirection: 'row',
       gap: Space.sm,

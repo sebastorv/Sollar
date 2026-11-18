@@ -140,21 +140,14 @@ function WeekStrip({
             accessibilityState={{ selected: on }}
             accessibilityLabel={`${longDate(d)}${has ? ', con episodios' : ''}`}
             style={({ pressed }) => [styles.day, pressed && { opacity: 0.75 }]}>
-            {on ? (
-              <LinearGradient
-                colors={[C.g1, C.g2]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={[StyleSheet.absoluteFill, { borderRadius: Radius.md }]}
-              />
-            ) : null}
-            <T variant="caption" style={{ color: on ? C.onAccent : C.textMuted, fontWeight: '600' }}>
+            {on ? <View style={[StyleSheet.absoluteFill, { borderRadius: Radius.md, backgroundColor: C.ink }]} /> : null}
+            <T variant="caption" style={{ color: on ? C.onInk : C.textMuted, fontWeight: '600' }}>
               {d === today ? 'hoy' : shortDay(d)}
             </T>
-            <T style={{ fontSize: 18, lineHeight: 22, fontWeight: '800', color: on ? C.onAccent : C.text }}>
+            <T style={{ fontSize: 18, lineHeight: 22, fontWeight: '800', color: on ? C.onInk : C.text }}>
               {fromISO(d).getDate()}
             </T>
-            <View style={[styles.dot, { backgroundColor: has ? (on ? C.onAccent : C.accent) : 'transparent' }]} />
+            <View style={[styles.dot, { backgroundColor: has ? (on ? C.onInk : C.accent) : 'transparent' }]} />
           </Touchable>
         );
       })}

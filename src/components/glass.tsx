@@ -22,12 +22,6 @@ export function Backdrop() {
   const C = useColors();
   return (
     <View style={[StyleSheet.absoluteFill, { backgroundColor: C.bg }]} pointerEvents="none">
-      <LinearGradient
-        colors={[C.glow, 'transparent']}
-        start={{ x: 0.8, y: 0 }}
-        end={{ x: 0.3, y: 0.45 }}
-        style={StyleSheet.absoluteFill}
-      />
     </View>
   );
 }
@@ -83,14 +77,6 @@ export function Glass({
         colors={light ? ['rgba(255,255,255,0.75)', 'rgba(255,255,255,0)'] : ['rgba(255,255,255,0.10)', 'rgba(255,255,255,0)']}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 0.6 }}
-        style={StyleSheet.absoluteFill}
-      />
-      {/* Un toque del color de la marca refractado en el borde de abajo. */}
-      <LinearGradient
-        pointerEvents="none"
-        colors={['transparent', C.glow]}
-        start={{ x: 0.5, y: 0.55 }}
-        end={{ x: 0.5, y: 1 }}
         style={StyleSheet.absoluteFill}
       />
       {children}

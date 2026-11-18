@@ -3,7 +3,6 @@
  * vistas, mejores notas. "Siempre" muestra todo; cada año funciona como su propio resumen.
  */
 
-import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
@@ -100,7 +99,6 @@ export default function StatsScreen() {
         <>
           {/* Portada del periodo: el número grande que se comparte. */}
           <View style={styles.hero}>
-            <LinearGradient colors={[C.g1, C.g2]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
             <T style={styles.heroLabel}>{period === 'all' ? 'En total' : `Tu ${period} en Sollar`}</T>
             <T style={styles.heroBig}>{hours(t.minutes)}</T>
             <T style={styles.heroSub}>{longDuration(t.minutes)} frente a la pantalla</T>
@@ -206,7 +204,7 @@ export default function StatsScreen() {
                             width: '70%',
                             height: Math.max(4, (v / max) * 70),
                             borderRadius: 4,
-                            backgroundColor: i >= 8 ? C.g2 : C.accentLine,
+                            backgroundColor: i >= 8 ? C.accent : C.accentLine,
                           }}
                         />
                       </View>
@@ -266,7 +264,7 @@ export default function StatsScreen() {
                 width: '72%',
                 height: Math.max(4, (v / max) * 110),
                 borderRadius: 5,
-                backgroundColor: i === top ? C.g2 : C.accentLine,
+                backgroundColor: i === top ? C.ink : C.accentLine,
               }}
             />
             <T variant="caption" muted style={{ fontSize: 10 }}>
@@ -290,12 +288,7 @@ export default function StatsScreen() {
           </T>
         </View>
         <View style={{ height: 8, borderRadius: 4, backgroundColor: C.fill, overflow: 'hidden' }}>
-          <LinearGradient
-            colors={[C.g1, C.g2]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={{ width: `${Math.round((value / max) * 100)}%`, height: '100%' }}
-          />
+          <View style={{ width: `${Math.round((value / max) * 100)}%`, height: '100%', backgroundColor: C.ink }} />
         </View>
       </View>
     );
@@ -308,13 +301,14 @@ function dayName(i: number) {
 
 const makeStyles = (C: Colors) =>
   StyleSheet.create({
-    hero: { borderRadius: Radius.lg, overflow: 'hidden', padding: Space.xl, gap: Space.xs },
-    heroLabel: { color: 'rgba(255,255,255,0.9)', fontWeight: '700', fontSize: 14 },
-    heroBig: { color: '#fff', fontSize: 56, lineHeight: 62, fontWeight: '900', letterSpacing: -2 },
-    heroSub: { color: 'rgba(255,255,255,0.92)', fontSize: 14, lineHeight: 20 },
+    // Portada sobria: tinta sólida, el número grande manda.
+    hero: { borderRadius: Radius.lg, overflow: 'hidden', padding: Space.xl, gap: Space.xs, backgroundColor: C.ink },
+    heroLabel: { color: C.onInk, opacity: 0.7, fontWeight: '700', fontSize: 13, letterSpacing: 1, textTransform: 'uppercase' },
+    heroBig: { color: C.onInk, fontSize: 60, lineHeight: 66, fontWeight: '900', letterSpacing: -2.4 },
+    heroSub: { color: C.onInk, opacity: 0.75, fontSize: 14, lineHeight: 20 },
     heroRow: { flexDirection: 'row', marginVertical: Space.md },
-    heroNum: { color: '#fff', fontSize: 22, lineHeight: 26, fontWeight: '800' },
-    heroSmall: { color: 'rgba(255,255,255,0.85)', fontSize: 12 },
+    heroNum: { color: C.onInk, fontSize: 22, lineHeight: 26, fontWeight: '800' },
+    heroSmall: { color: C.onInk, opacity: 0.65, fontSize: 12 },
     box: { ...card(C), borderRadius: Radius.lg, padding: Space.lg, gap: Space.sm },
     rank: {
       position: 'absolute',

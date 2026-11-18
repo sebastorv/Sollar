@@ -85,8 +85,38 @@ async function get<T>(path: string, params: Record<string, string> = {}, useCach
     throw new TmdbError(`TMDB respondió ${res.status}`, res.status);
   }
   const data = (await res.json()) as T;
+  if (!params.language) await cleanListPosters(path, params, data);
   if (useCache) cache.set(url, { at: Date.now(), data });
   return data;
+}
+
+/**
+ * Carátulas limpias: las versiones latinoamericanas suelen venir con letreros de la plataforma
+ * ("Serie de Netflix", "Solo en cines"). Para listas (búsqueda, tendencias, descubrir) se pide la
+ * misma página en inglés, que trae la carátula original de cada título, y se cambia solo la imagen.
+ */
+async function cleanListPosters(path: string, params: Record<string, string>, data: unknown) {
+  const results = (data as { results?: { id: number; poster_path?: string | null }[] }).results;
+  if (!Array.isArray(results) || !results.some((r) => r && 'poster_path' in r)) return;
+  try {
+    const en = await get<{ results: { id: number; poster_path?: string | null }[] }>(path, { ...params, language: 'en-US' });
+    const byId = new Map(en.results.map((r) => [r.id, r.poster_path]));
+    for (const r of results) {
+      const clean = byId.get(r.id);
+      if (clean) r.poster_path = clean;
+    }
+  } catch {
+    // Si falla, se quedan las carátulas en español.
+  }
+}
+
+type RawImage = { file_path: string; iso_639_1: string | null; vote_average: number; vote_count: number };
+
+/** La carátula original del título: en inglés o sin texto, la mejor votada. */
+function bestPoster(posters: RawImage[] | undefined): string | null {
+  if (!posters?.length) return null;
+  const score = (p: RawImage) => (p.iso_639_1 === 'en' ? 1 : 0) + p.vote_average / 10 + Math.min(p.vote_count, 20) / 100;
+  return [...posters].sort((a, b) => score(b) - score(a))[0]?.file_path ?? null;
 }
 
 export type ImageSize = 'w92' | 'w154' | 'w185' | 'w300' | 'w342' | 'w500' | 'w780' | 'w1280' | 'original';
@@ -280,6 +310,12 @@ export type TitleExtras = {
   originalLanguage: string | null;
   homepage: string | null;
   voteCount: number;
+  /** Carátula original (sin letreros de la plataforma). */
+  poster: string | null;
+  /** Fondo sin texto. */
+  backdrop: string | null;
+  /** Logo con el nombre del título, para la portada. */
+  logo: string | null;
 };
 
 type RawVideo = { key: string; site: string; type: string; official?: boolean; iso_639_1?: string };
@@ -303,6 +339,7 @@ type RawExtras = {
   imdb_id?: string | null;
   release_dates?: { results: { iso_3166_1: string; release_dates: { certification: string }[] }[] };
   content_ratings?: { results: { iso_3166_1: string; rating: string }[] };
+  images?: { posters?: RawImage[]; backdrops?: RawImage[]; logos?: RawImage[] };
 };
 
 const EMPTY_EXTRAS: TitleExtras = {
@@ -317,19 +354,25 @@ const EMPTY_EXTRAS: TitleExtras = {
   originalLanguage: null,
   homepage: null,
   voteCount: 0,
+  poster: null,
+  backdrop: null,
+  logo: null,
 };
 
 export async function getExtras(type: MediaType, id: number): Promise<TitleExtras> {
   if (isDemo) return EMPTY_EXTRAS;
   const append =
     type === 'tv'
-      ? 'aggregate_credits,videos,recommendations,external_ids,content_ratings'
-      : 'credits,videos,recommendations,external_ids,release_dates';
+      ? 'aggregate_credits,videos,recommendations,external_ids,content_ratings,images'
+      : 'credits,videos,recommendations,external_ids,release_dates,images';
   const raw = await get<RawExtras>(`/${type}/${id}`, {
     append_to_response: append,
     // Tráileres en español primero; si no hay, en inglés o sin idioma.
     include_video_language: 'es,en,null',
+    include_image_language: 'en,null',
   });
+  // Las recomendaciones vienen anidadas: se limpian sus carátulas aparte.
+  if (raw.recommendations) await cleanListPosters(`/${type}/${id}/recommendations`, {}, raw.recommendations);
   const credits = raw.aggregate_credits ?? raw.credits;
   const cast = (credits?.cast ?? []).slice(0, 20).map((c) => ({
     id: c.id,
@@ -364,6 +407,9 @@ export async function getExtras(type: MediaType, id: number): Promise<TitleExtra
     originalLanguage: raw.original_language ?? null,
     homepage: raw.homepage || null,
     voteCount: raw.vote_count ?? 0,
+    poster: bestPoster(raw.images?.posters),
+    backdrop: raw.images?.backdrops?.find((b) => b.iso_639_1 === null)?.file_path ?? null,
+    logo: raw.images?.logos?.find((l) => l.iso_639_1 === 'es')?.file_path ?? raw.images?.logos?.find((l) => l.iso_639_1 === 'en')?.file_path ?? null,
   };
 }
 

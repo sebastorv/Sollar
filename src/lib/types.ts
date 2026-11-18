@@ -154,6 +154,7 @@ export type TmdbTv = {
   seasons: TmdbSeasonStub[];
   next_episode_to_air: TmdbEpisodeStub | null;
   last_episode_to_air?: TmdbEpisodeStub | null;
+  last_air_date?: string | null;
 };
 
 /** Episodio resumido que TMDB incluye en la ficha de la serie. */
@@ -181,6 +182,7 @@ export type TmdbEpisode = {
 export type TmdbSeason = {
   id: number;
   season_number: number;
+  air_date?: string | null;
   name: string;
   episodes: TmdbEpisode[];
 };

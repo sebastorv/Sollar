@@ -96,13 +96,11 @@ export function QuickActions({ entry, extras, title }: { entry: ListEntry; extra
             borderRadius: 24,
             alignItems: 'center',
             justifyContent: 'center',
-            backgroundColor: on ? C.accentSoft : C.fill,
-            borderWidth: on ? 1.5 : 0,
-            borderColor: C.accentLine,
+            backgroundColor: on ? C.ink : C.fill,
           }}>
-          <Icon name={icon} size={22} color={on ? C.accentInk : C.text} filled={on} strokeWidth={2} />
+          <Icon name={icon} size={22} color={on ? C.onInk : C.text} filled={on} strokeWidth={2} />
         </View>
-        <T variant="caption" numberOfLines={1} style={{ color: on ? C.accentInk : C.textMuted, fontWeight: '600' }}>
+        <T variant="caption" numberOfLines={1} style={{ color: on ? C.text : C.textMuted, fontWeight: '600' }}>
           {label}
         </T>
       </Touchable>
@@ -110,33 +108,36 @@ export function QuickActions({ entry, extras, title }: { entry: ListEntry; extra
   }
 }
 
-/** Reparto: fotos redondas con el nombre y el personaje; abre la página de cada persona. */
+/** Reparto en el mismo formato que las carátulas (2:3), con el nombre y el personaje debajo. */
 export function CastShelf({ cast }: { cast: CastMember[] }) {
   const C = useColors();
   if (!cast.length) return null;
+  const W = 112;
   return (
     <Section title="Reparto">
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: Space.md }}>
         {cast.map((p) => {
-          const uri = sharpImage(p.profilePath, 'poster', 76);
+          const uri = sharpImage(p.profilePath, 'poster', W);
           return (
             <Link key={p.id} href={{ pathname: '/persona/[id]', params: { id: String(p.id) } }} asChild>
-              <Touchable style={{ width: 84, alignItems: 'center', gap: 4 }} accessibilityLabel={`${p.name}, ${p.character}`}>
-                <View style={{ width: 76, height: 76, borderRadius: 38, overflow: 'hidden', backgroundColor: C.fill }}>
+              <Touchable style={{ width: W, gap: 6 }} accessibilityLabel={`${p.name}, ${p.character}`}>
+                <View style={{ width: W, height: Math.round(W * 1.5), borderRadius: Radius.md, overflow: 'hidden', backgroundColor: C.fill }}>
                   {uri ? (
                     <Image source={{ uri }} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} />
                   ) : (
                     <View style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center' }]}>
-                      <T style={{ fontSize: 24, fontWeight: '800', color: C.textFaint }}>{p.name.charAt(0)}</T>
+                      <T style={{ fontSize: 32, fontWeight: '800', color: C.textFaint }}>{p.name.charAt(0)}</T>
                     </View>
                   )}
                 </View>
-                <T variant="caption" numberOfLines={1} style={{ fontWeight: '700', textAlign: 'center' }}>
-                  {p.name}
-                </T>
-                <T variant="caption" muted numberOfLines={1} style={{ textAlign: 'center', minHeight: 16 }}>
-                  {p.character || ' '}
-                </T>
+                <View>
+                  <T numberOfLines={1} style={{ fontSize: 14, fontWeight: '700' }}>
+                    {p.name}
+                  </T>
+                  <T variant="caption" muted numberOfLines={1} style={{ minHeight: 16 }}>
+                    {p.character || ' '}
+                  </T>
+                </View>
               </Touchable>
             </Link>
           );
@@ -162,10 +163,10 @@ export function SeasonQuality({ seasons }: { seasons: TmdbSeasonStub[] }) {
           const top = v === best;
           return (
             <View key={s.season_number} style={styles.barCol}>
-              <T variant="caption" style={{ fontWeight: '700', color: top ? C.accentInk : C.textMuted }}>
+              <T variant="caption" style={{ fontWeight: '700', color: top ? C.text : C.textMuted }}>
                 {v.toFixed(1)}
               </T>
-              <View style={[styles.bar, { height: h, backgroundColor: top ? C.g2 : C.accentLine }]} />
+              <View style={[styles.bar, { height: h, backgroundColor: top ? C.ink : C.accentLine }]} />
               <T variant="caption" muted>
                 T{s.season_number}
               </T>
@@ -235,13 +236,13 @@ export function DetailsBlock({
       </View>
       <View style={{ flexDirection: 'row', gap: Space.lg }}>
         <Touchable onPress={() => Linking.openURL(`https://www.themoviedb.org/${type}/${id}`)} accessibilityRole="link">
-          <T variant="label" style={{ color: C.accentInk }}>
+          <T variant="label" style={{ textDecorationLine: 'underline' }}>
             Ver en TMDB
           </T>
         </Touchable>
         {extras.imdbId ? (
           <Touchable onPress={() => Linking.openURL(`https://www.imdb.com/title/${extras.imdbId}/`)} accessibilityRole="link">
-            <T variant="label" style={{ color: C.accentInk }}>
+            <T variant="label" style={{ textDecorationLine: 'underline' }}>
               Ver en IMDb
             </T>
           </Touchable>

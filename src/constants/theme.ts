@@ -38,7 +38,7 @@ export const ACCENT_ORDER: AccentName[] = ['brasa', 'atardecer', 'cereza'];
 
 const BASE = {
   light: {
-    bg: '#F7F6F9',
+    bg: '#F6F6F7',
     surface: '#FFFFFF',
     surfaceHigh: '#FFFFFF',
     surfaceSolid: '#FFFFFF',
@@ -60,8 +60,8 @@ const BASE = {
     emptyB: '#F3F1F5',
   },
   dark: {
-    bg: '#0E0D12',
-    surface: '#17161D',
+    bg: '#0B0B0D',
+    surface: '#151518',
     surfaceHigh: '#1F1D26',
     surfaceSolid: '#17161D',
     fill: '#24222C',
@@ -116,6 +116,9 @@ export type Colors = {
   glow: string;
   /** Texto sobre el degradado. */
   onAccent: string;
+  /** Tinta: botones y selección principales, sobrios (negro en claro, blanco en oscuro). */
+  ink: string;
+  onInk: string;
 };
 
 function alpha(hex: string, a: number) {
@@ -133,10 +136,13 @@ export function makeColors(mode: ModeName, accentName: AccentName): Colors {
     g2: a.g2,
     accent: a.solid,
     accentInk: mode === 'light' ? a.inkLight : a.inkDark,
-    accentSoft: alpha(a.solid, mode === 'light' ? 0.1 : 0.16),
-    accentLine: alpha(a.solid, 0.55),
+    // Sobrio: los fondos y bordes "destacados" son grises; el color queda para detalles pequeños.
+    accentSoft: mode === 'light' ? 'rgba(20, 18, 23, 0.05)' : 'rgba(255, 255, 255, 0.07)',
+    accentLine: mode === 'light' ? 'rgba(20, 18, 23, 0.22)' : 'rgba(255, 255, 255, 0.24)',
     glow: alpha(a.solid, mode === 'light' ? 0.07 : 0.09),
     onAccent: '#FFFFFF',
+    ink: mode === 'light' ? '#141217' : '#F4F2F6',
+    onInk: mode === 'light' ? '#FFFFFF' : '#0E0D12',
   };
 }
 
@@ -163,8 +169,13 @@ export const Radius = {
   pill: 999,
 } as const;
 
-/** Ancho máximo del contenido en pantallas grandes (web, tablet, escritorio). */
-export const MaxContentWidth = 960;
+/** Ancho máximo del contenido: amplio, para aprovechar monitores grandes sin estirar de más. */
+export const MaxContentWidth = 1480;
+
+/** Desde este ancho se usa la barra lateral en lugar de la píldora de abajo. */
+export const WIDE = 720;
+/** Ancho de la barra lateral. */
+export const RAIL_WIDTH = 84;
 
 /** Altura que ocupa la barra flotante de abajo, para que el contenido no quede tapado. */
 export const TabBarSpace = 120;
