@@ -9,6 +9,7 @@
  * Al cambiar de pestaña, una gota de vidrio se desliza y se estira hasta la nueva.
  */
 
+import { tr } from '@/i18n';
 import { usePathname } from 'expo-router';
 import { Tabs, TabList, TabSlot, TabTrigger, type TabListProps, type TabTriggerSlotProps } from 'expo-router/ui';
 import { Children, isValidElement, useEffect, useRef, type ReactElement, type ReactNode } from 'react';
@@ -197,7 +198,7 @@ function TabButton({
       haptic="select"
       pressScale={0.86}
       accessibilityRole="tab"
-      accessibilityLabel={label}
+      accessibilityLabel={tr(label)}
       accessibilityState={{ selected: isFocused }}
       style={[round ? styles.roundBtn : styles.slot, round && isFocused && { backgroundColor: C.accentSoft }]}>
       <View>

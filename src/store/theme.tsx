@@ -48,6 +48,16 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const colors = useMemo(() => makeColors(resolved, accent), [resolved, accent]);
   const value = useMemo(() => ({ mode, accent, setMode, setAccent, colors }), [mode, accent, colors]);
   useWebChrome(colors.bg);
+  // En la web, el ícono de la app sigue al color elegido.
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof document === 'undefined') return;
+    const touch = document.querySelector('link[rel="apple-touch-icon"]');
+    const href = touch?.getAttribute('href');
+    if (touch && href) touch.setAttribute('href', href.replace(/(icons\/)?(\w+-)?apple-touch-icon\.png$/, `icons/${accent}-apple-touch-icon.png`));
+    const man = document.querySelector('link[rel="manifest"]');
+    const mh = man?.getAttribute('href');
+    if (man && mh) man.setAttribute('href', mh.replace(/manifest(-\w+)?\.json$/, `manifest-${accent}.json`));
+  }, [accent]);
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 
@@ -67,6 +77,9 @@ function applyChrome() {
   meta.name = 'theme-color';
   meta.content = color;
   document.head.appendChild(meta);
+  // La barra de la hora del iPhone se lee al abrir la app: queda lista para la próxima vez.
+  const dark = parseInt(color.slice(1, 3), 16) < 0x50;
+  document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]')?.setAttribute('content', dark ? 'black' : 'default');
 }
 export function useWebChrome(color: string) {
   useEffect(() => {
@@ -97,14 +110,8 @@ export function useStyles<T>(factory: (c: Colors) => T): T {
   return useMemo(() => factory(c), [c, factory]);
 }
 
-/**
- * Fuerza el modo oscuro en una parte de la pantalla: para el texto que va sobre una imagen de
- * fondo, que siempre necesita letras claras para leerse bien.
- */
 export function DarkScope({ children }: { children: ReactNode }) {
-  const parent = useThemeSettings();
-  const colors = useMemo(() => makeColors('dark', parent.accent), [parent.accent]);
-  const value = useMemo(() => ({ ...parent, colors }), [parent, colors]);
-  useWebChrome(colors.bg);
-  return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
+  // Antes forzaba el modo oscuro en las fichas; ahora toda la app sigue el tema elegido, para
+  // que no se mezclen pantallas claras y oscuras.
+  return <>{children}</>;
 }

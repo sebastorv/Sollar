@@ -12,7 +12,7 @@ const BUILD = process.env.EXPO_PUBLIC_BUILD ?? '';
 async function check() {
   if (!BUILD || typeof window === 'undefined') return;
   try {
-    const base = document.querySelector('link[rel="manifest"]')?.getAttribute('href')?.replace(/manifest\.json$/, '') ?? '/';
+    const base = document.querySelector('link[rel="manifest"]')?.getAttribute('href')?.replace(/manifest[^/]*$/, '') ?? '/';
     const res = await fetch(`${base}version.json?t=${Date.now()}`, { cache: 'no-store' });
     if (!res.ok) return;
     const { version } = (await res.json()) as { version: string };

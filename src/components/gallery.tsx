@@ -3,6 +3,7 @@
  * carátulas. Al tocar una imagen se abre en grande, con botón para descargarla en máxima calidad.
  */
 
+import { HScroll } from './hscroll';
 import { Image } from 'expo-image';
 import { useState } from 'react';
 import { Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
@@ -43,7 +44,7 @@ export function Gallery({ extras }: { extras: TitleExtras }) {
     <View style={{ gap: Space.xxl }}>
       {extras.videos.length ? (
         <Section title="Videos">
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: Space.md }}>
+          <HScroll showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: Space.md }}>
             {extras.videos.map((v) => (
               <Touchable
                 key={v.key}
@@ -75,13 +76,13 @@ export function Gallery({ extras }: { extras: TitleExtras }) {
                 </T>
               </Touchable>
             ))}
-          </ScrollView>
+          </HScroll>
         </Section>
       ) : null}
 
       {extras.backdrops.length ? (
         <Section title={`Fondos de pantalla · ${extras.backdrops.length}`}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: Space.md }}>
+          <HScroll showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: Space.md }}>
             {extras.backdrops.map((b) => (
               <Touchable key={b.path} haptic="light" pressScale={0.97} onPress={() => setOpen(b)} accessibilityLabel="Ver en grande">
                 <Image
@@ -92,13 +93,13 @@ export function Gallery({ extras }: { extras: TitleExtras }) {
                 />
               </Touchable>
             ))}
-          </ScrollView>
+          </HScroll>
         </Section>
       ) : null}
 
       {extras.posters.length > 1 ? (
         <Section title={`Carátulas · ${extras.posters.length}`}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: Space.md }}>
+          <HScroll showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: Space.md }}>
             {extras.posters.map((p) => (
               <Touchable key={p} haptic="light" pressScale={0.97} onPress={() => setOpen({ path: p, aspect: 2 / 3 })}>
                 <Image
@@ -109,7 +110,7 @@ export function Gallery({ extras }: { extras: TitleExtras }) {
                 />
               </Touchable>
             ))}
-          </ScrollView>
+          </HScroll>
         </Section>
       ) : null}
 

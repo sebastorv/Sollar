@@ -3,6 +3,7 @@
  * vistas, mejores notas. "Siempre" muestra todo; cada año funciona como su propio resumen.
  */
 
+import { HScroll } from '@/components/hscroll';
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
@@ -86,12 +87,12 @@ export default function StatsScreen() {
       <View style={{ paddingTop: 52 }}>
         <T variant="title">Tus estadísticas</T>
       </View>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }} contentContainerStyle={{ gap: Space.sm }}>
+      <HScroll showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }} contentContainerStyle={{ gap: Space.sm }}>
         <Chip label="Siempre" selected={period === 'all'} onPress={() => setPeriod('all')} />
         {years.map((y) => (
           <Chip key={y} label={y} selected={period === y} onPress={() => setPeriod(y)} />
         ))}
-      </ScrollView>
+      </HScroll>
 
       {events.length === 0 ? (
         <Empty title="Sin datos todavía" message="Marca episodios y películas, o importa tu historial desde Perfil." />
@@ -139,7 +140,7 @@ export default function StatsScreen() {
 
           {topShows.length ? (
             <Section title="Series que más viste">
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: Space.md }}>
+              <HScroll showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: Space.md }}>
                 {topShows.map((s, i) => {
                   const it = get(s.name);
                   if (!it) return null;
@@ -163,13 +164,13 @@ export default function StatsScreen() {
                     </Touchable>
                   );
                 })}
-              </ScrollView>
+              </HScroll>
             </Section>
           ) : null}
 
           {ratedMovies.length ? (
             <Section title="Tus películas mejor calificadas">
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: Space.md }}>
+              <HScroll showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: Space.md }}>
                 {ratedMovies.map((m) => (
                   <Touchable
                     key={m.key}
@@ -184,7 +185,7 @@ export default function StatsScreen() {
                     </T>
                   </Touchable>
                 ))}
-              </ScrollView>
+              </HScroll>
             </Section>
           ) : null}
 

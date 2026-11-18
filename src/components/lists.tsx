@@ -3,6 +3,7 @@
  * agregar un título a varias listas a la vez.
  */
 
+import { tr } from '@/i18n';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useState } from 'react';
@@ -234,7 +235,7 @@ export function ListNameDialog({
           <TextInput
             value={name}
             onChangeText={setName}
-            placeholder="Nombre, por ejemplo: Para ver en vacaciones"
+            placeholder={tr("Nombre, por ejemplo: Para ver en vacaciones")}
             placeholderTextColor={C.textFaint}
             style={styles.input}
             autoFocus
@@ -243,7 +244,7 @@ export function ListNameDialog({
           <TextInput
             value={description}
             onChangeText={setDescription}
-            placeholder="Descripción (opcional)"
+            placeholder={tr("Descripción (opcional)")}
             placeholderTextColor={C.textFaint}
             style={styles.input}
             accessibilityLabel="Descripción"

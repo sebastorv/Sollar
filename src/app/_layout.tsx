@@ -1,13 +1,18 @@
-import { DarkTheme, DefaultTheme, router, Stack, ThemeProvider as NavThemeProvider } from 'expo-router';
+import { DarkTheme, DefaultTheme, router, Stack, usePathname, ThemeProvider as NavThemeProvider } from 'expo-router';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useMemo, type ReactNode } from 'react';
-import { Platform, View } from 'react-native';
+import { View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import { GlassButton } from '@/components/glass';
+import { Space } from '@/constants/theme';
 
 import { Glass } from '@/components/glass';
 import { FONT_FILES } from '@/lib/fonts';
 import { FixedInsets } from '@/lib/insets';
+import { LanguageProvider } from '@/i18n';
 import { useAutoUpdate } from '@/lib/updates';
 import { useArtUpgrade } from '@/hooks/use-art-upgrade';
 import { LoginScreen } from '@/components/login';
@@ -37,31 +42,16 @@ function HideSplashWhenReady({ children }: { children: ReactNode }) {
 }
 
 /** Botón redondo de vidrio, separado del borde, como en las apps de iOS 26. */
-export function RoundButton({
-  icon,
-  label,
-  onPress,
-}: {
-  icon: 'back' | 'share';
-  label: string;
-  onPress: () => void;
-}) {
-  const C = useColors();
-  return (
-    <Touchable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} hitSlop={8} pressScale={0.88} haptic="light">
-      <Glass radius={999} style={{ width: 44, height: 44 }}>
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <Icon name={icon} size={22} color={C.text} strokeWidth={2.4} />
-        </View>
-      </Glass>
-    </Touchable>
-  );
-}
+const TAB_ROUTES = new Set(['/', '/calendario', '/buscar', '/lista', '/perfil']);
 
-function BackButton() {
+/** Atrás, arriba a la izquierda en todas las pantallas que no son pestañas. */
+function FloatingBack() {
+  const pathname = usePathname();
+  const insets = useSafeAreaInsets();
+  if (TAB_ROUTES.has(pathname)) return null;
   return (
-    <View style={{ marginLeft: Platform.OS === 'ios' ? 0 : 14, marginTop: Platform.OS === 'web' ? 6 : 0 }}>
-      <RoundButton icon="back" label="Volver" onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))} />
+    <View pointerEvents="box-none" style={{ position: 'absolute', top: insets.top + Space.sm, left: Space.lg }}>
+      <GlassButton icon="back" label="Volver" onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))} />
     </View>
   );
 }
@@ -81,54 +71,11 @@ function Navigation() {
   return (
     <NavThemeProvider value={navTheme}>
       <StatusBar style={C.mode === 'dark' ? 'light' : 'dark'} />
-      <Stack screenOptions={{ contentStyle: { backgroundColor: C.bg } }}>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen
-          name="lista/[id]"
-          options={{ title: '', headerTransparent: true, headerTintColor: C.text, headerLeft: () => <BackButton /> }}
-        />
-        <Stack.Screen
-          name="persona/[id]"
-          options={{ title: '', headerTransparent: true, headerTintColor: C.text, headerLeft: () => <BackButton /> }}
-        />
-        <Stack.Screen
-          name="historial"
-          options={{ title: '', headerTransparent: true, headerTintColor: C.text, headerLeft: () => <BackButton /> }}
-        />
-        <Stack.Screen
-          name="ajustes"
-          options={{ title: '', headerTransparent: true, headerTintColor: C.text, headerLeft: () => <BackButton /> }}
-        />
-        <Stack.Screen
-          name="estadisticas"
-          options={{ title: '', headerTransparent: true, headerTintColor: C.text, headerLeft: () => <BackButton /> }}
-        />
-        <Stack.Screen
-          name="descubrir"
-          options={{ title: '', headerTransparent: true, headerTintColor: C.text, headerLeft: () => <BackButton /> }}
-        />
-        <Stack.Screen
-          name="amigos"
-          options={{ title: '', headerTransparent: true, headerTintColor: C.text, headerLeft: () => <BackButton /> }}
-        />
-        <Stack.Screen
-          name="importar"
-          options={{ title: '', headerTransparent: true, headerTintColor: C.text, headerLeft: () => <BackButton /> }}
-        />
-        <Stack.Screen
-          name="episodio/[id]/[temporada]/[episodio]"
-          options={{ title: '', headerTransparent: true, headerTintColor: C.text, headerLeft: () => <BackButton /> }}
-        />
-        <Stack.Screen
-          name="titulo/[tipo]/[id]"
-          options={{
-            title: '',
-            headerTransparent: true,
-            headerTintColor: C.text,
-            headerLeft: () => <BackButton />,
-          }}
-        />
-      </Stack>
+      <View style={{ flex: 1 }}>
+        <Stack screenOptions={{ contentStyle: { backgroundColor: C.bg }, headerShown: false }} />
+        {/* Botón atrás flotante: el mismo vidrio que el resto de botones de la app. */}
+        <FloatingBack />
+      </View>
     </NavThemeProvider>
   );
 }
@@ -136,6 +83,7 @@ function Navigation() {
 export default function RootLayout() {
   return (
     <ThemeProvider>
+      <LanguageProvider>
       <AuthProvider>
         <SettingsProvider>
           <LibraryProvider>
@@ -149,6 +97,7 @@ export default function RootLayout() {
           </LibraryProvider>
         </SettingsProvider>
       </AuthProvider>
+      </LanguageProvider>
     </ThemeProvider>
   );
 }

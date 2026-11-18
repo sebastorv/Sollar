@@ -5,6 +5,8 @@
  * Detalles. Sobria: tinta negra o blanca, sin degradados.
  */
 
+import { tr, useLang } from '@/i18n';
+import { HScroll } from '@/components/hscroll';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Link, router, useLocalSearchParams } from 'expo-router';
@@ -13,21 +15,22 @@ import { Linking, Platform, ScrollView, Share, StyleSheet, TextInput, useWindowD
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Rating, RATING_LABELS, Reactions } from '@/components/rating';
-import { Backdrop, card, Glass, glassFill, shadow } from '@/components/glass';
+import { Backdrop, card, Glass, GlassButton, glassFill, shadow } from '@/components/glass';
 import { Icon, type IconName } from '@/components/icons';
 import { AddToListSheet, entryFrom } from '@/components/lists';
 import { ProviderLogo } from '@/components/platforms';
 import { Gallery } from '@/components/gallery';
-import { Sheet } from '@/components/sheet';
+import { BubbleMenu, measure, Sheet, type Anchor } from '@/components/sheet';
 import { CastShelf, DetailsBlock, Recommendations, SeasonQuality } from '@/components/title-extras';
 import { Touchable } from '@/components/touch';
 import { Button, Empty, Loading, Poster, T } from '@/components/ui';
 import { Radius, Space, type Colors } from '@/constants/theme';
+import { withAlpha } from '@/constants/theme';
 import { addDays, fromISO, todayISO } from '@/lib/dates';
 import { itemKey, newItemFromMovie, newItemFromTv, seasonsFromTv } from '@/lib/library-item';
 import { formatDuration, formatEpisode, nextEpisode, totalEpisodes, watchedCount } from '@/lib/progress';
 import { availabilityFrom } from '@/lib/providers';
-import { getExtras, getMovie, getSeason, getTv, getWatchProviders, isDemo, sharpImage, type TitleExtras } from '@/lib/tmdb';
+import { getRatings, type ExternalRating, getExtras, getMovie, getSeason, getTv, getWatchProviders, isDemo, sharpImage, type TitleExtras } from '@/lib/tmdb';
 import {
   STATUS_LABEL,
   STATUS_ORDER,
@@ -57,7 +60,6 @@ function shortDate(iso: string | null | undefined) {
 }
 
 /** Fondo de la portada: siempre oscuro, para que las letras claras contrasten con la imagen. */
-const HERO_BG = '#0B0B0D';
 
 /** Entrega los colores y estilos del tema que rige en ese punto (por ejemplo, dentro de DarkScope). */
 function WithTheme({ children }: { children: (C: Colors, styles: ReturnType<typeof makeStyles>) => React.ReactNode }) {
@@ -103,6 +105,11 @@ function TitleScreenBody() {
   const [error, setError] = useState<string | null>(null);
   const [extras, setExtras] = useState<TitleExtras | null>(null);
   const [tab, setTab] = useState<Tab>('info');
+  const [bubble, setBubble] = useState<{ kind: 'status' | 'more'; anchor: Anchor } | null>(null);
+  async function openBubble(kind: 'status' | 'more', e?: { currentTarget?: unknown }) {
+    const a = await measure(e?.currentTarget);
+    setBubble({ kind, anchor: a ?? { x: screenWidth / 2 - 20, y: 300, width: 40, height: 40 } });
+  }
   const [episodeOpen, setEpisodeOpen] = useState<{ season: number; episode: number } | null>(null);
   const insets = useSafeAreaInsets();
   const [sheet, setSheet] = useState<null | 'status' | 'rate' | 'lists' | 'watched' | 'more'>(null);
@@ -294,21 +301,21 @@ function TitleScreenBody() {
     </View>
   );
 
-  const scores = <ScoreRow tmdb={d.vote_average} votes={extras?.voteCount ?? 0} item={item} isTv={isTv} />;
+  const scores = <ScoreRow tmdb={d.vote_average} votes={extras?.voteCount ?? 0} type={type} id={id} />;
 
   const actions = (
     <ActionTiles
       item={item}
       isTv={isTv}
       inLists={lib.lists.filter((l) => l.entries.some((e) => e.key === key)).length}
-      onTrack={() => (item ? setSheet('status') : add(isTv ? 'watching' : 'planned'))}
+      onTrack={(e) => (item ? openBubble('status', e) : add(isTv ? 'watching' : 'planned'))}
       onFavorite={() => {
         ensure(isTv ? 'watching' : 'completed');
         lib.toggleFavorite(key);
       }}
       onLists={() => setSheet('lists')}
       onRate={() => setSheet('rate')}
-      onMore={() => setSheet('more')}
+      onMore={(e) => openBubble('more', e)}
     />
   );
 
@@ -386,14 +393,14 @@ function TitleScreenBody() {
         ) : null}
         <LinearGradient
           pointerEvents="none"
-          colors={['rgba(11,11,13,0.6)', 'rgba(11,11,13,0.25)', 'rgba(11,11,13,0.7)', HERO_BG]}
+          colors={[withAlpha(C.bg, 0.6), withAlpha(C.bg, 0.25), withAlpha(C.bg, 0.7), C.bg]}
           locations={[0, 0.3, 0.72, 1]}
           style={imageBox}
         />
         {wide ? (
           <LinearGradient
             pointerEvents="none"
-            colors={['rgba(11,11,13,0.94)', 'rgba(11,11,13,0.82)', 'rgba(11,11,13,0.5)', 'rgba(11,11,13,0.12)']}
+            colors={[withAlpha(C.bg, 0.94), withAlpha(C.bg, 0.82), withAlpha(C.bg, 0.5), withAlpha(C.bg, 0.12)]}
             locations={[0, 0.38, 0.66, 1]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
@@ -405,7 +412,7 @@ function TitleScreenBody() {
 
     if (wide) {
       return (
-        <View style={{ backgroundColor: HERO_BG, minHeight: Math.min(Math.round(screenWidth * 0.5625), 980) }}>
+        <View style={{ backgroundColor: C.bg, minHeight: Math.min(Math.round(screenWidth * 0.5625), 980) }}>
           {scrim}
           <View style={[styles.content, styles.contentWide, { paddingTop: insets.top + 110, paddingBottom: Space.xxl }]}>
             <View style={{ flexDirection: 'row', gap: Space.xxl + Space.lg, alignItems: 'flex-end' }}>
@@ -435,7 +442,7 @@ function TitleScreenBody() {
       );
     }
     return (
-      <View style={{ backgroundColor: HERO_BG }}>
+      <View style={{ backgroundColor: C.bg }}>
         {scrim}
         <View style={[styles.content, { paddingTop: insets.top + 64, paddingBottom: Space.xl, gap: Space.lg }]}>
           <View style={{ alignItems: 'center' }}>
@@ -532,13 +539,13 @@ function TitleScreenBody() {
           <WithTheme>{renderHero}</WithTheme>
         </DarkScope>
         {/* Del fondo oscuro de la portada al fondo de la página. */}
-        <LinearGradient colors={[HERO_BG, C.bg]} style={{ height: 56 }} />
+        <LinearGradient colors={[C.bg, C.bg]} style={{ height: 56 }} />
         <View style={[styles.content, wide && styles.contentWide]}>{body}</View>
       </ScrollView>
 
       {/* Compartir arriba a la derecha, sobre la imagen (celular). */}
       {!wide ? (
-        <View style={{ position: 'absolute', right: Space.lg, top: insets.top + (Platform.OS === 'web' ? 6 : 0) }}>
+        <View style={{ position: 'absolute', right: Space.lg, top: insets.top + Space.sm }}>
           <RoundIcon icon="share" label="Compartir" onPress={share} glass />
         </View>
       ) : null}
@@ -551,42 +558,23 @@ function TitleScreenBody() {
         onNeedItem={() => ensure('watching')}
       />
 
-      <Sheet visible={sheet === 'status'} onClose={() => setSheet(null)} title="Estado" subtitle={title}>
-        <View style={{ gap: 2 }}>
-          {STATUS_ORDER.map((s) => (
-            <OptionRow
-              key={s}
-              label={STATUS_LABEL[s]}
-              on={item?.status === s}
-              onPress={() => {
-                if (item) lib.setStatus(key, s);
-                else add(s);
-                setSheet(null);
-              }}
-            />
-          ))}
-        </View>
-        {item?.mediaType === 'tv' && item.status === 'completed' ? (
-          <Button
-            label="Volver a verla desde el principio"
-            kind="secondary"
-            onPress={() => {
-              lib.restartShow(key);
-              setSheet(null);
-            }}
-          />
-        ) : null}
-        {item ? (
-          <Button
-            label="Quitar de mi lista"
-            kind="danger"
-            onPress={() => {
-              lib.remove(key);
-              setSheet(null);
-            }}
-          />
-        ) : null}
-      </Sheet>
+      {/* Estado y Más: burbujas que salen del botón tocado. */}
+      <BubbleMenu
+        anchor={bubble?.kind === 'status' ? bubble.anchor : null}
+        title="Estado"
+        onClose={() => setBubble(null)}
+        items={[
+          ...STATUS_ORDER.map((st) => ({
+            label: STATUS_LABEL[st],
+            on: item?.status === st,
+            onPress: () => (item ? lib.setStatus(key, st) : add(st)),
+          })),
+          ...(item?.mediaType === 'tv' && item.status === 'completed'
+            ? ['divider' as const, { label: 'Volver a verla desde el principio', icon: 'history' as IconName, onPress: () => lib.restartShow(key) }]
+            : []),
+          ...(item ? ['divider' as const, { label: 'Quitar de mi lista', icon: 'trash' as IconName, danger: true, onPress: () => lib.remove(key) }] : []),
+        ]}
+      />
 
       <Sheet visible={sheet === 'rate'} onClose={() => setSheet(null)} title="¿Qué tal estuvo?" subtitle={title}>
         <Rating
@@ -610,43 +598,24 @@ function TitleScreenBody() {
         />
       ) : null}
 
-      <Sheet visible={sheet === 'more'} onClose={() => setSheet(null)} title={title}>
-        <View style={{ gap: 2 }}>
-          {extras?.trailerKey ? (
-            <OptionRow
-              icon="film"
-              label="Ver tráiler"
-              onPress={() => {
-                setSheet(null);
-                Linking.openURL(`https://www.youtube.com/watch?v=${extras.trailerKey}`);
-              }}
-            />
-          ) : null}
-          <OptionRow
-            icon="share"
-            label="Compartir"
-            onPress={() => {
-              setSheet(null);
-              share();
-            }}
-          />
-          <OptionRow icon="screen" label="Ver en TMDB" onPress={() => Linking.openURL(`https://www.themoviedb.org/${type}/${id}`)} />
-          {extras?.imdbId ? (
-            <OptionRow icon="screen" label="Ver en IMDb" onPress={() => Linking.openURL(`https://www.imdb.com/title/${extras.imdbId}/`)} />
-          ) : null}
-          {item ? (
-            <OptionRow
-              icon="trash"
-              label="Quitar de mi lista"
-              danger
-              onPress={() => {
-                lib.remove(key);
-                setSheet(null);
-              }}
-            />
-          ) : null}
-        </View>
-      </Sheet>
+      <BubbleMenu
+        anchor={bubble?.kind === 'more' ? bubble.anchor : null}
+        onClose={() => setBubble(null)}
+        items={[
+          ...(extras?.trailerKey
+            ? [{ label: 'Ver tráiler', icon: 'film' as IconName, onPress: () => Linking.openURL(`https://www.youtube.com/watch?v=${extras.trailerKey}`) }]
+            : []),
+          { label: 'Videos e imágenes', icon: 'camera' as IconName, onPress: () => setTab('media') },
+          { label: 'Notas personales', icon: 'edit' as IconName, onPress: () => setTab('info') },
+          { label: 'Compartir', icon: 'share' as IconName, onPress: share },
+          'divider' as const,
+          { label: 'Ver en TMDB', icon: 'screen' as IconName, onPress: () => Linking.openURL(`https://www.themoviedb.org/${type}/${id}`) },
+          ...(extras?.imdbId
+            ? [{ label: 'Ver en IMDb', icon: 'screen' as IconName, onPress: () => Linking.openURL(`https://www.imdb.com/title/${extras.imdbId}/`) }]
+            : []),
+          ...(item ? ['divider' as const, { label: 'Quitar de mi lista', icon: 'trash' as IconName, danger: true, onPress: () => lib.remove(key) }] : []),
+        ]}
+      />
 
       <AddToListSheet visible={sheet === 'lists'} entry={entry} onClose={() => setSheet(null)} />
     </View>
@@ -655,56 +624,116 @@ function TitleScreenBody() {
 
 // --- Notas ---
 
-function ScoreRow({ tmdb, votes, item, isTv }: { tmdb: number; votes: number; item: LibraryItem | undefined; isTv: boolean }) {
+/** Sello pequeño de cada página, con sus colores. */
+function Mark({ src }: { src: ExternalRating['source'] | 'tmdb' }) {
+  const box = { height: 20, borderRadius: 5, paddingHorizontal: 5, alignItems: 'center' as const, justifyContent: 'center' as const };
+  switch (src) {
+    case 'imdb':
+      return (
+        <View style={[box, { backgroundColor: '#F5C518' }]}>
+          <T style={{ fontSize: 11, fontWeight: '800', color: '#000' }}>IMDb</T>
+        </View>
+      );
+    case 'tomatoes':
+    case 'tomatoesaudience':
+      return (
+        <View style={[box, { backgroundColor: '#FA320A', borderRadius: 10, width: 20, paddingHorizontal: 0 }]}>
+          <T style={{ fontSize: 11 }}>{src === 'tomatoes' ? '🍅' : '🍿'}</T>
+        </View>
+      );
+    case 'metacritic':
+      return (
+        <View style={[box, { backgroundColor: '#000', borderWidth: 1.5, borderColor: '#FFCC34', borderRadius: 10, width: 20, paddingHorizontal: 0 }]}>
+          <T style={{ fontSize: 11, fontWeight: '800', color: '#FFCC34' }}>m</T>
+        </View>
+      );
+    case 'letterboxd':
+      return (
+        <View style={[box, { flexDirection: 'row', gap: 1.5, backgroundColor: '#14181C' }]}>
+          {['#FF8000', '#00E054', '#40BCF4'].map((c) => (
+            <View key={c} style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: c }} />
+          ))}
+        </View>
+      );
+    case 'trakt':
+      return (
+        <View style={[box, { backgroundColor: '#ED1C24', borderRadius: 10, width: 20, paddingHorizontal: 0 }]}>
+          <T style={{ fontSize: 11, fontWeight: '800', color: '#fff' }}>t</T>
+        </View>
+      );
+    default:
+      return (
+        <View style={[box, { backgroundColor: '#0D253F' }]}>
+          <T style={{ fontSize: 10, fontWeight: '800', color: '#01B4E4' }}>TMDB</T>
+        </View>
+      );
+  }
+}
+
+const RATING_NAME: Record<ExternalRating['source'], string> = {
+  imdb: 'IMDb',
+  tomatoes: 'Rotten Tomatoes',
+  tomatoesaudience: 'Público RT',
+  metacritic: 'Metacritic',
+  letterboxd: 'Letterboxd',
+  trakt: 'Trakt',
+};
+
+/**
+ * Notas: IMDb, Rotten Tomatoes, Metacritic, Letterboxd, TMDB y Trakt, en ese orden (el de su
+ * peso en el mundo). Las de otras páginas llegan si MDBList está configurado.
+ */
+function ScoreRow({ tmdb, votes, type, id }: { tmdb: number; votes: number; type: MediaType; id: number }) {
   const C = useColors();
   const styles = useStyles(makeStyles);
-  const seen = item && isTv ? watchedCount(item) : 0;
-  const total = item && isTv ? totalEpisodes(item.seasons) : 0;
-  const cells: { value: React.ReactNode; label: string; extra?: React.ReactNode }[] = [];
-  if (tmdb > 0)
+  const [ext, setExt] = useState<ExternalRating[]>([]);
+  useEffect(() => {
+    let off = false;
+    getRatings(type, id).then((r) => !off && setExt(r));
+    return () => {
+      off = true;
+    };
+  }, [type, id]);
+  const k = (n: number | null) => (n == null ? '' : n >= 1000 ? `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)} mil` : String(n));
+  const cells: { mark: ExternalRating['source'] | 'tmdb'; value: string; of: string; label: string }[] = [];
+  for (const r of ext) {
+    if (r.source === 'trakt') continue;
+    const pct = r.source === 'tomatoes' || r.source === 'tomatoesaudience';
     cells.push({
-      value: (
-        <>
-          {tmdb.toFixed(1)}
-          <T style={styles.scoreOf}>/10</T>
-        </>
-      ),
-      label: `TMDB${votes ? ` · ${votes >= 1000 ? `${(votes / 1000).toFixed(votes >= 10000 ? 0 : 1)} mil` : votes} votos` : ''}`,
+      mark: r.source,
+      value: r.source === 'imdb' || r.source === 'letterboxd' ? String(r.value) : String(Math.round(r.value)),
+      of: pct ? '%' : r.source === 'metacritic' ? '/100' : r.source === 'letterboxd' ? '/5' : '/10',
+      label: r.votes ? `${k(r.votes)} votos` : RATING_NAME[r.source],
     });
-  // Tu nota ya se ve arriba, con los soles; aquí no se repite.
+  }
+  if (tmdb > 0) cells.push({ mark: 'tmdb', value: tmdb.toFixed(1), of: '/10', label: votes ? `${k(votes)} votos` : 'TMDB' });
+  const trakt = ext.find((r) => r.source === 'trakt');
+  if (trakt) cells.push({ mark: 'trakt', value: String(Math.round(trakt.value)), of: '%', label: trakt.votes ? `${k(trakt.votes)} votos` : 'Trakt' });
   if (!cells.length) return null;
   return (
-    <View style={styles.scores}>
+    <HScroll contentContainerStyle={{ gap: 0 }}>
       {cells.map((c, i) => (
-        <View key={i} style={[styles.score, i > 0 && { borderLeftWidth: 1, borderLeftColor: C.border, paddingLeft: Space.lg }]}>
-          <T style={styles.scoreValue}>{c.value}</T>
+        <View key={c.mark} style={[styles.score, { paddingRight: Space.lg }, i > 0 && { borderLeftWidth: 1, borderLeftColor: C.border, paddingLeft: Space.lg }]}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Mark src={c.mark} />
+            <T style={styles.scoreValue}>
+              {c.value}
+              <T style={styles.scoreOf}>{c.of}</T>
+            </T>
+          </View>
           <T variant="small" muted numberOfLines={1}>
             {c.label}
           </T>
-          {c.extra}
         </View>
       ))}
-    </View>
+    </HScroll>
   );
 }
 
 /** Botón redondo para compartir (sobre la imagen va con vidrio). */
-function RoundIcon({ icon, label, onPress, glass }: { icon: IconName; label: string; onPress: () => void; glass?: boolean }) {
-  const C = useColors();
-  const inner = (
-    <View style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}>
-      <Icon name={icon} size={20} color={C.text} strokeWidth={2.2} />
-    </View>
-  );
-  return (
-    <Touchable haptic="light" pressScale={0.88} onPress={onPress} accessibilityLabel={label} accessibilityRole="button">
-      {glass ? (
-        <Glass radius={999}>{inner}</Glass>
-      ) : (
-        <View style={{ borderRadius: 12, borderWidth: 1, borderColor: C.border }}>{inner}</View>
-      )}
-    </Touchable>
-  );
+/** Compartir: el mismo botón de vidrio que el de atrás. */
+function RoundIcon({ icon, label, onPress }: { icon: IconName; label: string; onPress: () => void; glass?: boolean }) {
+  return <GlassButton icon={icon} label={label} onPress={onPress} />;
 }
 
 // --- Acciones ---
@@ -731,11 +760,11 @@ function ActionTiles({
   item: LibraryItem | undefined;
   isTv: boolean;
   inLists: number;
-  onTrack: () => void;
+  onTrack: (e?: { currentTarget?: unknown }) => void;
   onFavorite: () => void;
   onLists: () => void;
   onRate: () => void;
-  onMore: () => void;
+  onMore: (e?: { currentTarget?: unknown }) => void;
 }) {
   const C = useColors();
   const styles = useStyles(makeStyles);
@@ -920,7 +949,7 @@ function WatchSheet({
             <TextInput
               value={date}
               onChangeText={setDate}
-              placeholder="2024-05-31"
+              placeholder={tr("2024-05-31")}
               placeholderTextColor={C.textFaint}
               style={{ backgroundColor: C.fill, color: C.text, borderRadius: 12, padding: 12, fontSize: 16 }}
             />
@@ -1032,7 +1061,7 @@ function Episodes({
           <Pill label="Ocultar vistos" on={hideWatched} onPress={() => setHideWatched(!hideWatched)} />
         </View>
       </View>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: Space.md }}>
+      <HScroll showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: Space.md }}>
         {seasons.map((s) => {
           const on = s.seasonNumber === season;
           const count = item
@@ -1076,7 +1105,7 @@ function Episodes({
             </Touchable>
           );
         })}
-      </ScrollView>
+      </HScroll>
 
       {/* Resumen de la temporada elegida. */}
       <View style={styles.seasonBar}>
@@ -1118,7 +1147,7 @@ function Episodes({
       {!data && !error ? <Loading /> : null}
 
       {/* Episodios en fila horizontal: imagen, duración, ✓, título y un poco de sinopsis. */}
-      <ScrollView ref={shelf} horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: Space.lg, paddingRight: Space.lg }}>
+      <HScroll innerRef={shelf} showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: Space.lg, paddingRight: Space.lg }}>
         {list.map((ep) => {
           const isSeen = seen(season, ep.episode_number);
           const upcoming = !ep.air_date || ep.air_date > today;
@@ -1173,7 +1202,7 @@ function Episodes({
           );
         })}
         {data && list.length === 0 ? <T muted>Viste toda esta temporada.</T> : null}
-      </ScrollView>
+      </HScroll>
     </View>
   );
 }
@@ -1247,7 +1276,7 @@ function NoteBox({ item }: { item: LibraryItem }) {
         value={note}
         onChangeText={setNote}
         onBlur={() => note !== item.note && lib.setNote(item.key, note)}
-        placeholder="Qué te pareció, quién te la recomendó…"
+        placeholder={tr("Qué te pareció, quién te la recomendó…")}
         placeholderTextColor={C.textFaint}
         multiline
         style={styles.note}
@@ -1645,6 +1674,36 @@ const makeStyles = (C: Colors) =>
 /** "13 de 23 · 57 % · faltan ~3 h", con una barra partida por temporada (como Bingebase). */
 function Remaining({ item, runtime }: { item: LibraryItem; runtime: number }) {
   const C = useColors();
+  const { lang } = useLang();
+  // Tiempo exacto: se suman las duraciones reales de los episodios que faltan (ya emitidos).
+  const [exact, setExact] = useState<{ minutes: number; aired: number; upcoming: number } | null>(null);
+  const watchedJson = JSON.stringify(item.watchedEpisodes);
+  useEffect(() => {
+    let off = false;
+    const nums = item.seasons.filter((x) => x.seasonNumber > 0 && x.episodeCount > 0).map((x) => x.seasonNumber).slice(0, 40);
+    Promise.all(nums.map((n) => getSeason(item.tmdbId, n).catch(() => null))).then((all) => {
+      if (off) return;
+      const today = todayISO();
+      let minutes = 0;
+      let aired = 0;
+      let upcoming = 0;
+      for (const season of all) {
+        if (!season) continue;
+        for (const e of season.episodes) {
+          if (item.watchedEpisodes[episodeKey(season.season_number, e.episode_number)]) continue;
+          if (e.air_date && e.air_date <= today) {
+            aired++;
+            minutes += e.runtime || runtime;
+          } else upcoming++;
+        }
+      }
+      setExact({ minutes, aired, upcoming });
+    });
+    return () => {
+      off = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [item.tmdbId, watchedJson]);
   const seasons = item.seasons.filter((s) => s.seasonNumber > 0 && s.episodeCount > 0);
   const total = totalEpisodes(seasons);
   if (!total) return null;
@@ -1670,11 +1729,28 @@ function Remaining({ item, runtime }: { item: LibraryItem; runtime: number }) {
         })}
       </View>
       <T style={{ fontSize: 15, color: C.textMuted }}>
-        <T style={{ fontSize: 15, fontWeight: '800', color: C.text }}>{seen}</T> de {total} · {pct} %
-        {left > 0
-          ? ` · ${left === 1 ? 'falta 1 episodio' : `faltan ${left} episodios`}${runtime ? ` · ~${formatDuration(left * runtime)}` : ''}`
-          : ' · ¡al día!'}
+        <T style={{ fontSize: 15, fontWeight: '800', color: C.text }}>{seen}</T>
+        {lang === 'es' ? ` de ${total} vistos · ${pct} %` : ` of ${total} watched · ${pct}%`}
       </T>
+      {exact ? (
+        exact.aired > 0 ? (
+          <T style={{ fontSize: 15, color: C.text }}>
+            {lang === 'es' ? 'Te faltan ' : ''}
+            <T style={{ fontSize: 15, fontWeight: '800', color: C.accentInk }}>{formatDuration(exact.minutes)}</T>
+            {lang === 'es'
+              ? ` para terminarla (${exact.aired} ${exact.aired === 1 ? 'episodio' : 'episodios'})${exact.upcoming ? `, y ${exact.upcoming} por estrenarse` : ''}.`
+              : ` left to finish it (${exact.aired} ${exact.aired === 1 ? 'episode' : 'episodes'})${exact.upcoming ? `, plus ${exact.upcoming} still to air` : ''}.`}
+          </T>
+        ) : (
+          <T style={{ fontSize: 15, color: C.text }}>
+            {lang === 'es'
+              ? `¡Estás al día!${exact.upcoming ? ` Faltan ${exact.upcoming} episodios por estrenarse.` : ''}`
+              : `You're all caught up!${exact.upcoming ? ` ${exact.upcoming} episodes still to air.` : ''}`}
+          </T>
+        )
+      ) : left > 0 && runtime ? (
+        <T style={{ fontSize: 15, color: C.textMuted }}>Calculando el tiempo exacto…</T>
+      ) : null}
     </View>
   );
 }

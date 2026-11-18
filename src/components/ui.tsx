@@ -1,5 +1,6 @@
 /** Piezas de interfaz reutilizables. */
 
+import { tr, useLang } from '@/i18n';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { createContext, useContext, type ReactNode } from 'react';
@@ -29,8 +30,28 @@ export function T({
   const styles = useStyles(makeStyles);
   const C = useColors();
   // Una sola letra en toda la app: el grosor pedido elige el archivo de la fuente.
-  const flat = StyleSheet.flatten([styles[variant], muted && { color: C.textMuted }, style]);
-  return <Text style={[flat, { fontFamily: fontFamilyFor((flat as TextStyle | undefined)?.fontWeight), fontWeight: undefined }]} {...rest} />;
+  const flat = StyleSheet.flatten([styles[variant], muted && { color: C.textMuted }, style]) as TextStyle;
+  // En celulares la letra se ve más grande: los textos medianos y grandes se reducen un poco.
+  const phone = useWindowDimensions().width < 500;
+  const size = flat?.fontSize;
+  const k = phone && size && size >= 15 ? (size >= 28 ? 0.86 : 0.92) : 1;
+  const scaled = k === 1 ? null : { fontSize: Math.round(size! * k * 2) / 2, lineHeight: flat.lineHeight ? Math.round(flat.lineHeight * k) : undefined };
+  // Idioma: cada texto pasa por la traducción (inglés por defecto).
+  useLang();
+  const children = translate(rest.children);
+  return (
+    <Text
+      style={[flat, scaled, { fontFamily: fontFamilyFor(flat?.fontWeight), fontWeight: undefined }]}
+      {...rest}>
+      {children}
+    </Text>
+  );
+}
+
+function translate(c: ReactNode): ReactNode {
+  if (typeof c === 'string') return tr(c);
+  if (Array.isArray(c)) return c.map((x) => (typeof x === 'string' ? tr(x) : x));
+  return c;
 }
 
 // --- Contenedor de pantalla ---

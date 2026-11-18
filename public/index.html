@@ -16,7 +16,27 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="Sollar" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <script>
+      // Barra de la hora del iPhone según el tema guardado: blanca con letras negras en modo
+      // claro, negra con letras blancas en modo oscuro. Así no aparece el difuminado de iOS 26
+      // encima del contenido ni se mezclan los modos.
+      (function () {
+        try {
+          var saved = JSON.parse(localStorage.getItem('sollar.theme.v1') || '{}');
+          var mode = saved.mode || 'light';
+          if (mode === 'system') mode = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+          document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]').content = mode === 'dark' ? 'black' : 'default';
+          document.documentElement.style.background = mode === 'dark' ? '#0b0b0d' : '#f6f6f7';
+          // Ícono de la app con el color elegido (se usa al agregarla a la pantalla de inicio).
+          var accent = saved.accent || 'brasa';
+          if (['brasa', 'atardecer', 'cereza'].indexOf(accent) >= 0) {
+            document.querySelector('link[rel="apple-touch-icon"]').href = '__BASE__/icons/' + accent + '-apple-touch-icon.png';
+            document.querySelector('link[rel="manifest"]').href = '__BASE__/manifest-' + accent + '.json';
+          }
+        } catch (e) {}
+      })();
+    </script>
 
     <!-- Estilos base recomendados por react-native-web. -->
     <style id="expo-reset">
@@ -37,21 +57,6 @@
         display: flex;
         height: 100%;
         flex: 1;
-      }
-      /* App de la pantalla de inicio: ocupa toda la pantalla, también detrás de la hora y del
-         indicador de inicio, sin franja vacía abajo. */
-      @media (display-mode: standalone) {
-        html,
-        body {
-          height: 100lvh;
-        }
-        #root {
-          position: fixed;
-          top: 0;
-          left: 0;
-          right: 0;
-          height: 100lvh;
-        }
       }
     </style>
   </head>

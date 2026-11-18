@@ -3,6 +3,7 @@
  * reparto, calidad por temporada, detalles y "Si te gustó".
  */
 
+import { HScroll } from './hscroll';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Link } from 'expo-router';
@@ -116,7 +117,7 @@ export function CastShelf({ cast, title = 'Reparto' }: { cast: CastMember[]; tit
   const W = 112;
   return (
     <Section title={title}>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: Space.md }}>
+      <HScroll showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: Space.md }}>
         {cast.map((p) => {
           const uri = sharpImage(p.profilePath, 'poster', W);
           return (
@@ -143,7 +144,7 @@ export function CastShelf({ cast, title = 'Reparto' }: { cast: CastMember[]; tit
             </Link>
           );
         })}
-      </ScrollView>
+      </HScroll>
     </Section>
   );
 }
@@ -177,9 +178,9 @@ export function SeasonQuality({ seasons }: { seasons: TmdbSeasonStub[] }) {
     <Section title="Calidad por temporada">
       {many ? (
         // Muchas temporadas: se desliza a los lados para que cada barra se lea.
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chartBox} contentContainerStyle={styles.chartRow}>
+        <HScroll showsHorizontalScrollIndicator={false} style={styles.chartBox} contentContainerStyle={styles.chartRow}>
           {bars}
-        </ScrollView>
+        </HScroll>
       ) : (
         <View style={[styles.chartBox, styles.chartRow]}>{bars}</View>
       )}
@@ -278,7 +279,7 @@ export function Recommendations({ items }: { items: TmdbSearchResult[] }) {
   if (!items.length) return null;
   return (
     <Section title="Si te gustó">
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: Space.md }}>
+      <HScroll showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: Space.md }}>
         {items.map((r) => (
           <TitleCard
             key={`${r.media_type}:${r.id}`}
@@ -290,7 +291,7 @@ export function Recommendations({ items }: { items: TmdbSearchResult[] }) {
             width={118}
           />
         ))}
-      </ScrollView>
+      </HScroll>
     </Section>
   );
 }

@@ -6,12 +6,17 @@
  *   llega a cines.
  */
 
+import { HScroll } from '@/components/hscroll';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Link, router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
-import { card } from '@/components/glass';
+import { card, glassFill, GlassButton } from '@/components/glass';
+import { Icon, type IconName } from '@/components/icons';
+import { Image } from 'expo-image';
+import { sharpImage } from '@/lib/tmdb';
+import { useLang } from '@/i18n';
 import { Grid, TitleCard } from '@/components/title-card';
 import { Button, Chip, Empty, Loading, Poster, Screen, Section, T } from '@/components/ui';
 import { Radius, Space, type Colors } from '@/constants/theme';
@@ -45,9 +50,12 @@ export default function CalendarScreen() {
 
 // --- Mis series ---
 
+type View3 = 'agenda' | 'month' | 'posters';
+
 function MySeries() {
   const { loading, failed, episodes, watchedShows } = useCalendar();
   const [day, setDay] = useState<string | null>(null);
+  const [view, setView] = useState<View3>('agenda');
 
   const byDay = useMemo(() => {
     const groups: { date: string; items: CalendarEpisode[] }[] = [];
@@ -75,8 +83,34 @@ function MySeries() {
   }
 
   const days = new Set(episodes.map((e) => e.airDate));
+  const switcher = (
+    <ViewSwitch
+      value={view}
+      onChange={(v) => {
+        setView(v);
+        setDay(null);
+      }}
+    />
+  );
+  if (view === 'month') {
+    return (
+      <View style={{ gap: Space.xl }}>
+        {switcher}
+        <MonthView episodes={episodes} />
+      </View>
+    );
+  }
+  if (view === 'posters') {
+    return (
+      <View style={{ gap: Space.xl }}>
+        {switcher}
+        <PosterView episodes={episodes} />
+      </View>
+    );
+  }
   return (
     <View style={{ gap: Space.xl }}>
+      {switcher}
       <WeekStrip marked={days} selected={day} onSelect={(d) => setDay(d === day ? null : d)} />
 
       {byDay.length === 0 ? (
@@ -110,6 +144,208 @@ function MySeries() {
         </T>
       ) : null}
     </View>
+  );
+}
+
+/** Elegir cómo ver el calendario: agenda, mes o carátulas. */
+function ViewSwitch({ value, onChange }: { value: View3; onChange: (v: View3) => void }) {
+  const C = useColors();
+  const opts: [View3, string, IconName][] = [
+    ['agenda', 'Agenda', 'list'],
+    ['month', 'Mes', 'calendar'],
+    ['posters', 'Carátulas', 'grid'],
+  ];
+  return (
+    <View style={{ flexDirection: 'row', borderRadius: 16, padding: 4, borderWidth: 1, ...glassFill(C), alignSelf: 'flex-start' }}>
+      {opts.map(([k, label, icon]) => {
+        const on = value === k;
+        return (
+          <Touchable
+            key={k}
+            haptic="select"
+            onPress={() => onChange(k)}
+            accessibilityState={{ selected: on }}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 6,
+              height: 40,
+              paddingHorizontal: Space.md,
+              borderRadius: 12,
+              backgroundColor: on ? (C.mode === 'dark' ? 'rgba(255,255,255,0.14)' : '#fff') : 'transparent',
+            }}>
+            <View>
+              <Icon name={icon} size={16} color={on ? C.accentInk : C.textMuted} strokeWidth={2.2} />
+            </View>
+            <T style={{ fontSize: 14, fontWeight: on ? '700' : '500', color: on ? C.text : C.textMuted }}>{label}</T>
+          </Touchable>
+        );
+      })}
+    </View>
+  );
+}
+
+const WEEK_HEAD = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
+const MONTH_NAMES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+
+/** Vista de mes: cada día con las carátulas de lo que sale; al tocar un día, su lista abajo. */
+function MonthView({ episodes }: { episodes: CalendarEpisode[] }) {
+  const C = useColors();
+  const { lang } = useLang();
+  const head = lang === 'es' ? WEEK_HEAD : ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+  const today = todayISO();
+  const [month, setMonth] = useState(() => today.slice(0, 7));
+  const [picked, setPicked] = useState<string | null>(today);
+  const byDate = useMemo(() => {
+    const m = new Map<string, CalendarEpisode[]>();
+    for (const e of episodes) m.set(e.airDate, [...(m.get(e.airDate) ?? []), e]);
+    return m;
+  }, [episodes]);
+  const [y, mo] = month.split('-').map(Number);
+  const first = new Date(y, mo - 1, 1);
+  const lead = (first.getDay() + 6) % 7;
+  const daysIn = new Date(y, mo, 0).getDate();
+  const cells: (string | null)[] = [
+    ...Array.from({ length: lead }, () => null),
+    ...Array.from({ length: daysIn }, (_, i) => `${month}-${String(i + 1).padStart(2, '0')}`),
+  ];
+  while (cells.length % 7) cells.push(null);
+  const shift = (k: number) => {
+    const d = new Date(y, mo - 1 + k, 1);
+    setMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+  };
+  const list = picked ? byDate.get(picked) ?? [] : [];
+  return (
+    <View style={{ gap: Space.lg }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+        <T variant="heading" style={{ textTransform: 'capitalize' }}>
+          {MONTH_NAMES[mo - 1]} {y}
+        </T>
+        <View style={{ flexDirection: 'row', gap: Space.sm }}>
+          <GlassButton icon="back" label="Mes anterior" onPress={() => shift(-1)} size={40} />
+          <GlassButton icon="chevronRight" label="Mes siguiente" onPress={() => shift(1)} size={40} />
+        </View>
+      </View>
+      <View style={{ borderRadius: 22, borderWidth: 1, ...glassFill(C), padding: Space.sm }}>
+        <View style={{ flexDirection: 'row' }}>
+          {head.map((d, i) => (
+            <T key={i} style={{ flex: 1, textAlign: 'center', fontSize: 12, fontWeight: '700', color: C.textMuted, paddingVertical: 6 }}>
+              {d}
+            </T>
+          ))}
+        </View>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+          {cells.map((d, i) => {
+            const eps = d ? byDate.get(d) ?? [] : [];
+            const on = d === picked;
+            const isToday = d === today;
+            return (
+              <Touchable
+                key={i}
+                disabled={!d}
+                haptic="select"
+                pressScale={0.94}
+                onPress={() => d && setPicked(d)}
+                style={{
+                  width: `${100 / 7}%`,
+                  aspectRatio: 0.72,
+                  padding: 3,
+                }}>
+                {d ? (
+                  <View
+                    style={{
+                      flex: 1,
+                      borderRadius: 12,
+                      overflow: 'hidden',
+                      borderWidth: on ? 2 : 0,
+                      borderColor: C.accent,
+                      backgroundColor: eps.length ? C.fill : 'transparent',
+                    }}>
+                    {eps[0]?.posterPath ? (
+                      <Image
+                        source={{ uri: sharpImage(eps[0].posterPath, 'poster', 60) ?? undefined }}
+                        style={StyleSheet.absoluteFill}
+                        contentFit="cover"
+                      />
+                    ) : null}
+                    {eps.length ? <LinearGradient colors={['rgba(0,0,0,0.55)', 'transparent']} style={StyleSheet.absoluteFill} /> : null}
+                    <View style={{ padding: 4, flexDirection: 'row', justifyContent: 'space-between' }}>
+                      <View
+                        style={
+                          isToday
+                            ? { backgroundColor: C.accent, borderRadius: 9, minWidth: 18, height: 18, alignItems: 'center', justifyContent: 'center' }
+                            : undefined
+                        }>
+                        <T style={{ fontSize: 12, fontWeight: '800', color: eps.length || isToday ? '#fff' : C.text, paddingHorizontal: isToday ? 3 : 0 }}>
+                          {Number(d.slice(8))}
+                        </T>
+                      </View>
+                      {eps.length > 1 ? <T style={{ fontSize: 10, fontWeight: '800', color: '#fff' }}>+{eps.length - 1}</T> : null}
+                    </View>
+                  </View>
+                ) : null}
+              </Touchable>
+            );
+          })}
+        </View>
+      </View>
+      {picked ? (
+        <View style={{ gap: Space.sm }}>
+          <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: Space.sm }}>
+            <T variant="heading">{dayLabel(picked)}</T>
+            <T variant="small" muted>
+              {longDate(picked)}
+            </T>
+          </View>
+          {list.length ? (
+            list.map((e) => <EpisodeRow key={`${e.key}:${e.season}:${e.episode}`} e={e} />)
+          ) : (
+            <T muted>Ninguna de tus series estrena episodio ese día.</T>
+          )}
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+/** Vista de carátulas: cuadrícula de lo que sale, con el día en una etiqueta. */
+function PosterView({ episodes }: { episodes: CalendarEpisode[] }) {
+  const C = useColors();
+  if (!episodes.length) return <T muted>Nada programado</T>;
+  return (
+    <Grid minWidth={130}>
+      {episodes.slice(0, 120).map((e) => (
+        <Link
+          key={`${e.key}:${e.season}:${e.episode}`}
+          href={{ pathname: '/titulo/[tipo]/[id]', params: { tipo: 'tv', id: String(e.tmdbId) } }}
+          asChild>
+          <Touchable style={{ gap: 4 }}>
+            <View>
+              <Poster path={e.posterPath} title={e.title} width={130} />
+              <View
+                style={{
+                  position: 'absolute',
+                  left: 6,
+                  bottom: 6,
+                  paddingHorizontal: 8,
+                  height: 24,
+                  borderRadius: 12,
+                  justifyContent: 'center',
+                  backgroundColor: e.airDate === todayISO() ? C.accent : 'rgba(0,0,0,0.62)',
+                }}>
+                <T style={{ fontSize: 11, fontWeight: '800', color: '#fff' }}>{dayLabel(e.airDate)}</T>
+              </View>
+            </View>
+            <T numberOfLines={1} style={{ fontSize: 14, fontWeight: '700' }}>
+              {e.title}
+            </T>
+            <T numberOfLines={1} variant="caption" muted>
+              {formatEpisode(e.season, e.episode)}
+            </T>
+          </Touchable>
+        </Link>
+      ))}
+    </Grid>
   );
 }
 
@@ -278,7 +514,7 @@ function Premieres() {
 
       {upcoming.length > 0 ? (
         <Section title="Próximamente en cines">
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: Space.md }}>
+          <HScroll showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: Space.md }}>
             {upcoming.map((r) => (
               <TitleCard
                 key={r.id}
@@ -289,7 +525,7 @@ function Premieres() {
                 subtitle={r.release_date ? dayLabel(r.release_date) : null}
               />
             ))}
-          </ScrollView>
+          </HScroll>
         </Section>
       ) : null}
     </View>

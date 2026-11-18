@@ -4,6 +4,7 @@
  * episodio, una barra por temporada y cuánto falta (episodios, porcentaje y horas).
  */
 
+import { HScroll } from './hscroll';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
@@ -67,7 +68,7 @@ export function ProgressView() {
 
   return (
     <View style={{ gap: Space.lg }}>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: Space.sm }}>
+      <HScroll showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: Space.sm }}>
         {GROUPS.map((g) => {
           const on = g.k === group;
           return (
@@ -90,7 +91,7 @@ export function ProgressView() {
             </Touchable>
           );
         })}
-      </ScrollView>
+      </HScroll>
 
       {list.length === 0 ? (
         <T muted>

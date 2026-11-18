@@ -36,7 +36,11 @@ const API = 'https://api.themoviedb.org/3';
 const IMG = 'https://image.tmdb.org/t/p';
 
 const TOKEN = process.env.EXPO_PUBLIC_TMDB_TOKEN ?? '';
-export const LANGUAGE = process.env.EXPO_PUBLIC_LANGUAGE ?? 'es-MX';
+export let LANGUAGE = process.env.EXPO_PUBLIC_LANGUAGE ?? 'en-US';
+/** Idioma de los datos (sinopsis, títulos, géneros): lo elige la persona en Ajustes. */
+export function setTmdbLanguage(lang: string) {
+  LANGUAGE = lang;
+}
 export const REGION = process.env.EXPO_PUBLIC_REGION ?? 'CO';
 
 export const hasToken = TOKEN.length > 0;
@@ -56,7 +60,8 @@ export class TmdbError extends Error {
 
 /** Caché en memoria por sesión para no repetir llamadas al navegar. */
 const cache = new Map<string, { at: number; data: unknown }>();
-const CACHE_MS = 10 * 60 * 1000;
+// Corto, para que la información (dónde ver, episodios nuevos) esté siempre al día.
+const CACHE_MS = 3 * 60 * 1000;
 
 async function get<T>(path: string, params: Record<string, string> = {}, useCache = true): Promise<T> {
   if (isDemo) {
@@ -85,7 +90,7 @@ async function get<T>(path: string, params: Record<string, string> = {}, useCach
     throw new TmdbError(`TMDB respondió ${res.status}`, res.status);
   }
   const data = (await res.json()) as T;
-  if (!params.language) await cleanListPosters(path, params, data);
+  if (!params.language && !LANGUAGE.startsWith('en')) await cleanListPosters(path, params, data);
   if (useCache) cache.set(url, { at: Date.now(), data });
   return data;
 }
@@ -269,6 +274,100 @@ export async function getNewOnProviders(providerIds: number[]): Promise<TmdbSear
   );
 }
 
+export type ExternalRating = { source: 'imdb' | 'tomatoes' | 'metacritic' | 'letterboxd' | 'tomatoesaudience' | 'trakt'; value: number; votes: number | null };
+const RATING_ORDER = ['imdb', 'tomatoes', 'metacritic', 'letterboxd', 'tomatoesaudience', 'trakt'] as const;
+
+/**
+ * Notas de IMDb, Rotten Tomatoes, Metacritic, Letterboxd y Trakt (por MDBList, a través de la
+ * función de Supabase). En el orden de importancia mundial. Si no está configurado, lista vacía.
+ */
+export async function getRatings(type: MediaType, id: number): Promise<ExternalRating[]> {
+  if (isDemo || hasToken) return [];
+  try {
+    const raw = await get<{ ratings?: { source: string; value: number | null; votes?: number | null }[] }>(`/ratings/${type}/${id}`);
+    const list = raw.ratings ?? [];
+    return RATING_ORDER.flatMap((src) => {
+      const r = list.find((x) => x.source === src);
+      return r && r.value != null && r.value > 0 ? [{ source: src, value: r.value, votes: r.votes ?? null }] : [];
+    });
+  } catch {
+    return [];
+  }
+}
+
+/** Plataformas principales en Colombia (para Novedades). */
+export const MAIN_PROVIDERS: { id: number; name: string }[] = [
+  { id: 8, name: 'Netflix' },
+  { id: 119, name: 'Prime Video' },
+  { id: 337, name: 'Disney+' },
+  { id: 1899, name: 'Max' },
+  { id: 350, name: 'Apple TV+' },
+  { id: 531, name: 'Paramount+' },
+  { id: 283, name: 'Crunchyroll' },
+];
+
+/**
+ * Lo nuevo en una plataforma de Colombia: series con episodios saliendo esta semana y películas
+ * estrenadas hace poco, de lo más reciente a lo más antiguo.
+ */
+export async function getStreamingNews(providerId: number): Promise<(TmdbSearchResult & { newDate: string })[]> {
+  if (isDemo) return [];
+  const today = todayISO();
+  const common = {
+    watch_region: REGION,
+    with_watch_providers: String(providerId),
+    with_watch_monetization_types: 'flatrate',
+    include_adult: 'false',
+  };
+  const [tv, movies] = await Promise.all([
+    get<{ results: (DiscoverItem & { last_air_date?: string })[] }>('/discover/tv', {
+      ...common,
+      sort_by: 'popularity.desc',
+      'air_date.gte': addDays(today, -10),
+      'air_date.lte': addDays(today, 3),
+    }),
+    get<{ results: DiscoverItem[] }>('/discover/movie', {
+      ...common,
+      sort_by: 'primary_release_date.desc',
+      'primary_release_date.lte': today,
+      'primary_release_date.gte': addDays(today, -75),
+      'vote_count.gte': '3',
+    }),
+  ]);
+  return [
+    ...tv.results.slice(0, 14).map((t) => ({ ...t, media_type: 'tv' as const, newDate: t.first_air_date ?? '' })),
+    ...movies.results.slice(0, 14).map((m) => ({ ...m, media_type: 'movie' as const, newDate: m.release_date ?? '' })),
+  ];
+}
+
+/** Estrenos que vienen: series que empiezan y películas en cines, en Colombia. */
+export async function getComingSoon(): Promise<TmdbSearchResult[]> {
+  if (isDemo) return [];
+  const today = todayISO();
+  const [tv, movies] = await Promise.all([
+    get<{ results: DiscoverItem[] }>('/discover/tv', {
+      watch_region: REGION,
+      sort_by: 'popularity.desc',
+      'first_air_date.gte': today,
+      'first_air_date.lte': addDays(today, 60),
+      include_adult: 'false',
+    }),
+    getUpcomingMovies(),
+  ]);
+  return [...tv.results.map((t) => ({ ...t, media_type: 'tv' as const })), ...movies].sort((a, b) =>
+    (a.release_date ?? a.first_air_date ?? '').localeCompare(b.release_date ?? b.first_air_date ?? ''),
+  );
+}
+
+/** El tráiler de un título (la clave de YouTube), si tiene. */
+export async function getTrailerKey(type: MediaType, id: number): Promise<string | null> {
+  if (isDemo) return null;
+  const v = await get<{ results: { key: string; site: string; type: string }[] }>(`/${type}/${id}/videos`, {
+    include_video_language: 'es,en,null',
+  });
+  return v.results.find((x) => x.site === 'YouTube' && x.type === 'Trailer')?.key ?? v.results.find((x) => x.site === 'YouTube')?.key ?? null;
+}
+
 /** Películas que se estrenan pronto en el país. */
 export async function getUpcomingMovies(): Promise<TmdbSearchResult[]> {
   if (isDemo) return [];
@@ -397,7 +496,7 @@ export async function getExtras(type: MediaType, id: number): Promise<TitleExtra
     include_image_language: IMAGE_LANGS,
   });
   // Las recomendaciones vienen anidadas: se limpian sus carátulas aparte.
-  if (raw.recommendations) await cleanListPosters(`/${type}/${id}/recommendations`, {}, raw.recommendations);
+  if (raw.recommendations && !LANGUAGE.startsWith('en')) await cleanListPosters(`/${type}/${id}/recommendations`, {}, raw.recommendations);
   const credits = raw.aggregate_credits ?? raw.credits;
   const cast = (credits?.cast ?? []).slice(0, 20).map((c) => ({
     id: c.id,

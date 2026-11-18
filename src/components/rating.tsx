@@ -124,127 +124,245 @@ export function Puff({ size = 28, filled, children }: { size?: number; filled: b
 
 type Eyes = 'dot' | 'happy' | 'wide' | 'closed' | 'heart' | 'star' | 'sleepy' | 'angry' | 'side' | 'teary' | 'squint';
 type Mouth = 'smile' | 'grin' | 'o' | 'frown' | 'flat' | 'wavy' | 'teeth' | 'small' | 'tongue';
-export type Face = { eyes: Eyes; mouth: Mouth; blush?: boolean; tear?: boolean; sweat?: boolean; brows?: 'up' | 'angry' | 'worried' | 'raised' };
+export type Face = {
+  eyes: Eyes;
+  mouth: Mouth;
+  blush?: boolean;
+  tear?: boolean;
+  sweat?: boolean;
+  brows?: 'up' | 'angry' | 'worried' | 'raised';
+  /** Detalle alrededor: chispas, corazones, zzz, signo de pregunta o vapor de enojo. */
+  extra?: 'sparkles' | 'hearts' | 'zzz' | 'question' | 'steam';
+};
 
+/**
+ * Caras con brillo y volumen, al estilo de los emojis modernos: ojos grandes y brillantes con
+ * dos reflejos, bocas abiertas con fondo oscuro y lengua, cejas gruesas, cachetes difuminados,
+ * lágrimas y gotas con luz, y un detalle alrededor según la emoción.
+ */
 function FaceArt({ face }: { face: Face }) {
-  const ink = '#2A1508';
-  const s = { stroke: ink, strokeWidth: 1.7, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const, fill: 'none' };
+  const id = useId('face');
+  const ink = '#2B1406';
+  const s = { stroke: ink, strokeWidth: 2.1, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const, fill: 'none' };
+  const shine = (x: number, y: number, r = 1.05) => (
+    <>
+      <Circle cx={x - 0.75} cy={y - 1.05} r={r} fill="#fff" />
+      <Circle cx={x + 0.75} cy={y + 0.9} r={r * 0.45} fill="#fff" opacity={0.85} />
+    </>
+  );
   const eye = (x: number) => {
+    const y = 19.8;
     switch (face.eyes) {
       case 'happy':
-        return <Path key={x} d={`M${x - 2.4} 20.5q2.4-2.8 4.8 0`} {...s} />;
+        return <Path key={x} d={`M${x - 2.6} ${y + 0.9}q2.6-3.4 5.2 0`} {...s} strokeWidth={2.3} />;
       case 'closed':
-        return <Path key={x} d={`M${x - 2.4} 19.5q2.4 2.6 4.8 0`} {...s} />;
+        return <Path key={x} d={`M${x - 2.6} ${y - 0.3}q2.6 3 5.2 0`} {...s} strokeWidth={2.3} />;
+      case 'squint':
+        return <Path key={x} d={x < 20 ? `M${x - 2.4} ${y - 2}l4 2.1-4 2.1` : `M${x + 2.4} ${y - 2}l-4 2.1 4 2.1`} {...s} strokeWidth={2.3} />;
+      case 'sleepy':
+        return (
+          <G key={x}>
+            <Path d={`M${x - 2.6} ${y}q2.6 1.6 5.2 0`} {...s} />
+            <Path d={`M${x - 2.6} ${y}h5.2`} stroke={ink} strokeWidth={1.2} strokeLinecap="round" opacity={0.5} />
+          </G>
+        );
       case 'wide':
         return (
           <G key={x}>
-            <Circle cx={x} cy={19.5} r={2.9} fill="#fff" stroke={ink} strokeWidth={1.2} />
-            <Circle cx={x} cy={19.8} r={1.4} fill={ink} />
-          </G>
-        );
-      case 'heart':
-        return <Path key={x} d={`M${x} 22.2l-2.6-2.6a1.5 1.5 0 0 1 2.6-1.7 1.5 1.5 0 0 1 2.6 1.7Z`} fill="#E3194F" />;
-      case 'star':
-        return <Path key={x} d={`M${x} 16.6l1 2.1 2.3.3-1.7 1.6.4 2.3-2-1.1-2 1.1.4-2.3-1.7-1.6 2.3-.3Z`} fill="#fff" stroke={ink} strokeWidth={0.9} />;
-      case 'sleepy':
-        return <Path key={x} d={`M${x - 2.4} 20h4.8`} {...s} />;
-      case 'angry':
-        return (
-          <G key={x}>
-            <Ellipse cx={x} cy={20.6} rx={1.7} ry={1.9} fill={ink} />
-            <Circle cx={x - 0.5} cy={20} r={0.6} fill="#fff" />
+            <Ellipse cx={x} cy={y - 0.3} rx={3.4} ry={3.9} fill={`url(#${id}w)`} stroke={ink} strokeWidth={0.9} />
+            <Ellipse cx={x} cy={y} rx={1.55} ry={1.8} fill={`url(#${id}e)`} />
+            {shine(x, y, 0.7)}
           </G>
         );
       case 'side':
         return (
           <G key={x}>
-            <Circle cx={x} cy={19.8} r={2.4} fill="#fff" stroke={ink} strokeWidth={1.1} />
-            <Circle cx={x + 1} cy={19.8} r={1.1} fill={ink} />
+            <Ellipse cx={x} cy={y} rx={3} ry={3.3} fill={`url(#${id}w)`} stroke={ink} strokeWidth={0.9} />
+            <Ellipse cx={x + 1.2} cy={y + 0.2} rx={1.5} ry={1.8} fill={`url(#${id}e)`} />
+            {shine(x + 1.2, y + 0.2, 0.6)}
           </G>
         );
       case 'teary':
         return (
           <G key={x}>
-            <Circle cx={x} cy={19.8} r={2.6} fill="#fff" stroke={ink} strokeWidth={1.1} />
-            <Circle cx={x} cy={20.4} r={1.5} fill={ink} />
-            <Circle cx={x - 0.6} cy={19.4} r={0.6} fill="#fff" />
+            <Ellipse cx={x} cy={y} rx={2.8} ry={3.4} fill={`url(#${id}e)`} />
+            {/* Agua acumulada en el ojo */}
+            <Path d={`M${x - 2.7} ${y + 0.6}a2.8 2.6 0 0 0 5.4 0Z`} fill="#6CC4FF" opacity={0.75} />
+            {shine(x, y - 0.4, 1.25)}
           </G>
         );
-      case 'squint':
-        return <Path key={x} d={x < 20 ? `M${x - 2.2} 18.4l3.6 1.8-3.6 1.8` : `M${x + 2.2} 18.4l-3.6 1.8 3.6 1.8`} {...s} />;
+      case 'heart':
+        return (
+          <G key={x}>
+            <Path
+              d={`M${x} ${y + 3.4}l-3.4-3.3a2.05 2.05 0 0 1 3.4-2.3 2.05 2.05 0 0 1 3.4 2.3Z`}
+              fill={`url(#${id}h)`}
+            />
+            <Ellipse cx={x - 1.6} cy={y - 1.4} rx={0.9} ry={0.6} fill="#fff" opacity={0.85} />
+          </G>
+        );
+      case 'star':
+        return (
+          <G key={x}>
+            <Path
+              d={`M${x} ${y - 3.6}l1.25 2.6 2.85.4-2.07 2 .5 2.85L${x} ${y + 2.5}l-2.53 1.35.5-2.85-2.07-2 2.85-.4Z`}
+              fill={`url(#${id}s)`}
+              stroke="#B4660E"
+              strokeWidth={0.6}
+              strokeLinejoin="round"
+            />
+            <Circle cx={x - 0.8} cy={y - 1} r={0.6} fill="#fff" />
+          </G>
+        );
+      case 'angry':
+        return (
+          <G key={x}>
+            <Ellipse cx={x} cy={y + 0.6} rx={2.3} ry={2.6} fill={`url(#${id}e)`} />
+            {shine(x, y + 0.6, 0.8)}
+          </G>
+        );
       default:
         return (
           <G key={x}>
-            <Ellipse cx={x} cy={20} rx={1.9} ry={2.4} fill={ink} />
-            <Circle cx={x - 0.6} cy={19.1} r={0.75} fill="#fff" />
+            <Ellipse cx={x} cy={y} rx={2.5} ry={3.2} fill={`url(#${id}e)`} />
+            {shine(x, y)}
           </G>
         );
     }
   };
+  const open = (d: string, tongue?: string) => (
+    <G>
+      <Path d={d} fill={`url(#${id}m)`} stroke={ink} strokeWidth={1.1} strokeLinejoin="round" />
+      {tongue ? <Path d={tongue} fill={`url(#${id}t)`} /> : null}
+    </G>
+  );
   const mouth = () => {
     switch (face.mouth) {
       case 'grin':
-        return <Path d="M15.6 24.2h8.8a4.4 4.4 0 0 1-8.8 0Z" fill={ink} />;
+        return (
+          <G>
+            {open('M14.6 24.6h10.8a5.4 5.4 0 0 1-10.8 0Z', 'M17.4 28.6a2.6 2 0 0 1 5.2 0 5.4 3 0 0 1-5.2 0Z')}
+            <Path d="M15.4 24.9h9.2v1.3a6 3 0 0 1-9.2 0Z" fill="#fff" />
+          </G>
+        );
+      case 'tongue':
+        return open('M15.6 24.6h8.8a4.4 4.4 0 0 1-8.8 0Z', 'M17.6 27.4a2.4 2.2 0 0 1 4.8 0v1.4a2.4 2.4 0 0 1-4.8 0Z');
       case 'o':
-        return <Ellipse cx={20} cy={26.2} rx={2} ry={2.6} fill={ink} />;
+        return open('M20 23.4a2.6 3.2 0 1 1 0 6.4 2.6 3.2 0 1 1 0-6.4Z', 'M18.3 28.4a1.7 1.1 0 0 1 3.4 0 1.7 0.9 0 0 1-3.4 0Z');
       case 'frown':
-        return <Path d="M16.8 27.4q3.2-3 6.4 0" {...s} />;
+        return <Path d="M16.4 28q3.6-3.6 7.2 0" {...s} />;
       case 'flat':
-        return <Path d="M17.2 26h5.6" {...s} />;
+        return <Path d="M16.8 26.4h6.4" {...s} />;
       case 'wavy':
-        return <Path d="M16.2 26.4q1-1.2 1.9 0t1.9 0 1.9 0 1.9 0" {...s} />;
+        return <Path d="M15.8 26.8q1.05-1.4 2.1 0t2.1 0 2.1 0 2.1 0" {...s} strokeWidth={1.9} />;
       case 'teeth':
         return (
           <G>
-            <Path d="M16 24.6h8v2.6h-8Z" fill="#fff" stroke={ink} strokeWidth={1.3} strokeLinejoin="round" />
-            <Path d="M18.7 24.6v2.6M21.3 24.6v2.6" stroke={ink} strokeWidth={0.9} />
+            <Path d="M15.2 24.2h9.6a1.6 1.6 0 0 1 1.6 1.6v.6a1.6 1.6 0 0 1-1.6 1.6h-9.6a1.6 1.6 0 0 1-1.6-1.6v-.6a1.6 1.6 0 0 1 1.6-1.6Z" fill="#fff" stroke={ink} strokeWidth={1.2} />
+            <Path d="M13.8 26.1h12.4M17.4 24.2v3.8M20 24.2v3.8M22.6 24.2v3.8" stroke={ink} strokeWidth={0.8} />
           </G>
         );
       case 'small':
-        return <Path d="M18.4 25.2q1.6 1.3 3.2 0" {...s} />;
-      case 'tongue':
-        return (
-          <G>
-            <Path d="M16 24.2h8a4 4 0 0 1-8 0Z" fill={ink} />
-            <Path d="M18.2 26.6a1.8 1.6 0 0 0 3.6 0Z" fill="#FF7A8A" />
-          </G>
-        );
+        return <Path d="M17.6 25.4q2.4 2 4.8 0" {...s} />;
       default:
-        return <Path d="M16.6 24.6q3.4 3 6.8 0" {...s} />;
+        return <Path d="M16 24.8q4 4 8 0" {...s} strokeWidth={2.3} />;
     }
   };
+  const drop = (x: number, y: number, k = 1) => (
+    <G>
+      <Path d={`M${x} ${y}q${2.2 * k} ${3 * k} 0 ${4.6 * k}q${-2.2 * k} ${-1.6 * k} 0 ${-4.6 * k}Z`} fill={`url(#${id}d)`} />
+      <Circle cx={x - 0.5 * k} cy={y + 2.6 * k} r={0.55 * k} fill="#fff" />
+    </G>
+  );
   return (
     <G>
-      {face.brows === 'angry' ? <Path d="M12.6 15.6l4.4 1.8M27.4 15.6l-4.4 1.8" {...s} /> : null}
-      {face.brows === 'worried' ? <Path d="M12.8 16.8l4.2-1.6M27.2 16.8l-4.2-1.6" {...s} /> : null}
-      {face.brows === 'up' ? <Path d="M12.8 15.4q2.2-1.4 4.4 0M22.8 15.4q2.2-1.4 4.4 0" {...s} /> : null}
-      {face.brows === 'raised' ? <Path d="M12.8 16.2l4.2-.4M22.8 14.6q2.2-1.4 4.4 0" {...s} /> : null}
-      {eye(15)}
-      {eye(25)}
+      <Defs>
+        <RadialGradient id={`${id}e`} cx="0.4" cy="0.3" r="0.8">
+          <Stop offset="0" stopColor="#5B3420" />
+          <Stop offset="0.55" stopColor="#24110A" />
+          <Stop offset="1" stopColor="#0E0603" />
+        </RadialGradient>
+        <RadialGradient id={`${id}w`} cx="0.4" cy="0.35" r="0.7">
+          <Stop offset="0" stopColor="#FFFFFF" />
+          <Stop offset="1" stopColor="#E9E3DA" />
+        </RadialGradient>
+        <RadialGradient id={`${id}m`} cx="0.5" cy="0.2" r="0.9">
+          <Stop offset="0" stopColor="#8E2A1C" />
+          <Stop offset="1" stopColor="#3A0C06" />
+        </RadialGradient>
+        <RadialGradient id={`${id}t`} cx="0.45" cy="0.3" r="0.8">
+          <Stop offset="0" stopColor="#FF9AA8" />
+          <Stop offset="1" stopColor="#E8506A" />
+        </RadialGradient>
+        <RadialGradient id={`${id}h`} cx="0.35" cy="0.3" r="0.8">
+          <Stop offset="0" stopColor="#FF7B95" />
+          <Stop offset="1" stopColor="#D8173F" />
+        </RadialGradient>
+        <RadialGradient id={`${id}s`} cx="0.4" cy="0.35" r="0.8">
+          <Stop offset="0" stopColor="#FFF2A6" />
+          <Stop offset="1" stopColor="#FFB21E" />
+        </RadialGradient>
+        <RadialGradient id={`${id}d`} cx="0.4" cy="0.6" r="0.8">
+          <Stop offset="0" stopColor="#B8E6FF" />
+          <Stop offset="1" stopColor="#3E9BF0" />
+        </RadialGradient>
+        <RadialGradient id={`${id}b`} cx="0.5" cy="0.5" r="0.5">
+          <Stop offset="0" stopColor="#FF5C7C" stopOpacity="0.6" />
+          <Stop offset="1" stopColor="#FF5C7C" stopOpacity="0" />
+        </RadialGradient>
+      </Defs>
       {face.blush ? (
         <>
-          <Ellipse cx={12.6} cy={24} rx={2} ry={1.2} fill="#FF5A7A" opacity={0.45} />
-          <Ellipse cx={27.4} cy={24} rx={2} ry={1.2} fill="#FF5A7A" opacity={0.45} />
+          <Ellipse cx={12.2} cy={24.4} rx={3} ry={2} fill={`url(#${id}b)`} />
+          <Ellipse cx={27.8} cy={24.4} rx={3} ry={2} fill={`url(#${id}b)`} />
         </>
       ) : null}
+      {face.brows === 'angry' ? <Path d="M12 15.2l5 2.2M28 15.2l-5 2.2" {...s} strokeWidth={2.4} /> : null}
+      {face.brows === 'worried' ? <Path d="M12.4 16.6l4.6-2M27.6 16.6l-4.6-2" {...s} strokeWidth={2.2} /> : null}
+      {face.brows === 'up' ? <Path d="M12.4 14.6q2.6-1.8 5.2 0M22.4 14.6q2.6-1.8 5.2 0" {...s} strokeWidth={2.2} /> : null}
+      {face.brows === 'raised' ? <Path d="M12.4 15.8l4.8-.6M22.4 14q2.6-1.8 5.2 0" {...s} strokeWidth={2.2} /> : null}
+      {eye(15)}
+      {eye(25)}
       {mouth()}
-      {face.tear ? <Path d="M27.2 22.6q1.6 2.4 0 3.6-1.6-1.2 0-3.6Z" fill="#5AB4FF" /> : null}
-      {face.sweat ? <Path d="M30 12.6q1.8 2.6 0 4-1.8-1.4 0-4Z" fill="#5AB4FF" /> : null}
+      {face.tear ? drop(27.6, 22.4, 0.9) : null}
+      {face.sweat ? drop(30.4, 10.8, 1) : null}
+      {face.extra === 'sparkles' ? (
+        <>
+          <Path d="M5 8l.9 2.1L8 11l-2.1.9L5 14l-.9-2.1L2 11l2.1-.9Z" fill="#FFD84A" />
+          <Path d="M34.5 5.5l.6 1.4 1.4.6-1.4.6-.6 1.4-.6-1.4-1.4-.6 1.4-.6Z" fill="#FFD84A" />
+          <Path d="M36 30l.5 1.2 1.2.5-1.2.5-.5 1.2-.5-1.2-1.2-.5 1.2-.5Z" fill="#FFE98A" />
+        </>
+      ) : null}
+      {face.extra === 'hearts' ? (
+        <>
+          <Path d="M5.5 10.6l-2.2-2.1a1.3 1.3 0 0 1 2.2-1.5 1.3 1.3 0 0 1 2.2 1.5Z" fill={`url(#${id}h)`} />
+          <Path d="M35 7.4l-1.6-1.5a.95.95 0 0 1 1.6-1.1.95.95 0 0 1 1.6 1.1Z" fill={`url(#${id}h)`} />
+        </>
+      ) : null}
+      {face.extra === 'zzz' ? (
+        <Path d="M31 4.5h3.6l-3.6 3.8h3.6M35.6 9.6h2.4l-2.4 2.6h2.4" stroke="#9C8FD6" strokeWidth={1.3} strokeLinecap="round" strokeLinejoin="round" fill="none" />
+      ) : null}
+      {face.extra === 'question' ? (
+        <Path d="M32.6 6.2a2.2 2.2 0 1 1 3 2c-.8.4-.8.8-.8 1.6M34.8 12.4v.1" stroke="#7D6BE0" strokeWidth={1.5} strokeLinecap="round" fill="none" />
+      ) : null}
+      {face.extra === 'steam' ? (
+        <Path d="M31.4 8.4q1.2-1.2 0-2.4t0-2.4M34.6 9.4q1.2-1.2 0-2.4t0-2.4" stroke="#FF6B5A" strokeWidth={1.4} strokeLinecap="round" fill="none" />
+      ) : null}
     </G>
   );
 }
 
 /** Cara según la nota: de triste a encantada. */
 function faceFor(v: number): Face {
-  if (!v) return { eyes: 'sleepy', mouth: 'flat' };
+  if (!v) return { eyes: 'dot', mouth: 'small', brows: 'raised' };
   if (v <= 2) return { eyes: 'teary', mouth: 'frown', tear: true, brows: 'worried' };
   if (v <= 4) return { eyes: 'dot', mouth: 'frown', brows: 'worried' };
   if (v <= 5) return { eyes: 'dot', mouth: 'flat' };
   if (v <= 6) return { eyes: 'dot', mouth: 'small' };
   if (v <= 7) return { eyes: 'dot', mouth: 'smile', blush: true };
   if (v <= 8) return { eyes: 'happy', mouth: 'smile', blush: true };
-  if (v <= 9) return { eyes: 'happy', mouth: 'grin', blush: true };
-  return { eyes: 'heart', mouth: 'grin', blush: true };
+  if (v <= 9) return { eyes: 'star', mouth: 'grin', blush: true, extra: 'sparkles' };
+  return { eyes: 'heart', mouth: 'grin', blush: true, extra: 'hearts' };
 }
 
 /** La palomita con cara. */
@@ -460,16 +578,16 @@ function Reacting({ value, size }: { value: number; size: number }) {
 
 export const REACTIONS: { id: string; label: string; face: Face }[] = [
   { id: 'impactado', label: 'Impactado', face: { eyes: 'wide', mouth: 'o', brows: 'up' } },
-  { id: 'divertido', label: 'Divertido', face: { eyes: 'squint', mouth: 'grin', blush: true } },
+  { id: 'divertido', label: 'Divertido', face: { eyes: 'squint', mouth: 'grin', blush: true, tear: true } },
   { id: 'conmovido', label: 'Conmovido', face: { eyes: 'teary', mouth: 'small', blush: true, tear: true } },
   { id: 'triste', label: 'Triste', face: { eyes: 'dot', mouth: 'frown', tear: true, brows: 'worried' } },
-  { id: 'emocionado', label: 'Emocionado', face: { eyes: 'star', mouth: 'grin', blush: true } },
+  { id: 'emocionado', label: 'Emocionado', face: { eyes: 'star', mouth: 'grin', blush: true, extra: 'sparkles' } },
   { id: 'asustado', label: 'Asustado', face: { eyes: 'wide', mouth: 'wavy', sweat: true, brows: 'worried' } },
   { id: 'tenso', label: 'Tenso', face: { eyes: 'wide', mouth: 'teeth', sweat: true } },
-  { id: 'aburrido', label: 'Aburrido', face: { eyes: 'sleepy', mouth: 'flat' } },
-  { id: 'enojado', label: 'Enojado', face: { eyes: 'angry', mouth: 'frown', brows: 'angry' } },
-  { id: 'confundido', label: 'Confundido', face: { eyes: 'side', mouth: 'wavy', brows: 'raised' } },
-  { id: 'enamorado', label: 'Enamorado', face: { eyes: 'heart', mouth: 'smile', blush: true } },
+  { id: 'aburrido', label: 'Aburrido', face: { eyes: 'sleepy', mouth: 'flat', extra: 'zzz' } },
+  { id: 'enojado', label: 'Enojado', face: { eyes: 'angry', mouth: 'frown', brows: 'angry', extra: 'steam' } },
+  { id: 'confundido', label: 'Confundido', face: { eyes: 'side', mouth: 'wavy', brows: 'raised', extra: 'question' } },
+  { id: 'enamorado', label: 'Enamorado', face: { eyes: 'heart', mouth: 'tongue', blush: true, extra: 'hearts' } },
   { id: 'feliz', label: 'Feliz', face: { eyes: 'happy', mouth: 'tongue', blush: true } },
 ];
 

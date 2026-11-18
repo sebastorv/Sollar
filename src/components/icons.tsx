@@ -37,6 +37,11 @@ export type IconName =
   | 'close'
   | 'playSolid'
   | 'gear'
+  | 'tv'
+  | 'bell'
+  | 'globe'
+  | 'grid'
+  | 'list'
   | 'camera'
   | 'history'
   | 'chart'
@@ -193,6 +198,26 @@ export function Icon({
       {name === 'pause' ? <Path d="M9 6v12M15 6v12" {...s} strokeWidth={strokeWidth + 0.8} /> : null}
       {name === 'close' ? <Path d="M7 7l10 10M17 7 7 17" {...s} /> : null}
       {name === 'playSolid' ? <Path d="M8.5 5.8v12.4a1 1 0 0 0 1.5.86l10-6.2a1 1 0 0 0 0-1.72l-10-6.2a1 1 0 0 0-1.5.86Z" {...s} fill={color} /> : null}
+      {name === 'tv' ? (
+        <>
+          <Path d="M3.5 8.5A2.5 2.5 0 0 1 6 6h12a2.5 2.5 0 0 1 2.5 2.5v8A2.5 2.5 0 0 1 18 19H6a2.5 2.5 0 0 1-2.5-2.5Z" {...s} />
+          <Path d="M8.5 2.8 12 6l3.5-3.2" {...s} />
+        </>
+      ) : null}
+      {name === 'bell' ? (
+        <>
+          <Path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 1.8h-15Z" {...s} fill={fill} fillOpacity={fillOpacity} />
+          <Path d="M10 20.5a2.2 2.2 0 0 0 4 0" {...s} />
+        </>
+      ) : null}
+      {name === 'globe' ? (
+        <>
+          <Circle cx={12} cy={12} r={8.5} {...s} />
+          <Path d="M3.5 12h17M12 3.5c2.6 2.4 3.8 5.2 3.8 8.5s-1.2 6.1-3.8 8.5c-2.6-2.4-3.8-5.2-3.8-8.5S9.4 5.9 12 3.5Z" {...s} />
+        </>
+      ) : null}
+      {name === 'grid' ? <Path d="M4 4h6.5v6.5H4ZM13.5 4H20v6.5h-6.5ZM4 13.5h6.5V20H4ZM13.5 13.5H20V20h-6.5Z" {...s} /> : null}
+      {name === 'list' ? <Path d="M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01" {...s} strokeWidth={strokeWidth + 0.4} /> : null}
       {name === 'gear' ? (
         <>
           <Path

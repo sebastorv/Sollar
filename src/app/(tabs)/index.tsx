@@ -8,6 +8,10 @@
  * Los estantes se dibujan a medida que se desplazan, así aguantan miles de títulos.
  */
 
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { GlassButton } from '@/components/glass';
+import { NEWS_SEEN_KEY } from '@/lib/news';
+import { HList } from '@/components/hscroll';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Link, router } from 'expo-router';
@@ -64,7 +68,10 @@ export default function FollowingScreen() {
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: Space.md }}>
         {/* En computador el logo ya está suelto arriba a la izquierda. */}
         {wideScreen ? null : <SollarLogo size={40} shape="icon" />}
-        <T variant="title">Siguiendo</T>
+        <T variant="title" style={{ flex: 1 }}>
+          Siguiendo
+        </T>
+        <NewsBell />
       </View>
 
       {isDemo ? <TokenWarning /> : null}
@@ -107,8 +114,7 @@ export default function FollowingScreen() {
 
       {watching.length > 0 ? (
         <Section title="Continúa viendo" onPress={() => router.navigate('/lista')}>
-          <FlatList
-            horizontal
+          <HList
             data={watching}
             keyExtractor={(i) => i.key}
             renderItem={({ item }) => <UpNextCard item={item} upcoming={calendar.nextByKey[item.key]} />}
@@ -125,8 +131,7 @@ export default function FollowingScreen() {
 
       {thisWeek.length > 0 ? (
         <Section title="Esta semana" onPress={() => router.navigate('/calendario')}>
-          <FlatList
-            horizontal
+          <HList
             data={thisWeek.slice(0, 20)}
             keyExtractor={(e) => `${e.key}:${e.season}:${e.episode}`}
             renderItem={({ item }) => <WeekCard e={item} />}
@@ -338,8 +343,7 @@ function PosterShelf({
 }) {
   const styles = useStyles(makeStyles);
   return (
-    <FlatList
-      horizontal
+    <HList
       data={items}
       keyExtractor={(i) => i.key}
       showsHorizontalScrollIndicator={false}
@@ -494,3 +498,45 @@ const makeStyles = (C: Colors) =>
       borderRadius: Radius.lg,
     },
   });
+
+/** Campana de Novedades: un punto de color cuando hay estrenos desde la última vez que entraste. */
+function NewsBell() {
+  const C = useColors();
+  const [dot, setDot] = useState(false);
+  useEffect(() => {
+    AsyncStorage.getItem(NEWS_SEEN_KEY)
+      .then((seen) => {
+        // Los lunes y jueves suelen llegar estrenos: si no has entrado en tres días, hay novedades.
+        setDot(!seen || Date.now() - Date.parse(seen) > 3 * 86400_000);
+      })
+      .catch(() => setDot(true));
+  }, []);
+  return (
+    <View>
+      <GlassButton
+        icon="bell"
+        label="Novedades"
+        onPress={() => {
+          setDot(false);
+          router.push('/novedades');
+        }}
+      />
+      {dot ? (
+        <View
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            top: 8,
+            right: 9,
+            width: 10,
+            height: 10,
+            borderRadius: 5,
+            backgroundColor: C.accent,
+            borderWidth: 2,
+            borderColor: C.bg,
+          }}
+        />
+      ) : null}
+    </View>
+  );
+}

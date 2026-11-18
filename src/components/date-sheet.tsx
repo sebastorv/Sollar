@@ -1,5 +1,6 @@
 /** Hoja para elegir cuándo viste algo: ahora, ayer, el día del estreno u otra fecha. */
 
+import { tr } from '@/i18n';
 import { useState } from 'react';
 import { Platform, TextInput, View } from 'react-native';
 
@@ -82,7 +83,7 @@ export function DateSheet({
             <TextInput
               value={date}
               onChangeText={setDate}
-              placeholder="2024-05-31"
+              placeholder={tr("2024-05-31")}
               placeholderTextColor={C.textFaint}
               style={{ backgroundColor: C.fill, color: C.text, borderRadius: 12, padding: 12, fontSize: 16 }}
             />

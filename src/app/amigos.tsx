@@ -1,5 +1,6 @@
 /** Amigos: tu perfil público, buscar y seguir personas, y lo que están viendo. */
 
+import { tr } from '@/i18n';
 import { Link } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { StyleSheet, TextInput, View } from 'react-native';
@@ -105,7 +106,7 @@ function ProfileForm({
         value={username}
         onChangeText={(t) => setUsername(t.toLowerCase().replace(/[^a-z0-9_.]/g, ''))}
         autoCapitalize="none"
-        placeholder="sebas"
+        placeholder={tr("sebas")}
         placeholderTextColor={C.textFaint}
         style={styles.input}
         accessibilityLabel="Usuario"
@@ -114,7 +115,7 @@ function ProfileForm({
       <TextInput
         value={name}
         onChangeText={setName}
-        placeholder="Sebas"
+        placeholder={tr("Sebas")}
         placeholderTextColor={C.textFaint}
         style={styles.input}
         accessibilityLabel="Nombre"
@@ -181,7 +182,7 @@ function Social({ me, userId, onEdit }: { me: Profile; userId: string; onEdit: (
         <TextInput
           value={q}
           onChangeText={setQ}
-          placeholder="Buscar por usuario o nombre"
+          placeholder={tr("Buscar por usuario o nombre")}
           placeholderTextColor={C.textFaint}
           autoCapitalize="none"
           style={[styles.searchInput, { outlineStyle: 'none' } as object]}

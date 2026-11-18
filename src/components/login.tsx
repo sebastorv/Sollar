@@ -3,6 +3,7 @@
  * Con la cuenta, la lista se sincroniza entre el celular, el computador y el navegador.
  */
 
+import { tr } from '@/i18n';
 import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -76,7 +77,7 @@ export function LoginScreen() {
               <TextInput
                 value={email}
                 onChangeText={setEmail}
-                placeholder="tucorreo@ejemplo.com"
+                placeholder={tr("tucorreo@ejemplo.com")}
                 placeholderTextColor={C.textFaint}
                 keyboardType="email-address"
                 autoCapitalize="none"

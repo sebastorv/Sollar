@@ -24,8 +24,8 @@ writeFileSync('dist/.nojekyll', '');
 const manifest = {
   name: 'Sollar',
   short_name: 'Sollar',
-  description: 'Tus series y películas: qué sigue, cuándo sale y dónde verlo.',
-  lang: 'es',
+  description: "Your shows and movies: what's next, when it airs and where to watch.",
+  lang: 'en',
   start_url: `${base}/`,
   scope: `${base}/`,
   display: 'standalone',
@@ -39,4 +39,14 @@ const manifest = {
   ],
 };
 writeFileSync('dist/manifest.json', JSON.stringify(manifest, null, 2));
+// Un manifiesto por color de la marca: la app usa el del color elegido, así el ícono instalado
+// también cambia de color.
+for (const accent of ['brasa', 'atardecer', 'cereza']) {
+  const icons = [
+    { src: `${base}/icons/${accent}-logo192.png`, sizes: '192x192', type: 'image/png', purpose: 'any' },
+    { src: `${base}/icons/${accent}-logo512.png`, sizes: '512x512', type: 'image/png', purpose: 'any' },
+    { src: `${base}/icons/${accent}-maskable512.png`, sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+  ];
+  writeFileSync(`dist/manifest-${accent}.json`, JSON.stringify({ ...manifest, icons }, null, 2));
+}
 console.log(`Web lista en dist/ (base: "${base || '/'}")`);

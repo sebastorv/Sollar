@@ -3,6 +3,8 @@
  * lo último que viste. Los ajustes viven aparte, detrás del engranaje.
  */
 
+import { tr } from '@/i18n';
+import { HScroll } from '@/components/hscroll';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -11,7 +13,7 @@ import { useContext, useEffect, useMemo, useState } from 'react';
 import { Platform, ScrollView, Share, StyleSheet, TextInput, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Glass } from '@/components/glass';
+import { Glass, GlassButton } from '@/components/glass';
 import { Icon, type IconName } from '@/components/icons';
 import { Sheet } from '@/components/sheet';
 import { useTabScroll } from '@/components/tab-scroll';
@@ -275,7 +277,7 @@ function ProfileBody() {
               })}
             </View>
             {favShown.length ? (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: Space.md }}>
+              <HScroll showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: Space.md }}>
                 {favShown.map((i) => (
                   <Link key={i.key} href={{ pathname: '/titulo/[tipo]/[id]', params: { tipo: i.mediaType, id: String(i.tmdbId) } }} asChild>
                     <Touchable style={{ width: wide ? 160 : 128 }}>
@@ -283,7 +285,7 @@ function ProfileBody() {
                     </Touchable>
                   </Link>
                 ))}
-              </ScrollView>
+              </HScroll>
             ) : (
               <T style={{ color: C.textMuted }}>Toca el corazón en cualquier título para tenerlo aquí.</T>
             )}
@@ -354,16 +356,7 @@ function ProfileBody() {
 }
 
 function CircleButton({ icon, label, onPress }: { icon: IconName; label: string; onPress: () => void }) {
-  const C = useColors();
-  return (
-    <Touchable haptic="light" pressScale={0.88} onPress={onPress} accessibilityLabel={label} accessibilityRole="button">
-      <Glass radius={999}>
-        <View style={{ width: 46, height: 46, alignItems: 'center', justifyContent: 'center' }}>
-          <Icon name={icon} size={21} color={C.text} strokeWidth={2.1} />
-        </View>
-      </Glass>
-    </Touchable>
-  );
+  return <GlassButton icon={icon} label={label} onPress={onPress} />;
 }
 
 function EditProfile({ visible, onClose, initialName }: { visible: boolean; onClose: () => void; initialName: string }) {
@@ -383,14 +376,14 @@ function EditProfile({ visible, onClose, initialName }: { visible: boolean; onCl
     <Sheet visible={visible} onClose={onClose} title="Editar perfil">
       <View style={{ gap: Space.sm }}>
         <T variant="label">Nombre</T>
-        <TextInput value={name} onChangeText={setName} maxLength={40} placeholder="Tu nombre" placeholderTextColor={C.textFaint} style={input} />
+        <TextInput value={name} onChangeText={setName} maxLength={40} placeholder={tr("Tu nombre")} placeholderTextColor={C.textFaint} style={input} />
         <T variant="label">Una frase sobre ti</T>
         <TextInput
           value={bio}
           onChangeText={setBio}
           maxLength={120}
           multiline
-          placeholder="Fan de las series de misterio…"
+          placeholder={tr("Fan de las series de misterio…")}
           placeholderTextColor={C.textFaint}
           style={[input, { minHeight: 80, textAlignVertical: 'top' }]}
         />

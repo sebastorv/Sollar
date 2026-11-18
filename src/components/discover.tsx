@@ -3,6 +3,7 @@
  * tendencias de hoy, lo popular en tus plataformas, lo más esperado y lo mejor valorado.
  */
 
+import { HList } from './hscroll';
 import { router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { FlatList, StyleSheet, View } from 'react-native';
@@ -131,8 +132,7 @@ function ShelfSection({
           ))}
         </View>
       ) : (
-        <FlatList
-          horizontal
+        <HList
           data={list}
           keyExtractor={(r) => `${r.media_type}:${r.id}`}
           showsHorizontalScrollIndicator={false}

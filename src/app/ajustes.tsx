@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { Modal, Platform, Share, StyleSheet, TextInput, View } from 'react-native';
+import { Modal, Platform, Share, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { SollarLogo } from '@/components/brand';
 import { Glass, card } from '@/components/glass';
@@ -17,6 +17,8 @@ import { useAuth } from '@/store/auth';
 import { useLibrary } from '@/store/library';
 import { useSync } from '@/store/sync';
 import { Touchable } from '@/components/touch';
+import { Icon } from '@/components/icons';
+import { LANGUAGES, useLang } from '@/i18n';
 
 export default function SettingsScreen() {
   const C = useColors();
@@ -55,6 +57,7 @@ export default function SettingsScreen() {
         <PlatformPicker />
       </Section>
 
+      <LanguagePicker />
       <Appearance />
 
       <Section title="Trae tu historial">
@@ -202,6 +205,53 @@ function Appearance() {
         <T variant="small" muted style={{ flex: 1 }}>
           Así se ve el ícono con este color. El modo claro y Brasa vienen por defecto.
         </T>
+      </View>
+    </Section>
+  );
+}
+
+/** Idioma de la app (inglés por defecto) y de los datos de las series. */
+function LanguagePicker() {
+  const C = useColors();
+  const { lang, setLang } = useLang();
+  return (
+    <Section title="Idioma">
+      <View style={{ gap: Space.sm }}>
+        {LANGUAGES.map((l) => {
+          const on = lang === l.id;
+          return (
+            <Touchable
+              key={l.id}
+              haptic="select"
+              onPress={() => setLang(l.id)}
+              accessibilityState={{ selected: on }}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: Space.md,
+                padding: Space.md,
+                borderRadius: 16,
+                borderWidth: 1.5,
+                borderColor: on ? C.accent : C.border,
+                backgroundColor: on ? C.accentSoft : C.surface,
+              }}>
+              <View>
+                <Icon name="globe" size={20} color={on ? C.accentInk : C.textMuted} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 16, fontWeight: on ? '700' : '500', color: C.text, fontFamily: 'PlusJakartaSans_600SemiBold' }}>
+                  {l.label}
+                </Text>
+                {l.note ? <T variant="caption" muted>{l.note}</T> : null}
+              </View>
+              {on ? (
+                <View>
+                  <Icon name="check" size={18} color={C.accentInk} strokeWidth={2.6} />
+                </View>
+              ) : null}
+            </Touchable>
+          );
+        })}
       </View>
     </Section>
   );

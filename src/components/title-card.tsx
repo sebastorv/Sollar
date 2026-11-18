@@ -8,6 +8,10 @@ import { STATUS_LABEL, type MediaType, type WatchStatus } from '@/lib/types';
 
 import { Icon, type IconName } from './icons';
 import { Poster, T } from './ui';
+import { ProviderLogo, useProviderDirectory } from './platforms';
+import { itemKey } from '@/lib/library-item';
+import { useLibrary } from '@/store/library';
+import { useSettings } from '@/store/settings';
 import { Touchable } from './touch';
 
 /**
@@ -48,7 +52,7 @@ export function TitleCard({
       <Touchable style={{ width, gap: Space.xs }} accessibilityLabel={title}>
         <View>
           <Poster path={posterPath} title={title} width={width} />
-          {badge ? <StatusBadge status={badge} /> : null}
+          <PosterMarks mediaType={mediaType} id={id} badge={badge} width={width} />
         </View>
         <View style={styles.textRow}>
           <View style={styles.text}>
@@ -134,6 +138,77 @@ export function StatusBadge({ status, size = 26 }: { status: WatchStatus; size?:
     </View>
   );
 }
+
+/**
+ * Marcas sobre la carátula, pequeñas y con vidrio para no taparla:
+ * arriba a la izquierda, si es serie o película; arriba a la derecha, tu estado (viendo, vista,
+ * por ver…); abajo a la izquierda, el logo del servicio donde está (primero los que pagas).
+ */
+function PosterMarks({
+  mediaType,
+  id,
+  badge,
+  width,
+}: {
+  mediaType: MediaType;
+  id: number;
+  badge?: WatchStatus | null;
+  width: number;
+}) {
+  const lib = useLibrary();
+  const { myProviders } = useSettings();
+  const { list } = useProviderDirectory();
+  const item = lib.get(itemKey(mediaType, id));
+  const status = badge === undefined ? item?.status ?? null : badge;
+  const av = item?.availability;
+  const mine = new Set(myProviders);
+  const ids = av ? [...av.flatrate, ...av.free] : [];
+  const pick = ids.find((p) => mine.has(p)) ?? ids[0];
+  const logo = pick != null ? list?.find((p) => p.id === pick) : null;
+  const small = width < 100;
+  return (
+    <>
+      <View style={[markStyles.type, small && { top: 4, left: 4 }]} accessibilityLabel={mediaType === 'tv' ? 'Serie' : 'Película'}>
+        <Icon name={mediaType === 'tv' ? 'tv' : 'film'} size={small ? 11 : 13} color="#fff" strokeWidth={2.2} />
+      </View>
+      {status ? <StatusBadge status={status} size={small ? 22 : 26} /> : null}
+      {logo && !small ? (
+        <View style={markStyles.logo}>
+          <ProviderLogo name={logo.name} logoPath={logo.logoPath} size={24} />
+        </View>
+      ) : null}
+    </>
+  );
+}
+
+const markStyles = StyleSheet.create({
+  type: {
+    position: 'absolute',
+    top: 6,
+    left: 6,
+    width: 24,
+    height: 24,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(14,13,18,0.55)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.25)',
+  },
+  logo: {
+    position: 'absolute',
+    left: 6,
+    bottom: 6,
+    borderRadius: 7,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.85)',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOpacity: 0.35,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+  },
+});
 
 const makeStyles = (C: Colors) =>
   StyleSheet.create({

@@ -14,7 +14,10 @@ function iosHomeScreenApp() {
     (navigator as Navigator & { standalone?: boolean }).standalone === true ||
     window.matchMedia?.('(display-mode: standalone)').matches;
   const ios = /iPhone|iPad|iPod/.test(navigator.userAgent);
-  return standalone && ios;
+  // Solo hace falta cuando el contenido pasa por debajo de la hora (barra translúcida).
+  const translucent =
+    document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]')?.getAttribute('content') === 'black-translucent';
+  return standalone && ios && translucent;
 }
 
 export function FixedInsets({ children }: { children: ReactNode }) {

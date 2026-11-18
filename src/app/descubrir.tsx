@@ -1,5 +1,6 @@
 /** Filtros avanzados: combina tipo, géneros, época, nota mínima, duración y tus plataformas. */
 
+import { HScroll } from '@/components/hscroll';
 import { useEffect, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 
@@ -166,8 +167,8 @@ function Row({ children }: { children: React.ReactNode }) {
 
 function Scroll({ children }: { children: React.ReactNode }) {
   return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }} contentContainerStyle={{ gap: Space.sm }}>
+    <HScroll showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }} contentContainerStyle={{ gap: Space.sm }}>
       {children}
-    </ScrollView>
+    </HScroll>
   );
 }

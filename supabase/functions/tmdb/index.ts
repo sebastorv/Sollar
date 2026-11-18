@@ -3,6 +3,10 @@
 //
 // Crear en Supabase > Edge Functions > Deploy a new function > Via Editor, con el nombre
 // "tmdb". Desactivar "Verify JWT" (la función revisa la sesión por su cuenta).
+//
+// También entrega las notas de IMDb, Rotten Tomatoes, Metacritic, Letterboxd y Trakt desde
+// MDBList (ruta /ratings/movie/123 o /ratings/tv/123). Necesita el secreto MDBLIST_KEY, una
+// clave gratuita de mdblist.com (Preferences > API).
 
 const TMDB = 'https://api.themoviedb.org/3';
 const cors = {
@@ -43,6 +47,19 @@ Deno.serve(async (req) => {
 
   const url = new URL(req.url);
   const path = url.pathname.replace(/^.*?\/tmdb(?=\/)/, '');
+
+  // Notas de otras páginas (MDBList).
+  const rating = path.match(/^\/ratings\/(movie|tv)\/(\d+)$/);
+  if (rating) {
+    const key = Deno.env.get('MDBLIST_KEY');
+    if (!key) return reply({ error: 'Falta el secreto MDBLIST_KEY en Supabase' }, 404);
+    const kind = rating[1] === 'tv' ? 'show' : 'movie';
+    const r = await fetch(`https://api.mdblist.com/tmdb/${kind}/${rating[2]}?apikey=${key}`);
+    return new Response(await r.text(), {
+      status: r.status,
+      headers: { ...cors, 'Content-Type': 'application/json', 'Cache-Control': 'private, max-age=3600' },
+    });
+  }
   if (!/^\/[a-z0-9_/]+$/i.test(path)) return reply({ error: 'Ruta no válida' }, 400);
 
   const res = await fetch(`${TMDB}${path}${url.search}`, {

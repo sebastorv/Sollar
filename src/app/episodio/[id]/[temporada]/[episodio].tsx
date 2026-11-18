@@ -20,6 +20,7 @@ import { CastShelf } from '@/components/title-extras';
 import { Touchable } from '@/components/touch';
 import { Button, Empty, Loading, Poster, T } from '@/components/ui';
 import { Radius, Space, type Colors } from '@/constants/theme';
+import { withAlpha } from '@/constants/theme';
 import { newItemFromTv } from '@/lib/library-item';
 import { formatDuration, formatEpisode, totalEpisodes, watchedCount } from '@/lib/progress';
 import { getSeason, getTv, isDemo, sharpImage } from '@/lib/tmdb';
@@ -27,7 +28,6 @@ import { STATUS_LABEL, episodeKey, type TmdbSeason, type TmdbTv } from '@/lib/ty
 import { useLibrary } from '@/store/library';
 import { DarkScope, useColors, useStyles } from '@/store/theme';
 
-const HERO_BG = '#0B0B0D';
 const DAYS = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'];
 
 function when(iso: string) {
@@ -271,7 +271,7 @@ function EpisodeScreenBody() {
       <Backdrop />
       <ScrollView contentContainerStyle={{ paddingBottom: 96 }}>
         <DarkScope>
-          <View style={{ backgroundColor: HERO_BG }}>
+          <View style={{ backgroundColor: C.bg }}>
             {still ? (
               <Image
                 source={{ uri: still }}
@@ -281,7 +281,7 @@ function EpisodeScreenBody() {
               />
             ) : null}
             <LinearGradient
-              colors={['rgba(11,11,13,0.6)', 'rgba(11,11,13,0.45)', 'rgba(11,11,13,0.75)', HERO_BG]}
+              colors={[withAlpha(C.bg, 0.6), withAlpha(C.bg, 0.45), withAlpha(C.bg, 0.75), C.bg]}
               locations={[0, 0.35, 0.75, 1]}
               style={wide ? StyleSheet.absoluteFill : { position: 'absolute', top: 0, left: 0, right: 0, height: Math.round(width * 0.9) }}
             />
@@ -304,7 +304,7 @@ function EpisodeScreenBody() {
             </WithTheme>
           </View>
         </DarkScope>
-        <LinearGradient colors={[HERO_BG, C.bg]} style={{ height: 48 }} />
+        <LinearGradient colors={[C.bg, C.bg]} style={{ height: 48 }} />
         <View style={[styles.content, { gap: Space.xxl }]}>
           {aired ? (
             <Reactions

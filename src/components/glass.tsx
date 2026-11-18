@@ -7,6 +7,7 @@
  * - Surface y card(): superficies planas para lo que contiene información.
  */
 
+import { tr } from '@/i18n';
 import { BlurView } from 'expo-blur';
 import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -15,6 +16,9 @@ import { Platform, StyleSheet, View, type StyleProp, type ViewStyle } from 'reac
 
 import { Radius, type Colors } from '@/constants/theme';
 import { useColors } from '@/store/theme';
+
+import { Icon, type IconName } from './icons';
+import { Touchable } from './touch';
 
 const nativeLiquidGlass = Platform.OS === 'ios' && isLiquidGlassAvailable();
 
@@ -169,4 +173,31 @@ export function card(C: Colors) {
     borderColor: C.border,
     ...shadow(C),
   } as const;
+}
+
+/**
+ * Botón redondo de vidrio: el mismo en toda la app (atrás, compartir, ajustes, cerrar), para que
+ * todos se vean iguales sobre cualquier fondo.
+ */
+export function GlassButton({
+  icon,
+  label,
+  onPress,
+  size = 44,
+}: {
+  icon: IconName;
+  label: string;
+  onPress: () => void;
+  size?: number;
+}) {
+  const C = useColors();
+  return (
+    <Touchable haptic="light" pressScale={0.88} hitSlop={8} onPress={onPress} accessibilityLabel={tr(label)} accessibilityRole="button">
+      <Glass radius={999} style={{ width: size, height: size }}>
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <Icon name={icon} size={Math.round(size * 0.46)} color={C.text} strokeWidth={2.3} />
+        </View>
+      </Glass>
+    </Touchable>
+  );
 }
