@@ -98,29 +98,18 @@ export function MyLists() {
     <View style={{ gap: Space.lg }}>
       <View style={styles.grid}>
         {all.map((l) => (
-          <Touchable
-            key={l.id}
-            style={styles.listCard}
-            accessibilityLabel={`${l.name}, ${l.entries.length} títulos`}
-            onPress={() => router.push({ pathname: '/lista/[id]', params: { id: l.id } })}>
-            <ListCover list={l} size={140} />
-            <View style={{ gap: 2 }}>
-              <T variant="label" numberOfLines={1}>
-                {l.name}
-              </T>
-              <T variant="caption" muted>
-                {l.entries.length === 1 ? '1 título' : `${l.entries.length.toLocaleString('es-CO')} títulos`}
-              </T>
-            </View>
-          </Touchable>
+          <ListTile key={l.id} list={l} />
         ))}
-        <Touchable style={[styles.listCard, styles.newCard]} onPress={() => setCreating(true)} accessibilityLabel="Nueva lista">
+        <Touchable style={[styles.tile, styles.newCard]} onPress={() => setCreating(true)} accessibilityLabel="Nueva lista">
           <View style={styles.plus}>
-            <Icon name="plus" size={30} color={C.accentInk} strokeWidth={2.4} />
+            <Icon name="plus" size={28} color={C.accentInk} strokeWidth={2.4} />
           </View>
-          <T variant="label" style={{ color: C.accentInk }}>
-            Nueva lista
-          </T>
+          <View style={{ gap: 2, flex: 1 }}>
+            <T style={{ fontSize: 18, fontWeight: '800', color: C.text }}>Nueva lista</T>
+            <T variant="small" muted>
+              Junta lo que quieras: maratones, pendientes, recomendaciones…
+            </T>
+          </View>
         </Touchable>
       </View>
       <ListNameDialog
@@ -134,6 +123,83 @@ export function MyLists() {
         }}
       />
     </View>
+  );
+}
+
+/**
+ * Tarjeta de una lista: la primera carátula desenfocada de fondo, tres carátulas en abanico y
+ * el nombre grande con cuántos títulos tiene y cuántos ya viste.
+ */
+function ListTile({ list }: { list: CustomList }) {
+  const C = useColors();
+  const styles = useStyles(makeStyles);
+  const lib = useLibrary();
+  const posters = list.entries.filter((e) => e.posterPath).slice(0, 3);
+  const seen = list.entries.filter((e) => {
+    const it = lib.get(e.key);
+    return it && (it.status === 'completed' || (it.mediaType === 'movie' && it.watchedAt));
+  }).length;
+  const total = list.entries.length;
+  const bg = posters[0] ? sharpImage(posters[0].posterPath, 'poster', 200) : null;
+  return (
+    <Touchable
+      haptic="light"
+      pressScale={0.97}
+      style={styles.tile}
+      accessibilityLabel={`${list.name}, ${total} títulos`}
+      onPress={() => router.push({ pathname: '/lista/[id]', params: { id: list.id } })}>
+      {bg ? <Image source={{ uri: bg }} style={StyleSheet.absoluteFill} contentFit="cover" blurRadius={40} /> : null}
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: C.mode === 'dark' ? 'rgba(11,11,13,0.62)' : 'rgba(255,255,255,0.7)' }]} />
+      <View style={styles.fan}>
+        {posters.length ? (
+          posters
+            .map((e, i) => (
+              <Image
+                key={e.key}
+                source={{ uri: sharpImage(e.posterPath, 'poster', 90) ?? undefined }}
+                style={[
+                  styles.fanPoster,
+                  {
+                    left: i * 22,
+                    zIndex: 3 - i,
+                    transform: [{ rotate: `${(i - 1) * 7}deg` }, { scale: i === 0 ? 1 : 0.92 }],
+                  },
+                ]}
+                contentFit="cover"
+              />
+            ))
+            .reverse()
+        ) : (
+          <View style={[styles.fanPoster, { alignItems: 'center', justifyContent: 'center', backgroundColor: C.fill }]}>
+            <Icon name={list.id === FAVORITES_ID ? 'heart' : 'ticket'} size={30} color={C.textFaint} />
+          </View>
+        )}
+      </View>
+      <View style={{ flex: 1, gap: 4, justifyContent: 'center' }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          {list.id === FAVORITES_ID ? (
+            <View>
+              <Icon name="heart" size={16} color={C.accent} filled />
+            </View>
+          ) : null}
+          <T numberOfLines={2} style={{ fontSize: 19, lineHeight: 24, fontWeight: '800', color: C.text, flexShrink: 1 }}>
+            {list.name}
+          </T>
+        </View>
+        <T variant="small" muted>
+          {total === 1 ? '1 título' : `${total.toLocaleString('es-CO')} títulos`}
+          {total ? ` · ${seen} vistos` : ''}
+        </T>
+        {total ? (
+          <View style={{ height: 4, borderRadius: 2, backgroundColor: C.fill, overflow: 'hidden', marginTop: 4, maxWidth: 160 }}>
+            <View style={{ width: `${Math.round((seen / total) * 100)}%`, height: '100%', backgroundColor: C.accent }} />
+          </View>
+        ) : null}
+      </View>
+      <View>
+        <Icon name="chevronRight" size={18} color={C.textFaint} />
+      </View>
+    </Touchable>
   );
 }
 
@@ -304,8 +370,23 @@ function ToggleRow({
 const makeStyles = (C: Colors) =>
   StyleSheet.create({
     grid: { flexDirection: 'row', flexWrap: 'wrap', gap: Space.md },
+    tile: {
+      ...card(C),
+      flexGrow: 1,
+      flexBasis: 320,
+      maxWidth: 560,
+      minHeight: 150,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Space.lg,
+      padding: Space.lg,
+      borderRadius: 24,
+      overflow: 'hidden',
+    },
+    fan: { width: 118, height: 116 },
+    fanPoster: { position: 'absolute', top: 4, width: 74, height: 110, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)' },
     listCard: { ...card(C), width: 164, padding: Space.md, gap: Space.sm, borderRadius: Radius.lg },
-    newCard: { alignItems: 'center', justifyContent: 'center', minHeight: 210, borderStyle: 'dashed', borderColor: C.accentLine },
+    newCard: { borderStyle: 'dashed', borderColor: C.accentLine, borderWidth: 1.5 },
     plus: {
       width: 56,
       height: 56,

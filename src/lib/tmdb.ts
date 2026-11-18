@@ -113,9 +113,11 @@ async function cleanListPosters(path: string, params: Record<string, string>, da
 type RawImage = { file_path: string; iso_639_1: string | null; vote_average: number; vote_count: number; aspect_ratio?: number };
 
 /** La carátula original del título: en inglés o sin texto, la mejor votada. */
-function bestPoster(posters: RawImage[] | undefined): string | null {
+function bestPoster(posters: RawImage[] | undefined, original?: string | null): string | null {
   if (!posters?.length) return null;
-  const score = (p: RawImage) => (p.iso_639_1 === 'en' ? 1 : 0) + p.vote_average / 10 + Math.min(p.vote_count, 20) / 100;
+  // La original: en el idioma original del título; si no hay, en inglés; luego sin texto.
+  const lang = (p: RawImage) => (original && p.iso_639_1 === original ? 2 : p.iso_639_1 === 'en' ? 1 : p.iso_639_1 === null ? 0.5 : 0);
+  const score = (p: RawImage) => lang(p) * 2 + p.vote_average / 10 + Math.min(p.vote_count, 20) / 100;
   return [...posters].sort((a, b) => score(b) - score(a))[0]?.file_path ?? null;
 }
 
@@ -318,9 +320,14 @@ export type TitleExtras = {
   logo: string | null;
   /** Ancho entre alto del logo, para darle el espacio justo. */
   logoAspect: number;
+  /** Tráileres, avances y clips de YouTube, el mejor primero. */
+  videos: { key: string; name: string; type: string }[];
+  /** Fondos sin texto (fondos de pantalla) y carátulas, en alta calidad. */
+  backdrops: { path: string; aspect: number }[];
+  posters: string[];
 };
 
-type RawVideo = { key: string; site: string; type: string; official?: boolean; iso_639_1?: string };
+type RawVideo = { key: string; site: string; type: string; name?: string; official?: boolean; iso_639_1?: string };
 type RawCredits = {
   cast?: { id: number; name: string; character?: string; profile_path: string | null; roles?: { character: string }[] }[];
   crew?: { name: string; job: string }[];
@@ -360,7 +367,22 @@ const EMPTY_EXTRAS: TitleExtras = {
   backdrop: null,
   logo: null,
   logoAspect: 3,
+  videos: [],
+  backdrops: [],
+  posters: [],
 };
+
+const IMAGE_LANGS = 'en,null,es,ja,ko,fr,de,it,pt,hi,zh,tr,sv,da,no';
+
+/** Solo la carátula original de un título (para corregir las guardadas con letreros). */
+export async function getOriginalPoster(type: MediaType, id: number): Promise<string | null> {
+  if (isDemo) return null;
+  const raw = await get<{ original_language?: string; images?: { posters?: RawImage[] } }>(`/${type}/${id}`, {
+    append_to_response: 'images',
+    include_image_language: IMAGE_LANGS,
+  });
+  return bestPoster(raw.images?.posters, raw.original_language);
+}
 
 export async function getExtras(type: MediaType, id: number): Promise<TitleExtras> {
   if (isDemo) return EMPTY_EXTRAS;
@@ -372,7 +394,7 @@ export async function getExtras(type: MediaType, id: number): Promise<TitleExtra
     append_to_response: append,
     // Tráileres en español primero; si no hay, en inglés o sin idioma.
     include_video_language: 'es,en,null',
-    include_image_language: 'en,null',
+    include_image_language: IMAGE_LANGS,
   });
   // Las recomendaciones vienen anidadas: se limpian sus carátulas aparte.
   if (raw.recommendations) await cleanListPosters(`/${type}/${id}/recommendations`, {}, raw.recommendations);
@@ -410,7 +432,17 @@ export async function getExtras(type: MediaType, id: number): Promise<TitleExtra
     originalLanguage: raw.original_language ?? null,
     homepage: raw.homepage || null,
     voteCount: raw.vote_count ?? 0,
-    poster: bestPoster(raw.images?.posters),
+    poster: bestPoster(raw.images?.posters, raw.original_language),
+    videos: [...videos]
+      .sort((a, b) => rank(a) - rank(b))
+      .slice(0, 16)
+      .map((v) => ({ key: v.key, name: v.name ?? v.type, type: v.type })),
+    backdrops: (raw.images?.backdrops ?? [])
+      .filter((b) => b.iso_639_1 === null)
+      .sort((a, b) => b.vote_average - a.vote_average)
+      .slice(0, 30)
+      .map((b) => ({ path: b.file_path, aspect: b.aspect_ratio || 16 / 9 })),
+    posters: (raw.images?.posters ?? []).slice(0, 20).map((p) => p.file_path),
     backdrop: raw.images?.backdrops?.find((b) => b.iso_639_1 === null)?.file_path ?? null,
     ...(() => {
       const l = raw.images?.logos?.find((x) => x.iso_639_1 === 'es') ?? raw.images?.logos?.find((x) => x.iso_639_1 === 'en');

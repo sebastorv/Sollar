@@ -8,6 +8,8 @@ import { Platform, View } from 'react-native';
 import { Glass } from '@/components/glass';
 import { FONT_FILES } from '@/lib/fonts';
 import { FixedInsets } from '@/lib/insets';
+import { useAutoUpdate } from '@/lib/updates';
+import { useArtUpgrade } from '@/hooks/use-art-upgrade';
 import { LoginScreen } from '@/components/login';
 import { Icon } from '@/components/icons';
 import { AuthProvider, useAuth } from '@/store/auth';
@@ -67,6 +69,8 @@ function BackButton() {
 /** Navegación con los colores del tema elegido. */
 function Navigation() {
   const C = useColors();
+  useAutoUpdate();
+  useArtUpgrade();
   const navTheme = useMemo(() => {
     const base = C.mode === 'dark' ? DarkTheme : DefaultTheme;
     return {

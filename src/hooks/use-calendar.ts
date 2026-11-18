@@ -17,6 +17,8 @@ export type CalendarEpisode = {
   tmdbId: number;
   title: string;
   posterPath: string | null;
+  /** Imagen del episodio (o, si aún no hay, el fondo de la serie). */
+  stillPath: string | null;
   season: number;
   episode: number;
   name: string | null;
@@ -71,6 +73,7 @@ async function upcomingFor(item: LibraryItem): Promise<CalendarEpisode[]> {
           name: e.name,
           date: e.air_date,
           type: e.episode_type,
+          still: e.still_path ?? null,
         }))
       : [
           {
@@ -79,6 +82,7 @@ async function upcomingFor(item: LibraryItem): Promise<CalendarEpisode[]> {
             name: next.name ?? null,
             date: next.air_date,
             type: next.episode_type,
+            still: null as string | null,
           },
         ];
     const lastInSeason = Math.max(...raw.map((r) => r.e));
@@ -89,6 +93,7 @@ async function upcomingFor(item: LibraryItem): Promise<CalendarEpisode[]> {
         tmdbId: item.tmdbId,
         title: item.title,
         posterPath: item.posterPath,
+        stillPath: r.still ?? tv.backdrop_path ?? item.backdropPath,
         season: r.s,
         episode: r.e,
         // TMDB pone "Episodio 3" cuando aún no hay nombre: no aporta nada.

@@ -4,6 +4,7 @@
  */
 
 import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Link } from 'expo-router';
 import { useState } from 'react';
 import { Linking, Platform, ScrollView, Share, StyleSheet, View } from 'react-native';
@@ -154,26 +155,34 @@ export function SeasonQuality({ seasons }: { seasons: TmdbSeasonStub[] }) {
   const rated = seasons.filter((s) => s.season_number > 0 && (s.vote_average ?? 0) > 0);
   if (rated.length < 2) return null;
   const best = Math.max(...rated.map((s) => s.vote_average ?? 0));
+  const many = rated.length > 12;
+  const bars = rated.map((s) => {
+    const v = s.vote_average ?? 0;
+    const h = Math.max(10, ((v - 4) / 6) * 110);
+    const top = v === best;
+    return (
+      <View key={s.season_number} style={[styles.barCol, many && { flex: 0, width: 34 }]}>
+        <T style={{ fontSize: 12, fontWeight: '800', color: top ? C.accentInk : C.text }}>{v.toFixed(1)}</T>
+        <View style={[styles.bar, { height: h, overflow: 'hidden' }]}>
+          <LinearGradient
+            colors={top ? [C.g1, C.g2] : [C.accentLine, C.accentSoft]}
+            style={StyleSheet.absoluteFill}
+          />
+        </View>
+        <T style={{ fontSize: 12, fontWeight: '600', color: top ? C.text : C.textMuted }}>T{s.season_number}</T>
+      </View>
+    );
+  });
   return (
     <Section title="Calidad por temporada">
-      <View style={styles.chart}>
-        {rated.map((s) => {
-          const v = s.vote_average ?? 0;
-          const h = Math.max(8, ((v - 4) / 6) * 100);
-          const top = v === best;
-          return (
-            <View key={s.season_number} style={styles.barCol}>
-              <T variant="caption" style={{ fontWeight: '700', color: top ? C.text : C.textMuted }}>
-                {v.toFixed(1)}
-              </T>
-              <View style={[styles.bar, { height: h, backgroundColor: top ? C.ink : C.accentLine }]} />
-              <T variant="caption" muted>
-                T{s.season_number}
-              </T>
-            </View>
-          );
-        })}
-      </View>
+      {many ? (
+        // Muchas temporadas: se desliza a los lados para que cada barra se lea.
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chartBox} contentContainerStyle={styles.chartRow}>
+          {bars}
+        </ScrollView>
+      ) : (
+        <View style={[styles.chartBox, styles.chartRow]}>{bars}</View>
+      )}
       <T variant="caption" muted>
         Promedio de votos en TMDB por temporada.
       </T>
@@ -288,9 +297,10 @@ export function Recommendations({ items }: { items: TmdbSearchResult[] }) {
 
 const makeStyles = (C: Colors) =>
   StyleSheet.create({
-    chart: { ...card(C), flexDirection: 'row', alignItems: 'flex-end', gap: Space.sm, padding: Space.lg, borderRadius: Radius.lg, minHeight: 160 },
+    chartBox: { ...card(C), borderRadius: Radius.lg },
+    chartRow: { flexDirection: 'row', alignItems: 'flex-end', gap: Space.sm, padding: Space.lg, minHeight: 180 },
     barCol: { flex: 1, alignItems: 'center', gap: 4, minWidth: 22 },
-    bar: { width: '70%', maxWidth: 28, borderRadius: 6 },
+    bar: { width: 22, borderRadius: 8 },
     table: { ...card(C), borderRadius: Radius.lg, paddingHorizontal: Space.lg },
     tr: { flexDirection: 'row', gap: Space.md, paddingVertical: Space.md },
   });

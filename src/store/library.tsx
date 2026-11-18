@@ -9,6 +9,8 @@
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
+
+import { getBig, setBig } from '@/lib/storage';
 import {
   createContext,
   useCallback,
@@ -319,9 +321,9 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
   // Cargar al iniciar.
   useEffect(() => {
     Promise.all([
-      AsyncStorage.getItem(STORAGE_KEY).then((raw) => raw ?? AsyncStorage.getItem(OLD_STORAGE_KEY)),
-      AsyncStorage.getItem(TOMBSTONES_KEY),
-      AsyncStorage.getItem(LISTS_KEY),
+      getBig(STORAGE_KEY).then((raw) => raw ?? AsyncStorage.getItem(OLD_STORAGE_KEY)),
+      getBig(TOMBSTONES_KEY),
+      getBig(LISTS_KEY),
     ])
       .then(([raw, dead, rawLists]) => {
         const items = raw ? (JSON.parse(raw) as Record<string, LibraryItem>) : {};
@@ -337,9 +339,9 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
     if (!state.ready) return;
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
-      AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(state.items)).catch(() => {});
-      AsyncStorage.setItem(TOMBSTONES_KEY, JSON.stringify(state.tombstones)).catch(() => {});
-      AsyncStorage.setItem(LISTS_KEY, JSON.stringify(state.lists)).catch(() => {});
+      setBig(STORAGE_KEY, JSON.stringify(state.items)).catch(() => {});
+      setBig(TOMBSTONES_KEY, JSON.stringify(state.tombstones)).catch(() => {});
+      setBig(LISTS_KEY, JSON.stringify(state.lists)).catch(() => {});
     }, 300);
   }, [state]);
 

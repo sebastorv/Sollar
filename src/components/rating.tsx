@@ -31,11 +31,6 @@ export const RATING_LABELS = [
   '¡Imperdible!',
 ];
 
-const LOBES = [-90, -18, 54, 126, 198].map((a) => {
-  const r = (a * Math.PI) / 180;
-  return { x: 20 + Math.cos(r) * 10, y: 21 + Math.sin(r) * 10 };
-});
-
 let uid = 0;
 function useId(prefix: string) {
   const ref = useRef<string | null>(null);
@@ -43,61 +38,83 @@ function useId(prefix: string) {
   return ref.current;
 }
 
-/** Rayos gorditos con punta redondeada, como pétalos de luz. */
-const RAYS = Array.from({ length: 8 }, (_, i) => {
-  const a = ((i * 45 - 90) * Math.PI) / 180;
-  const w = (15 * Math.PI) / 180;
-  const p = (r: number, ang: number) => `${(20 + Math.cos(ang) * r).toFixed(2)} ${(21 + Math.sin(ang) * r).toFixed(2)}`;
-  return `M${p(11.5, a - w)}L${p(18.6, a)}L${p(11.5, a + w)}Z`;
-});
+/** Los lóbulos de la palomita, de atrás hacia adelante: el de enfrente lleva la cara. */
+const LOBES = [
+  { cx: 20, cy: 11.2, r: 7 },
+  { cx: 12.2, cy: 15.6, r: 7.4 },
+  { cx: 27.6, cy: 15, r: 7.6 },
+  { cx: 10.4, cy: 24.6, r: 7.4 },
+  { cx: 29.6, cy: 24.4, r: 7.4 },
+  { cx: 20, cy: 24.4, r: 10.6 },
+];
 
 /**
- * El sol de Sollar, con volumen: cuerpo con luz que entra desde arriba a la izquierda, sombra
- * suave abajo, brillo de gota y rayos gorditos. Vacío, es solo un contorno fino.
+ * La palomita de Sollar, con volumen: cada lóbulo tiene su propia luz (arriba a la izquierda),
+ * su sombra en el borde y un brillo; manchitas de mantequilla y la cascarita abajo. Sin
+ * calificar, es una palomita gris apagada (sin reventar), con el mismo volumen.
  */
 export function Puff({ size = 28, filled, children }: { size?: number; filled: boolean; children?: React.ReactNode }) {
   const C = useColors();
-  const id = useId('sun');
-  const empty = C.mode === 'dark' ? 'rgba(255,255,255,0.3)' : 'rgba(20,18,23,0.24)';
-  if (!filled) {
-    return (
-      <Svg width={size} height={size} viewBox="0 0 40 41">
-        {RAYS.map((d, i) => (
-          <Path key={i} d={d} fill="none" stroke={empty} strokeWidth={1.6} strokeLinejoin="round" />
-        ))}
-        <Circle cx={20} cy={21} r={11.4} fill={C.mode === 'dark' ? '#16151B' : '#fff'} stroke={empty} strokeWidth={1.8} />
-      </Svg>
-    );
-  }
+  const id = useId('pop');
+  const dark = C.mode === 'dark';
+  const lobe = filled
+    ? ['#FFFFFF', '#FFF6E2', '#F7DFAE', '#E0AE68']
+    : dark
+      ? ['#6E6B78', '#55525E', '#423F4A', '#302E37']
+      : ['#FFFFFF', '#ECE9F0', '#D9D5DF', '#BEB9C6'];
   return (
     <Svg width={size} height={size} viewBox="0 0 40 41">
       <Defs>
-        <RadialGradient id={`${id}r`} cx="20" cy="21" r="19" gradientUnits="userSpaceOnUse">
-          <Stop offset="0.45" stopColor="#FFC93E" />
-          <Stop offset="1" stopColor="#FF7A2E" />
+        <RadialGradient id={`${id}l`} cx="0.36" cy="0.3" r="0.78">
+          <Stop offset="0" stopColor={lobe[0]} />
+          <Stop offset="0.35" stopColor={lobe[1]} />
+          <Stop offset="0.75" stopColor={lobe[2]} />
+          <Stop offset="1" stopColor={lobe[3]} />
         </RadialGradient>
-        <RadialGradient id={`${id}b`} cx="15.5" cy="15" r="17" gradientUnits="userSpaceOnUse">
-          <Stop offset="0" stopColor="#FFF6C4" />
-          <Stop offset="0.28" stopColor="#FFD24A" />
-          <Stop offset="0.7" stopColor="#FF9B30" />
-          <Stop offset="1" stopColor="#F2593E" />
+        <RadialGradient id={`${id}b`} cx="0.5" cy="0.5" r="0.5">
+          <Stop offset="0" stopColor="#FFC83A" stopOpacity="0.75" />
+          <Stop offset="1" stopColor="#FFC83A" stopOpacity="0" />
         </RadialGradient>
-        <RadialGradient id={`${id}s`} cx="20" cy="33" r="12" gradientUnits="userSpaceOnUse">
-          <Stop offset="0" stopColor="#C2361F" stopOpacity="0.45" />
-          <Stop offset="1" stopColor="#C2361F" stopOpacity="0" />
-        </RadialGradient>
-        <RadialGradient id={`${id}h`} cx="14.5" cy="14" r="6" gradientUnits="userSpaceOnUse">
+        <RadialGradient id={`${id}h`} cx="0.5" cy="0.5" r="0.5">
           <Stop offset="0" stopColor="#FFFFFF" stopOpacity="0.95" />
           <Stop offset="1" stopColor="#FFFFFF" stopOpacity="0" />
         </RadialGradient>
+        <RadialGradient id={`${id}k`} cx="0.4" cy="0.3" r="0.8">
+          <Stop offset="0" stopColor="#E9A160" />
+          <Stop offset="1" stopColor="#8A4518" />
+        </RadialGradient>
       </Defs>
-      {RAYS.map((d, i) => (
-        <Path key={i} d={d} fill={`url(#${id}r)`} stroke={`url(#${id}r)`} strokeWidth={2.6} strokeLinejoin="round" />
+      {filled ? <Ellipse cx={20} cy={35.6} rx={4.6} ry={2.6} fill={`url(#${id}k)`} /> : null}
+      {LOBES.map((l, i) => (
+        <G key={i}>
+          <Circle
+            cx={l.cx}
+            cy={l.cy}
+            r={l.r}
+            fill={`url(#${id}l)`}
+            stroke={filled ? '#C98C45' : dark ? '#24222A' : '#ABA6B5'}
+            strokeOpacity={0.45}
+            strokeWidth={0.7}
+          />
+          <Ellipse
+            cx={l.cx - l.r * 0.32}
+            cy={l.cy - l.r * 0.38}
+            rx={l.r * 0.42}
+            ry={l.r * 0.26}
+            fill={`url(#${id}h)`}
+            opacity={filled ? 1 : 0.5}
+            transform={`rotate(-30 ${l.cx - l.r * 0.32} ${l.cy - l.r * 0.38})`}
+          />
+        </G>
       ))}
-      <Circle cx={20} cy={21} r={12.4} fill={`url(#${id}b)`} />
-      <Circle cx={20} cy={21} r={12.4} fill={`url(#${id}s)`} />
-      <Ellipse cx={14.6} cy={14.6} rx={5.4} ry={3.6} fill={`url(#${id}h)`} transform="rotate(-35 14.6 14.6)" />
-      <Path d="M27.5 27.8a9.6 9.6 0 0 1-4 2.5" stroke="#FFE7A0" strokeOpacity={0.7} strokeWidth={1.1} strokeLinecap="round" fill="none" />
+      {filled ? (
+        <>
+          {/* Mantequilla */}
+          <Ellipse cx={27.5} cy={13.5} rx={4} ry={3} fill={`url(#${id}b)`} />
+          <Ellipse cx={11} cy={26.5} rx={3.6} ry={2.8} fill={`url(#${id}b)`} />
+          <Ellipse cx={26} cy={31} rx={3.4} ry={2.2} fill={`url(#${id}b)`} />
+        </>
+      ) : null}
       {children}
     </Svg>
   );

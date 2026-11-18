@@ -9,6 +9,7 @@
  */
 
 import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Link, router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { FlatList, StyleSheet, useWindowDimensions, View } from 'react-native';
@@ -130,7 +131,7 @@ export default function FollowingScreen() {
             keyExtractor={(e) => `${e.key}:${e.season}:${e.episode}`}
             renderItem={({ item }) => <WeekCard e={item} />}
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ gap: Space.sm }}
+            contentContainerStyle={{ gap: Space.md }}
             style={styles.bleed}
           />
         </Section>
@@ -367,22 +368,37 @@ function PosterShelf({
 }
 
 /** Tarjeta compacta de un episodio que sale esta semana. */
+/** Lo que sale esta semana: imagen del episodio, el día en una etiqueta y "Estreno" o "Final". */
 function WeekCard({ e }: { e: CalendarEpisode }) {
   const C = useColors();
   const styles = useStyles(makeStyles);
+  const img = sharpImage(e.stillPath ?? e.posterPath, e.stillPath ? 'backdrop' : 'poster', 260);
+  const today = e.airDate === todayISO();
   return (
     <Link href={{ pathname: '/titulo/[tipo]/[id]', params: { tipo: 'tv', id: String(e.tmdbId) } }} asChild>
-      <Touchable style={styles.week}>
-        <Poster path={e.posterPath} title={e.title} width={44} />
-        <View style={{ gap: 2, width: 140 }}>
-          <T variant="caption" style={{ color: C.accentInk, fontWeight: '700' }}>
-            {dayLabel(e.airDate)}
-          </T>
-          <T variant="label" numberOfLines={1}>
+      <Touchable style={{ width: 260, gap: 8 }} pressScale={0.97}>
+        <View style={[styles.weekStill]}>
+          {img ? <Image source={{ uri: img }} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} /> : null}
+          <LinearGradient colors={['transparent', 'rgba(0,0,0,0.55)']} style={StyleSheet.absoluteFill} />
+          <View style={styles.weekTags}>
+            <View style={[styles.weekTag, today && { backgroundColor: C.accent }]}>
+              <T style={{ fontSize: 12, fontWeight: '800', color: '#fff' }}>{dayLabel(e.airDate)}</T>
+            </View>
+            {e.kind !== 'standard' ? (
+              <View style={styles.weekTag}>
+                <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: e.kind === 'premiere' ? '#5AB4FF' : '#FFB23F' }} />
+                <T style={{ fontSize: 12, fontWeight: '800', color: '#fff' }}>{e.kind === 'premiere' ? 'Estreno' : 'Final'}</T>
+              </View>
+            ) : null}
+          </View>
+        </View>
+        <View style={{ gap: 1 }}>
+          <T numberOfLines={1} style={{ fontSize: 16, fontWeight: '800' }}>
             {e.title}
           </T>
-          <T variant="caption" muted>
+          <T numberOfLines={1} style={{ fontSize: 14, color: C.textMuted }}>
             {formatEpisode(e.season, e.episode)}
+            {e.name ? ` · ${e.name}` : ''}
           </T>
         </View>
       </Touchable>
@@ -404,6 +420,17 @@ const makeStyles = (C: Colors) =>
       borderColor: C.accentLine,
     },
     freshDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: C.accent },
+    weekStill: { width: 260, aspectRatio: 16 / 9, borderRadius: 16, overflow: 'hidden', backgroundColor: C.fill },
+    weekTags: { position: 'absolute', left: 10, bottom: 10, flexDirection: 'row', gap: 6 },
+    weekTag: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 5,
+      paddingHorizontal: 9,
+      height: 26,
+      borderRadius: 13,
+      backgroundColor: 'rgba(0,0,0,0.55)',
+    },
     // Los estantes llegan al borde de la pantalla, como en las apps de streaming.
     bleed: { marginHorizontal: -Space.lg, paddingHorizontal: Space.lg, flexGrow: 0 },
     still: {

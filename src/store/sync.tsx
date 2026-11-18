@@ -10,7 +10,8 @@
  * Recuerda qué versión de cada título ya está en el servidor para subir solo lo que cambió.
  */
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
+
+import { getBig, setBig } from '@/lib/storage';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { AppState, Platform } from 'react-native';
 
@@ -55,7 +56,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
   const again = useRef(false);
 
   const saveMeta = () => {
-    if (meta.current) AsyncStorage.setItem(META_KEY, JSON.stringify(meta.current)).catch(() => {});
+    if (meta.current) setBig(META_KEY, JSON.stringify(meta.current)).catch(() => {});
   };
 
   const run = useCallback(async () => {
@@ -68,11 +69,18 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     setStatus('syncing');
     try {
       if (!meta.current || meta.current.userId !== userId) {
-        const raw = await AsyncStorage.getItem(META_KEY);
+        const raw = await getBig(META_KEY);
         const saved = raw ? (JSON.parse(raw) as Meta) : null;
         // Otra cuenta en este dispositivo: se empieza de cero (y se sube lo que haya).
         meta.current =
           saved && saved.userId === userId ? saved : { userId, lastPull: null, synced: {}, settingsSynced: '' };
+        // Si falta en el dispositivo algo que ya se había bajado (por ejemplo, porque no cupo en
+        // la memoria del navegador), se vuelve a bajar todo para reponerlo.
+        const { items: have, lists: haveLists } = libRef.current.raw;
+        const missing = Object.entries(meta.current.synced).some(
+          ([k, v]) => !v.startsWith('x') && !(k.startsWith(LIST_PREFIX) ? haveLists[k.slice(LIST_PREFIX.length)] : have[k]),
+        );
+        if (missing) meta.current = { ...meta.current, lastPull: null, synced: {} };
       }
       const m = meta.current;
 

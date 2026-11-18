@@ -11,7 +11,10 @@ import { execSync } from 'node:child_process';
 import { copyFileSync, readFileSync, writeFileSync } from 'node:fs';
 
 const base = (process.env.WEB_BASE ?? '').replace(/\/+$/, '');
-execSync('npx expo export -p web --clear', { stdio: 'inherit', env: process.env });
+// Versión de esta publicación: la app la compara con version.json para recargarse sola.
+const version = String(Date.now());
+execSync('npx expo export -p web --clear', { stdio: 'inherit', env: { ...process.env, EXPO_PUBLIC_BUILD: version } });
+writeFileSync('dist/version.json', JSON.stringify({ version }));
 
 const html = readFileSync('dist/index.html', 'utf8').replaceAll('__BASE__', base);
 writeFileSync('dist/index.html', html);

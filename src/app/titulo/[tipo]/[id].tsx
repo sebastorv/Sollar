@@ -17,6 +17,7 @@ import { Backdrop, card, Glass, glassFill, shadow } from '@/components/glass';
 import { Icon, type IconName } from '@/components/icons';
 import { AddToListSheet, entryFrom } from '@/components/lists';
 import { ProviderLogo } from '@/components/platforms';
+import { Gallery } from '@/components/gallery';
 import { Sheet } from '@/components/sheet';
 import { CastShelf, DetailsBlock, Recommendations, SeasonQuality } from '@/components/title-extras';
 import { Touchable } from '@/components/touch';
@@ -45,7 +46,7 @@ import { useSettings } from '@/store/settings';
 import { DarkScope, useColors, useStyles } from '@/store/theme';
 
 type Details = { kind: 'movie'; data: TmdbMovie } | { kind: 'tv'; data: TmdbTv };
-type Tab = 'info' | 'episodes' | 'cast';
+type Tab = 'info' | 'episodes' | 'cast' | 'media';
 
 const MONTHS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sept', 'oct', 'nov', 'dic'];
 /** "12 mar 2024". */
@@ -249,7 +250,7 @@ function TitleScreenBody() {
   );
 
   const metaRow = (
-    <View style={wide ? { flexDirection: 'row', alignItems: 'center', gap: Space.md, flexWrap: 'wrap' } : { gap: 6, alignItems: 'center' }}>
+    <View style={{ gap: 6, alignItems: wide ? 'flex-start' : 'center' }}>
       {!wide && genres ? (
         <T muted style={{ fontSize: 16 }}>
           {genres}
@@ -312,6 +313,10 @@ function TitleScreenBody() {
   );
 
   // "Estoy viendo T1 · E3" o "La vi": el atajo de lo siguiente que toca marcar.
+  // Cuánto falta: episodios, porcentaje y horas, con una barra por temporada.
+  const remaining =
+    details.kind === 'tv' && item ? <Remaining item={item} runtime={details.data.episode_run_time.find((x) => x > 0) ?? 0} /> : null;
+
   const watchRow = isTv ? (
     nextUp ? (
       <Touchable haptic="light" pressScale={0.98} onPress={() =>
@@ -381,15 +386,15 @@ function TitleScreenBody() {
         ) : null}
         <LinearGradient
           pointerEvents="none"
-          colors={['rgba(11,11,13,0.55)', 'rgba(11,11,13,0.2)', 'rgba(11,11,13,0.55)', HERO_BG]}
-          locations={[0, 0.3, 0.7, 1]}
+          colors={['rgba(11,11,13,0.6)', 'rgba(11,11,13,0.25)', 'rgba(11,11,13,0.7)', HERO_BG]}
+          locations={[0, 0.3, 0.72, 1]}
           style={imageBox}
         />
         {wide ? (
           <LinearGradient
             pointerEvents="none"
-            colors={['rgba(11,11,13,0.85)', 'rgba(11,11,13,0.35)', 'rgba(11,11,13,0)']}
-            locations={[0, 0.45, 0.8]}
+            colors={['rgba(11,11,13,0.94)', 'rgba(11,11,13,0.82)', 'rgba(11,11,13,0.5)', 'rgba(11,11,13,0.12)']}
+            locations={[0, 0.38, 0.66, 1]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={StyleSheet.absoluteFill}
@@ -408,6 +413,7 @@ function TitleScreenBody() {
                 <Poster path={poster} title={title} width={posterW} style={styles.poster} />
                 {actions}
                 {watchRow}
+                {remaining}
               </View>
               <View style={{ flex: 1, gap: Space.xl, minWidth: 0, paddingBottom: Space.sm }}>
                 <View style={{ gap: Space.md }}>
@@ -441,6 +447,7 @@ function TitleScreenBody() {
           </View>
           {actions}
           {watchRow}
+          {remaining}
           {ratingBlock}
           {scores}
           {overview}
@@ -449,16 +456,17 @@ function TitleScreenBody() {
     );
   };
 
-  const episodesCount = isTv ? details.data.number_of_episodes : 0;
-  const tabs: [Tab, string][] = isTv
+    const tabs: [Tab, string][] = isTv
     ? [
         ['info', 'Info'],
-        ['episodes', episodesCount ? `Episodios ${episodesCount}` : 'Episodios'],
+        ['episodes', 'Episodios'],
         ['cast', 'Reparto'],
+        ['media', 'Videos'],
       ]
     : [
         ['info', 'Info'],
         ['cast', 'Reparto'],
+        ['media', 'Videos'],
       ];
 
   const body = (
@@ -508,6 +516,8 @@ function TitleScreenBody() {
           <Loading />
         )
       ) : null}
+
+      {tab === 'media' ? extras ? <Gallery extras={extras} /> : <Loading /> : null}
 
       <InYourLists entryKey={key} />
       {extras ? <Recommendations items={extras.recommendations} /> : null}
@@ -662,21 +672,6 @@ function ScoreRow({ tmdb, votes, item, isTv }: { tmdb: number; votes: number; it
       label: `TMDB${votes ? ` · ${votes >= 1000 ? `${(votes / 1000).toFixed(votes >= 10000 ? 0 : 1)} mil` : votes} votos` : ''}`,
     });
   // Tu nota ya se ve arriba, con los soles; aquí no se repite.
-  if (isTv && item && total)
-    cells.push({
-      value: (
-        <>
-          {Math.round((seen / total) * 100)}
-          <T style={styles.scoreOf}>%</T>
-        </>
-      ),
-      label: `${seen} de ${total} vistos`,
-      extra: (
-        <View style={{ height: 3, borderRadius: 2, backgroundColor: C.fill, overflow: 'hidden', marginTop: 4, width: 90 }}>
-          <View style={{ height: '100%', width: `${Math.round((seen / total) * 100)}%`, backgroundColor: C.accent }} />
-        </View>
-      ),
-    });
   if (!cells.length) return null;
   return (
     <View style={styles.scores}>
@@ -1509,7 +1504,8 @@ const makeStyles = (C: Colors) =>
     score: { gap: 2 },
     scoreValue: { fontSize: 30, lineHeight: 36, fontWeight: '800', letterSpacing: -0.8, color: C.text },
     metaLine: { flexDirection: 'row', alignItems: 'center', gap: Space.sm, flexWrap: 'wrap' },
-    metaText: { fontSize: 16, lineHeight: 22 },
+    // Sombra suave: el texto se lee aunque la imagen de fondo sea clara.
+    metaText: { fontSize: 16, lineHeight: 22, textShadowColor: 'rgba(0,0,0,0.65)', textShadowRadius: 8 },
     cert: { borderWidth: 1.5, borderColor: C.textFaint, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 1 },
     tile: {
       flex: 1,
@@ -1645,3 +1641,40 @@ const makeStyles = (C: Colors) =>
       borderRadius: Radius.pill,
     },
   });
+
+/** "13 de 23 · 57 % · faltan ~3 h", con una barra partida por temporada (como Bingebase). */
+function Remaining({ item, runtime }: { item: LibraryItem; runtime: number }) {
+  const C = useColors();
+  const seasons = item.seasons.filter((s) => s.seasonNumber > 0 && s.episodeCount > 0);
+  const total = totalEpisodes(seasons);
+  if (!total) return null;
+  const seenIn = (n: number) => Object.keys(item.watchedEpisodes).filter((k) => k.startsWith(`${n}:`)).length;
+  const seen = seasons.reduce((a, s) => a + Math.min(seenIn(s.seasonNumber), s.episodeCount), 0);
+  const left = total - seen;
+  const pct = Math.round((seen / total) * 100);
+  return (
+    <View style={{ gap: Space.sm }}>
+      <View style={{ flexDirection: 'row', gap: 3, height: 8 }}>
+        {seasons.map((s) => {
+          const f = Math.min(seenIn(s.seasonNumber), s.episodeCount) / s.episodeCount;
+          return (
+            <View key={s.seasonNumber} style={{ flex: s.episodeCount, borderRadius: 4, overflow: 'hidden', backgroundColor: C.fill }}>
+              <LinearGradient
+                colors={[C.g1, C.g2]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={{ width: `${Math.round(f * 100)}%`, height: '100%' }}
+              />
+            </View>
+          );
+        })}
+      </View>
+      <T style={{ fontSize: 15, color: C.textMuted }}>
+        <T style={{ fontSize: 15, fontWeight: '800', color: C.text }}>{seen}</T> de {total} · {pct} %
+        {left > 0
+          ? ` · ${left === 1 ? 'falta 1 episodio' : `faltan ${left} episodios`}${runtime ? ` · ~${formatDuration(left * runtime)}` : ''}`
+          : ' · ¡al día!'}
+      </T>
+    </View>
+  );
+}

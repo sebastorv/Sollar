@@ -8,9 +8,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { FilterSheet } from '@/components/filter-sheet';
-import { card } from '@/components/glass';
+import { card, glassFill } from '@/components/glass';
 import { Icon } from '@/components/icons';
 import { MyLists } from '@/components/lists';
+import { ProgressView } from '@/components/progress-view';
 import { useProviderDirectory } from '@/components/platforms';
 import { Grid, TitleCard } from '@/components/title-card';
 import { Button, Chip, Empty, Screen, T } from '@/components/ui';
@@ -47,7 +48,7 @@ export default function ListScreen() {
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [refreshing, setRefreshing] = useState<{ done: number; total: number } | null>(null);
-  const [view, setView] = useState<'titles' | 'lists'>('titles');
+  const [view, setView] = useState<'progress' | 'titles' | 'lists'>('progress');
   const [limit, setLimit] = useState(PAGE);
 
   const filtered = useMemo(() => applyFilters(items, filters, myProviders), [items, filters, myProviders]);
@@ -85,11 +86,27 @@ export default function ListScreen() {
   return (
     <Screen>
       <T variant="title">Mi lista</T>
-      <View style={{ flexDirection: 'row', gap: Space.sm }}>
-        <Chip label={`Títulos (${items.length})`} selected={view === 'titles'} onPress={() => setView('titles')} />
-        <Chip label={`Listas (${lib.lists.length + 1})`} selected={view === 'lists'} onPress={() => setView('lists')} />
+      <View style={styles.segment}>
+        {(
+          [
+            ['progress', 'Progreso'],
+            ['titles', `Todo · ${items.length.toLocaleString('es-CO')}`],
+            ['lists', `Listas · ${lib.lists.length + 1}`],
+          ] as const
+        ).map(([k, label]) => {
+          const on = view === k;
+          return (
+            <Touchable key={k} haptic="select" onPress={() => setView(k)} style={[styles.segmentBtn, on && styles.segmentOn]}>
+              <T numberOfLines={1} style={{ fontSize: 15, fontWeight: on ? '700' : '500', color: on ? C.text : C.textMuted }}>
+                {label}
+              </T>
+            </Touchable>
+          );
+        })}
       </View>
-      {view === 'lists' ? (
+      {view === 'progress' ? (
+        <ProgressView />
+      ) : view === 'lists' ? (
         <MyLists />
       ) : (
       <>
@@ -259,6 +276,9 @@ function subtitleFor(i: LibraryItem, sort: Filters['sort']): string | null {
 
 const makeStyles = (C: Colors) =>
   StyleSheet.create({
+    segment: { flexDirection: 'row', borderRadius: 16, padding: 4, borderWidth: 1, ...glassFill(C), maxWidth: 560 },
+    segmentBtn: { flex: 1, height: 42, borderRadius: 12, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6 },
+    segmentOn: { backgroundColor: C.mode === 'dark' ? 'rgba(255,255,255,0.14)' : '#fff' },
   preset: {
     paddingVertical: Space.sm,
     paddingHorizontal: Space.md + 2,
