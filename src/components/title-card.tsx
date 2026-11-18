@@ -6,6 +6,7 @@ import { Radius, Space, type Colors } from '@/constants/theme';
 import { useColors, useStyles } from '@/store/theme';
 import type { MediaType } from '@/lib/types';
 
+import { Icon } from './icons';
 import { Poster, T } from './ui';
 import { Touchable } from './touch';
 
@@ -23,6 +24,8 @@ export function TitleCard({
   badge,
   highlight,
   width = 120,
+  onCheck,
+  checkLabel,
 }: {
   id: number;
   mediaType: MediaType;
@@ -33,6 +36,9 @@ export function TitleCard({
   /** Texto destacado bajo el título, por ejemplo "En Netflix". */
   highlight?: string | null;
   width?: number;
+  /** Botón ✓ junto al título (marcar como visto, empezar la serie). */
+  onCheck?: () => void;
+  checkLabel?: string;
 }) {
   const C = useColors();
   const styles = useStyles(makeStyles);
@@ -49,16 +55,31 @@ export function TitleCard({
             </View>
           ) : null}
         </View>
-        <View style={styles.text}>
-          <T variant="small" numberOfLines={2} style={styles.title}>
-            {title}
-          </T>
-          <T variant="caption" muted numberOfLines={1} style={styles.line}>
-            {subtitle ?? ' '}
-          </T>
-          <T variant="caption" numberOfLines={1} style={[styles.line, { color: C.accentInk, fontWeight: '700' }]}>
-            {highlight ?? ' '}
-          </T>
+        <View style={styles.textRow}>
+          <View style={styles.text}>
+            <T numberOfLines={1} style={styles.title}>
+              {title}
+            </T>
+            <T variant="caption" muted numberOfLines={1} style={styles.line}>
+              {subtitle ?? ' '}
+            </T>
+            {highlight !== undefined ? (
+              <T variant="caption" numberOfLines={1} style={[styles.line, { color: C.accentInk, fontWeight: '700' }]}>
+                {highlight ?? ' '}
+              </T>
+            ) : null}
+          </View>
+          {onCheck ? (
+            <Touchable
+              onPress={onCheck}
+              haptic="success"
+              pressScale={0.8}
+              hitSlop={8}
+              accessibilityLabel={checkLabel ?? `Marcar ${title} como visto`}
+              style={styles.check}>
+              <Icon name="check" size={20} color={C.textMuted} strokeWidth={2.4} />
+            </Touchable>
+          ) : null}
         </View>
       </Touchable>
     </Link>
@@ -100,8 +121,10 @@ const makeStyles = (C: Colors) =>
     paddingVertical: 2,
   },
   grid: { flexDirection: 'row', flexWrap: 'wrap', rowGap: Space.lg },
-  text: { gap: 1 },
-  /** Dos líneas de título reservadas siempre. */
-  title: { fontWeight: '600', minHeight: 40, lineHeight: 20 },
+  textRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 4 },
+  text: { flex: 1, gap: 1 },
+  /** Una línea de título con puntos suspensivos: limpio y siempre parejo. */
+  title: { fontSize: 15, lineHeight: 20, fontWeight: '700', letterSpacing: -0.2, color: C.text },
   line: { minHeight: 16 },
+  check: { paddingTop: 2 },
 });

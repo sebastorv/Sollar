@@ -280,11 +280,32 @@ export function Loading() {
   );
 }
 
-export function Section({ title, children, right }: { title: string; children: ReactNode; right?: ReactNode }) {
+export function Section({
+  title,
+  children,
+  right,
+  onPress,
+}: {
+  title: string;
+  children: ReactNode;
+  right?: ReactNode;
+  /** Si se da, el título lleva una flecha y abre la vista completa. */
+  onPress?: () => void;
+}) {
+  const C = useColors();
   return (
     <View style={{ gap: Space.md }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-        <T variant="heading">{title}</T>
+        {onPress ? (
+          <Touchable onPress={onPress} haptic="select" style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
+            <T variant="heading">{title}</T>
+            <View>
+              <Icon name="chevronRight" size={20} color={C.text} strokeWidth={2.6} />
+            </View>
+          </Touchable>
+        ) : (
+          <T variant="heading">{title}</T>
+        )}
         {right}
       </View>
       {children}

@@ -76,6 +76,8 @@ export type LibraryItem = {
   watchedEpisodes: Record<EpisodeKey, string>;
   /** Solo películas: fecha en que se marcó como vista. */
   watchedAt: string | null;
+  /** Marcado como favorito (corazón). */
+  favorite?: boolean;
   /** Dónde verlo (puede faltar en títulos guardados antes de esta función). */
   availability?: Availability | null;
   addedAt: string;
@@ -126,6 +128,8 @@ export type TmdbSeasonStub = {
   episode_count: number;
   name: string;
   air_date: string | null;
+  /** Promedio de votos de la temporada en TMDB (0 si no hay). */
+  vote_average?: number;
 };
 
 export type TmdbTv = {
@@ -185,4 +189,26 @@ export type TmdbWatchProviders = {
   buy?: TmdbProvider[];
   free?: TmdbProvider[];
   ads?: TmdbProvider[];
+};
+
+/** Un título dentro de una lista propia. Guarda lo justo para mostrarlo sin consultar TMDB. */
+export type ListEntry = {
+  key: string;
+  tmdbId: number;
+  mediaType: MediaType;
+  title: string;
+  posterPath: string | null;
+  year: string | null;
+  addedAt: string;
+};
+
+/** Lista creada por la persona ("Series de los 90", "Para ver con mamá"...). */
+export type CustomList = {
+  id: string;
+  name: string;
+  description: string;
+  /** En el orden que eligió la persona. */
+  entries: ListEntry[];
+  createdAt: string;
+  updatedAt: string;
 };

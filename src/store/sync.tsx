@@ -17,7 +17,7 @@ import { AppState, Platform } from 'react-native';
 import { onRemoteChange, pullRows, pullSettings, pushRows, pushSettings, type PushRow } from '@/lib/cloud';
 
 import { useAuth } from './auth';
-import { useLibrary } from './library';
+import { LIST_PREFIX, useLibrary } from './library';
 import { useSettings } from './settings';
 
 const META_KEY = 'sollar.sync.v1';
@@ -81,7 +81,9 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       if (rows.length) {
         libRef.current.applyRemote(rows);
         for (const r of rows) {
-          m.synced[r.key] = r.deleted ? `x${r.client_updated_at}` : (r.data?.updatedAt ?? r.client_updated_at);
+          m.synced[r.key] = r.deleted
+            ? `x${r.client_updated_at}`
+            : ((r.data as { updatedAt?: string } | null)?.updatedAt ?? r.client_updated_at);
           if (!m.lastPull || r.updated_at > m.lastPull) m.lastPull = r.updated_at;
         }
       } else if (!m.lastPull) {
@@ -96,7 +98,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       // 2. Subir lo que cambió aquí. Se espera un instante para que el estado local
       //    incluya lo que se acaba de bajar.
       await new Promise((r) => setTimeout(r, 0));
-      const { items, tombstones } = libRef.current.raw;
+      const { items, tombstones, lists } = libRef.current.raw;
       const push: PushRow[] = [];
       for (const it of Object.values(items)) {
         if (m.synced[it.key] !== it.updatedAt) {
@@ -104,8 +106,15 @@ export function SyncProvider({ children }: { children: ReactNode }) {
           push.push({ key: it.key, data: data as typeof it, deleted: false, client_updated_at: it.updatedAt });
         }
       }
+      for (const l of Object.values(lists)) {
+        const key = LIST_PREFIX + l.id;
+        if (m.synced[key] !== l.updatedAt) {
+          push.push({ key, data: l as unknown as PushRow['data'], deleted: false, client_updated_at: l.updatedAt });
+        }
+      }
       for (const [key, at] of Object.entries(tombstones)) {
-        if (m.synced[key] !== `x${at}` && !items[key]) {
+        const alive = key.startsWith(LIST_PREFIX) ? lists[key.slice(LIST_PREFIX.length)] : items[key];
+        if (m.synced[key] !== `x${at}` && !alive) {
           push.push({ key, data: null, deleted: true, client_updated_at: at });
         }
       }

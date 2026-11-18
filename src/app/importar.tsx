@@ -65,6 +65,7 @@ export default function ImportScreen() {
     const result = await runImport(plan, {
       existing: library.raw.items,
       onBatch: library.mergeImported,
+      onLists: library.importLists,
       onProgress: setProgress,
       isCancelled: () => cancelled.current,
     });
@@ -78,7 +79,7 @@ export default function ImportScreen() {
     <Screen>
       <View style={{ paddingTop: 52, gap: Space.xs }}>
         <T variant="title">Importar historial</T>
-        <T muted>Trae lo que ya tienes en WeTrakr: series, episodios vistos, películas y calificaciones.</T>
+        <T muted>Trae lo que ya tienes en WeTrakr: series, episodios vistos, películas, calificaciones, listas y favoritos.</T>
       </View>
 
       {Platform.OS !== 'web' ? (
@@ -106,6 +107,8 @@ export default function ImportScreen() {
             <Stat value={n(watchedMovies)} label="películas vistas" />
             <Stat value={n(plan.movies.length - watchedMovies)} label="películas por ver" />
             <Stat value={n(plan.ratings)} label="calificaciones" />
+            <Stat value={n(plan.lists.length)} label={plan.lists.length === 1 ? 'lista' : 'listas'} />
+            <Stat value={n(plan.favorites.length)} label="favoritos" />
           </View>
           <T variant="small" muted>
             Lo que ya tengas en Sollar no se pierde: se suman los episodios vistos y se respetan tus

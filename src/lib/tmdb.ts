@@ -263,3 +263,162 @@ export function displayYear(r: { release_date?: string; first_air_date?: string 
   const date = r.release_date || r.first_air_date;
   return date ? date.slice(0, 4) : null;
 }
+
+// --- Ficha completa: reparto, tráiler, recomendaciones, detalles ---
+
+export type CastMember = { id: number; name: string; character: string; profilePath: string | null };
+export type TitleExtras = {
+  cast: CastMember[];
+  /** Dirección (películas) o creadores (series). */
+  makers: string[];
+  trailerKey: string | null;
+  recommendations: TmdbSearchResult[];
+  imdbId: string | null;
+  certification: string | null;
+  networks: string[];
+  originalTitle: string | null;
+  originalLanguage: string | null;
+  homepage: string | null;
+  voteCount: number;
+};
+
+type RawVideo = { key: string; site: string; type: string; official?: boolean; iso_639_1?: string };
+type RawCredits = {
+  cast?: { id: number; name: string; character?: string; profile_path: string | null; roles?: { character: string }[] }[];
+  crew?: { name: string; job: string }[];
+};
+type RawExtras = {
+  original_title?: string;
+  original_name?: string;
+  original_language?: string;
+  homepage?: string;
+  vote_count?: number;
+  created_by?: { name: string }[];
+  networks?: { name: string }[];
+  credits?: RawCredits;
+  aggregate_credits?: RawCredits;
+  videos?: { results: RawVideo[] };
+  recommendations?: { results: Omit<TmdbSearchResult, 'media_type'>[] };
+  external_ids?: { imdb_id?: string | null };
+  imdb_id?: string | null;
+  release_dates?: { results: { iso_3166_1: string; release_dates: { certification: string }[] }[] };
+  content_ratings?: { results: { iso_3166_1: string; rating: string }[] };
+};
+
+const EMPTY_EXTRAS: TitleExtras = {
+  cast: [],
+  makers: [],
+  trailerKey: null,
+  recommendations: [],
+  imdbId: null,
+  certification: null,
+  networks: [],
+  originalTitle: null,
+  originalLanguage: null,
+  homepage: null,
+  voteCount: 0,
+};
+
+export async function getExtras(type: MediaType, id: number): Promise<TitleExtras> {
+  if (isDemo) return EMPTY_EXTRAS;
+  const append =
+    type === 'tv'
+      ? 'aggregate_credits,videos,recommendations,external_ids,content_ratings'
+      : 'credits,videos,recommendations,external_ids,release_dates';
+  const raw = await get<RawExtras>(`/${type}/${id}`, {
+    append_to_response: append,
+    // Tráileres en español primero; si no hay, en inglés o sin idioma.
+    include_video_language: 'es,en,null',
+  });
+  const credits = raw.aggregate_credits ?? raw.credits;
+  const cast = (credits?.cast ?? []).slice(0, 20).map((c) => ({
+    id: c.id,
+    name: c.name,
+    character: c.character ?? c.roles?.[0]?.character ?? '',
+    profilePath: c.profile_path,
+  }));
+  const makers =
+    type === 'tv'
+      ? (raw.created_by ?? []).map((c) => c.name)
+      : (credits?.crew ?? []).filter((c) => c.job === 'Director').map((c) => c.name);
+  const videos = (raw.videos?.results ?? []).filter((v) => v.site === 'YouTube');
+  const rank = (v: RawVideo) =>
+    (v.type === 'Trailer' ? 0 : v.type === 'Teaser' ? 2 : 4) + (v.iso_639_1 === 'es' ? 0 : 1) + (v.official ? 0 : 0.5);
+  const trailer = [...videos].sort((a, b) => rank(a) - rank(b))[0];
+  const cert =
+    type === 'tv'
+      ? (raw.content_ratings?.results.find((r) => r.iso_3166_1 === REGION) ??
+          raw.content_ratings?.results.find((r) => r.iso_3166_1 === 'US'))?.rating
+      : (raw.release_dates?.results.find((r) => r.iso_3166_1 === REGION) ??
+          raw.release_dates?.results.find((r) => r.iso_3166_1 === 'US'))?.release_dates.find((d) => d.certification)
+          ?.certification;
+  return {
+    cast,
+    makers,
+    trailerKey: trailer?.key ?? null,
+    recommendations: (raw.recommendations?.results ?? []).slice(0, 18).map((r) => ({ ...r, media_type: type })),
+    imdbId: raw.external_ids?.imdb_id ?? raw.imdb_id ?? null,
+    certification: cert || null,
+    networks: (raw.networks ?? []).map((n) => n.name),
+    originalTitle: raw.original_title ?? raw.original_name ?? null,
+    originalLanguage: raw.original_language ?? null,
+    homepage: raw.homepage || null,
+    voteCount: raw.vote_count ?? 0,
+  };
+}
+
+export type Person = {
+  id: number;
+  name: string;
+  biography: string;
+  birthday: string | null;
+  deathday: string | null;
+  placeOfBirth: string | null;
+  department: string | null;
+  profilePath: string | null;
+  credits: (TmdbSearchResult & { character?: string })[];
+};
+
+export async function getPerson(id: number): Promise<Person> {
+  if (isDemo) throw new TmdbError('Las páginas de actores necesitan conexión con TMDB.', 404);
+  type Raw = {
+    id: number;
+    name: string;
+    biography: string;
+    birthday: string | null;
+    deathday: string | null;
+    place_of_birth: string | null;
+    known_for_department: string | null;
+    profile_path: string | null;
+    combined_credits?: { cast: (TmdbSearchResult & { character?: string; vote_count?: number; popularity?: number })[] };
+  };
+  const raw = await get<Raw>(`/person/${id}`, { append_to_response: 'combined_credits' });
+  // Sin biografía en español, se usa la de inglés.
+  let bio = raw.biography;
+  if (!bio) {
+    const en = await get<{ biography: string }>(`/person/${id}`, { language: 'en-US' });
+    bio = en.biography;
+  }
+  const seen = new Set<string>();
+  const credits = (raw.combined_credits?.cast ?? [])
+    .filter((c) => (c.media_type === 'movie' || c.media_type === 'tv') && (c.vote_count ?? 0) > 20)
+    .sort((a, b) => (b.popularity ?? 0) - (a.popularity ?? 0))
+    .filter((c) => {
+      const k = `${c.media_type}:${c.id}`;
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    })
+    .slice(0, 40);
+  return {
+    id: raw.id,
+    name: raw.name,
+    biography: bio,
+    birthday: raw.birthday,
+    deathday: raw.deathday,
+    placeOfBirth: raw.place_of_birth,
+    department: raw.known_for_department,
+    profilePath: raw.profile_path,
+    credits,
+  };
+}

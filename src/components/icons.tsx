@@ -10,6 +10,15 @@ import { useColors } from '@/store/theme';
 export type IconName =
   | 'play'
   | 'calendar'
+  | 'heart'
+  | 'chevronRight'
+  | 'flame'
+  | 'share'
+  | 'trash'
+  | 'arrowUp'
+  | 'arrowDown'
+  | 'edit'
+  | 'film'
   | 'search'
   | 'ticket'
   | 'person'
@@ -60,6 +69,46 @@ export function Icon({
           <Rect x="3.5" y="5" width="17" height="15.5" rx="3.5" {...s} fill={fill} fillOpacity={fillOpacity} />
           <Path d="M3.5 10h17M8 3v4M16 3v4" {...s} />
           <Circle cx="15.5" cy="15" r="1.7" fill={color} stroke="none" />
+        </>
+      ) : null}
+
+      {name === 'chevronRight' ? <Path d="M9 5l7 7-7 7" {...s} /> : null}
+      {name === 'flame' ? (
+        <Path
+          d="M12 21c-3.9 0-6.5-2.6-6.5-6.2 0-3.3 2.4-5.4 3.6-7.8.4 1.8 1.4 2.9 2.4 3.4C11.3 7.4 12.6 5 15 3c-.3 2.7.9 4.6 2.1 6.3 1 1.5 1.4 3 1.4 4.7C18.5 18.1 15.9 21 12 21Z"
+          {...s}
+          fill={filled ? color : 'none'}
+        />
+      ) : null}
+      {name === 'heart' ? (
+        <Path
+          d="M12 20.5s-7.5-4.4-7.5-10.2A4.3 4.3 0 0 1 12 7.6a4.3 4.3 0 0 1 7.5 2.7c0 5.8-7.5 10.2-7.5 10.2Z"
+          {...s}
+          fill={filled ? color : 'none'}
+        />
+      ) : null}
+
+      {name === 'share' ? (
+        <>
+          <Path d="M12 3.5v11M8 7.5l4-4 4 4" {...s} />
+          <Path d="M7 11H6a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2h-1" {...s} />
+        </>
+      ) : null}
+
+      {name === 'trash' ? (
+        <>
+          <Path d="M4.5 7h15M10 4h4M6.5 7l.8 12a2 2 0 0 0 2 1.9h5.4a2 2 0 0 0 2-1.9L17.5 7" {...s} />
+        </>
+      ) : null}
+
+      {name === 'arrowUp' ? <Path d="M12 19V5M6 11l6-6 6 6" {...s} /> : null}
+      {name === 'arrowDown' ? <Path d="M12 5v14M6 13l6 6 6-6" {...s} /> : null}
+      {name === 'edit' ? <Path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4Z" {...s} /> : null}
+
+      {name === 'film' ? (
+        <>
+          <Rect x="3" y="5" width="18" height="14" rx="3" {...s} />
+          <Path d="M10 9.2v5.6a.5.5 0 0 0 .8.4l4.2-2.8a.5.5 0 0 0 0-.8l-4.2-2.8a.5.5 0 0 0-.8.4Z" {...s} fill={color} strokeWidth={1} />
         </>
       ) : null}
 

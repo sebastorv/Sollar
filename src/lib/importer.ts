@@ -9,7 +9,7 @@
 import type { ImportPlan, ImportedMovie, ImportedShow } from './import-wetrakr';
 import { itemKey, newItemFromMovie, newItemFromTv } from './library-item';
 import { getMovie, getTv, TmdbError } from './tmdb';
-import { episodeKey, type LibraryItem } from './types';
+import { episodeKey, type CustomList, type LibraryItem, type ListEntry } from './types';
 
 export type ImportProgress = {
   done: number;
@@ -71,6 +71,8 @@ export async function runImport(
   opts: {
     existing: Record<string, LibraryItem>;
     onBatch: (items: LibraryItem[]) => void;
+    /** Listas armadas al final, con carátulas. */
+    onLists?: (lists: CustomList[]) => void;
     onProgress: (p: ImportProgress) => void;
     isCancelled: () => boolean;
   },
@@ -82,8 +84,18 @@ export async function runImport(
   ];
   const progress: ImportProgress = { done: 0, total: tasks.length, skipped: [] };
   let buffer: LibraryItem[] = [];
+  const favorites = new Set(plan.favorites);
+  /** Carátula y año de todo lo importado, para armar las listas sin volver a consultar. */
+  const known = new Map<string, { posterPath: string | null; year: string | null; title: string }>();
+  for (const it of Object.values(opts.existing)) known.set(it.key, it);
   const flush = () => {
-    if (buffer.length) opts.onBatch(buffer);
+    if (buffer.length) {
+      for (const it of buffer) {
+        if (favorites.has(it.key)) it.favorite = true;
+        known.set(it.key, it);
+      }
+      opts.onBatch(buffer);
+    }
     buffer = [];
   };
 
@@ -124,6 +136,61 @@ export async function runImport(
 
   await Promise.all(Array.from({ length: 6 }, worker));
   flush();
+
+  // Listas: los títulos que no están en tu historial se consultan solo para la carátula.
+  if (plan.lists.length && opts.onLists && !opts.isCancelled() && !progress.error) {
+    const missing = new Map<string, { type: 'movie' | 'tv'; id: number }>();
+    for (const l of plan.lists)
+      for (const e of l.entries) {
+        const k = itemKey(e.mediaType, e.tmdbId);
+        if (!known.has(k)) missing.set(k, { type: e.mediaType, id: e.tmdbId });
+      }
+    const queue = [...missing.entries()];
+    progress.total += queue.length;
+    let i = 0;
+    const fetcher = async () => {
+      while (i < queue.length && !opts.isCancelled()) {
+        const [k, m] = queue[i++];
+        try {
+          if (m.type === 'movie') {
+            const d = await withRetry(() => getMovie(m.id, false));
+            known.set(k, { posterPath: d.poster_path, year: d.release_date?.slice(0, 4) || null, title: d.title });
+          } else {
+            const d = await withRetry(() => getTv(m.id, false));
+            known.set(k, { posterPath: d.poster_path, year: d.first_air_date?.slice(0, 4) || null, title: d.name });
+          }
+        } catch {
+          // Sin carátula: se agrega igual con el título del archivo.
+        }
+        progress.done++;
+        if (progress.done % 10 === 0) opts.onProgress({ ...progress });
+      }
+    };
+    await Promise.all(Array.from({ length: 6 }, fetcher));
+    const now = new Date().toISOString();
+    const lists: CustomList[] = plan.lists.map((l, n) => ({
+      id: `w${Date.now().toString(36)}${n}`,
+      name: l.name,
+      description: l.description,
+      createdAt: now,
+      updatedAt: now,
+      entries: l.entries.map((e): ListEntry => {
+        const k = itemKey(e.mediaType, e.tmdbId);
+        const info = known.get(k);
+        return {
+          key: k,
+          tmdbId: e.tmdbId,
+          mediaType: e.mediaType,
+          title: info?.title || e.title,
+          posterPath: info?.posterPath ?? null,
+          year: info?.year ?? e.year,
+          addedAt: now,
+        };
+      }),
+    }));
+    opts.onLists(lists);
+  }
+
   opts.onProgress({ ...progress });
   return progress;
 }

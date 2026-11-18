@@ -1,12 +1,16 @@
-/** Pestaña "Mi lista": todos los títulos guardados, con filtros, atajos y orden. */
+/**
+ * Pestaña "Mi lista": todos los títulos guardados (con filtros, atajos y orden) y las listas
+ * propias. Con miles de títulos se muestran por tandas para que la pantalla no se ponga lenta.
+ */
 
 import { router } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { FilterSheet } from '@/components/filter-sheet';
 import { card } from '@/components/glass';
 import { Icon } from '@/components/icons';
+import { MyLists } from '@/components/lists';
 import { useProviderDirectory } from '@/components/platforms';
 import { Grid, TitleCard } from '@/components/title-card';
 import { Button, Chip, Empty, Screen, T } from '@/components/ui';
@@ -43,8 +47,12 @@ export default function ListScreen() {
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [refreshing, setRefreshing] = useState<{ done: number; total: number } | null>(null);
+  const [view, setView] = useState<'titles' | 'lists'>('titles');
+  const [limit, setLimit] = useState(PAGE);
 
   const filtered = useMemo(() => applyFilters(items, filters, myProviders), [items, filters, myProviders]);
+  // Al cambiar los filtros se vuelve a la primera tanda.
+  useEffect(() => setLimit(PAGE), [filters]);
   const { genres, decades } = useMemo(() => facets(items), [items]);
   const myPlatforms = (directory ?? []).filter((p) => myProviders.includes(p.id));
   const extra = activeCount(filters);
@@ -77,6 +85,14 @@ export default function ListScreen() {
   return (
     <Screen>
       <T variant="title">Mi lista</T>
+      <View style={{ flexDirection: 'row', gap: Space.sm }}>
+        <Chip label={`Títulos (${items.length})`} selected={view === 'titles'} onPress={() => setView('titles')} />
+        <Chip label={`Listas (${lib.lists.length + 1})`} selected={view === 'lists'} onPress={() => setView('lists')} />
+      </View>
+      {view === 'lists' ? (
+        <MyLists />
+      ) : (
+      <>
 
       {items.length > 0 ? (
         <ScrollView
@@ -172,7 +188,7 @@ export default function ListScreen() {
             {filtered.length === 1 ? '1 título' : `${filtered.length} títulos`}
           </T>
           <Grid>
-            {filtered.map((i) => (
+            {filtered.slice(0, limit).map((i) => (
               <TitleCard
                 key={i.key}
                 id={i.tmdbId}
@@ -185,7 +201,16 @@ export default function ListScreen() {
               />
             ))}
           </Grid>
+          {filtered.length > limit ? (
+            <Button
+              label={`Mostrar más (${(filtered.length - limit).toLocaleString('es-CO')} restantes)`}
+              kind="secondary"
+              onPress={() => setLimit((l) => l + PAGE * 2)}
+            />
+          ) : null}
         </>
+      )}
+      </>
       )}
 
       <FilterSheet
@@ -202,12 +227,15 @@ export default function ListScreen() {
   );
 }
 
+/** Títulos por tanda en la rejilla. */
+const PAGE = 60;
+
 function subtitleFor(i: LibraryItem, sort: Filters['sort']): string | null {
   if (sort === 'remaining') {
     const left = remainingMinutes(i);
     return left > 0 ? `Faltan ${formatDuration(left)}` : 'Terminada';
   }
-  if (i.rating != null) return `★ ${i.rating}/10`;
+  if (i.rating != null) return `Tu nota: ${i.rating}/10`;
   if (i.mediaType === 'tv' && i.status === 'watching') {
     const n = nextEpisode(i);
     return n ? `Sigue ${formatEpisode(n.season, n.episode)}` : 'Al día';

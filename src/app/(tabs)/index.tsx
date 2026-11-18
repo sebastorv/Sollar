@@ -1,51 +1,62 @@
-/** Pestaña "Siguiendo": lo que sale esta semana, el siguiente episodio de cada serie y lo pendiente. */
+/**
+ * Pestaña "Siguiendo": lo que toca ver ahora.
+ *
+ * - Continúa viendo: tarjetas anchas con la imagen del próximo capítulo, cuánto dura, cuántos
+ *   faltan y el ✓ para marcarlo. Primero lo último que viste.
+ * - Racha: días seguidos viendo algo.
+ * - Esta semana, Listo en tus plataformas, Empieza a ver y Películas por ver, en estantes.
+ * Los estantes se dibujan a medida que se desplazan, así aguantan miles de títulos.
+ */
 
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Link, router } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { FlatList, StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import { SollarLogo } from '@/components/brand';
 import { card } from '@/components/glass';
 import { Icon } from '@/components/icons';
 import { TitleCard } from '@/components/title-card';
 import { TokenWarning } from '@/components/token-warning';
-import { Button, Empty, Poster, ProgressBar, Screen, Section, T } from '@/components/ui';
-import { useCalendar, type CalendarEpisode } from '@/hooks/use-calendar';
-import { addDays, dayLabel, todayISO } from '@/lib/dates';
+import { Touchable } from '@/components/touch';
+import { Button, Empty, Poster, Screen, Section, T } from '@/components/ui';
 import { Radius, Space, type Colors } from '@/constants/theme';
-import { useColors, useStyles } from '@/store/theme';
-import { formatEpisode, nextEpisode, progressOf, totalEpisodes, watchedCount } from '@/lib/progress';
+import { useCalendar, type CalendarEpisode } from '@/hooks/use-calendar';
+import { addDays, dayLabel, daysFromToday, toISO, todayISO } from '@/lib/dates';
+import { formatEpisode, nextEpisode, totalEpisodes, watchedCount } from '@/lib/progress';
 import { availableLabel, myMatches } from '@/lib/providers';
 import { getSeason, isDemo, sharpImage } from '@/lib/tmdb';
 import type { LibraryItem, TmdbEpisode } from '@/lib/types';
 import { useLibrary } from '@/store/library';
 import { useSettings } from '@/store/settings';
-import { Touchable } from '@/components/touch';
+import { useColors, useStyles } from '@/store/theme';
 
 export default function FollowingScreen() {
-  const C = useColors();
   const styles = useStyles(makeStyles);
-  const { items } = useLibrary();
-  // Lo que viste más recientemente va primero.
-  const watching = items
-    .filter((i) => i.mediaType === 'tv' && i.status === 'watching')
-    .map((i) => ({ i, last: lastWatched(i) }))
-    .sort((a, b) => b.last.localeCompare(a.last))
-    .map((x) => x.i);
-  const [showAll, setShowAll] = useState(false);
-  const watchingShown = showAll ? watching : watching.slice(0, 8);
-  const plannedMovies = items.filter((i) => i.mediaType === 'movie' && i.status === 'planned');
-  const plannedShows = items.filter((i) => i.mediaType === 'tv' && i.status === 'planned');
+  const lib = useLibrary();
+  const { items } = lib;
   const { myProviders } = useSettings();
   const calendar = useCalendar();
+
+  const watching = useMemo(
+    () =>
+      items
+        .filter((i) => i.mediaType === 'tv' && i.status === 'watching')
+        .map((i) => ({ i, last: lastWatched(i) }))
+        .sort((a, b) => b.last.localeCompare(a.last))
+        .map((x) => x.i),
+    [items],
+  );
+  const plannedShows = useMemo(() => items.filter((i) => i.mediaType === 'tv' && i.status === 'planned'), [items]);
+  const plannedMovies = useMemo(() => items.filter((i) => i.mediaType === 'movie' && i.status === 'planned'), [items]);
+  // Pendientes que ya puedes ver con lo que pagas: lo más útil para decidir qué ver hoy.
+  const readyNow = useMemo(
+    () => items.filter((i) => (i.status === 'planned' || i.status === 'paused') && myMatches(i, myProviders).length > 0),
+    [items, myProviders],
+  );
   const weekEnd = addDays(todayISO(), 6);
   const thisWeek = calendar.episodes.filter((e) => e.airDate <= weekEnd);
-  // Pendientes que ya puedes ver con lo que pagas: lo más útil para decidir qué ver hoy.
-  const readyNow = items.filter(
-    (i) => (i.status === 'planned' || i.status === 'paused') && myMatches(i, myProviders).length > 0,
-  );
 
   return (
     <Screen>
@@ -59,7 +70,7 @@ export default function FollowingScreen() {
       {items.length === 0 ? (
         <Empty
           title="Aún no sigues nada"
-          message="Busca una serie o película y agrégala a tu lista para empezar a llevar el seguimiento."
+          message="Busca una serie o película y agrégala a tu lista, o trae tu historial desde Perfil."
           action={<Button label="Buscar títulos" onPress={() => router.navigate('/buscar')} />}
         />
       ) : null}
@@ -74,89 +85,63 @@ export default function FollowingScreen() {
         </View>
       ) : null}
 
+      {watching.length > 0 ? (
+        <Section title="Continúa viendo" onPress={() => router.navigate('/lista')}>
+          <FlatList
+            horizontal
+            data={watching}
+            keyExtractor={(i) => i.key}
+            renderItem={({ item }) => <UpNextCard item={item} upcoming={calendar.nextByKey[item.key]} />}
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ gap: Space.md }}
+            initialNumToRender={4}
+            windowSize={5}
+            style={styles.bleed}
+          />
+        </Section>
+      ) : null}
+
+      {items.length > 0 ? <StreakCard items={items} /> : null}
+
       {thisWeek.length > 0 ? (
-        <Section
-          title="Esta semana"
-          right={
-            <Link href="/calendario" asChild>
-              <Touchable hitSlop={8}>
-                <T variant="label" style={{ color: C.accentInk }}>
-                  Ver calendario
-                </T>
-              </Touchable>
-            </Link>
-          }>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: Space.sm }}>
-            {thisWeek.slice(0, 8).map((e) => (
-              <WeekCard key={`${e.key}:${e.season}:${e.episode}`} e={e} />
-            ))}
-          </ScrollView>
+        <Section title="Esta semana" onPress={() => router.navigate('/calendario')}>
+          <FlatList
+            horizontal
+            data={thisWeek.slice(0, 20)}
+            keyExtractor={(e) => `${e.key}:${e.season}:${e.episode}`}
+            renderItem={({ item }) => <WeekCard e={item} />}
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ gap: Space.sm }}
+            style={styles.bleed}
+          />
         </Section>
       ) : null}
 
       {readyNow.length > 0 ? (
-        <Section title="Listo para ver en tus plataformas">
-          <Shelf items={readyNow} myProviders={myProviders} />
-        </Section>
-      ) : null}
-
-      {watching.length > 0 ? (
-        <Section title="Continúa viendo">
-          <View style={styles.upNext}>
-            {watchingShown.map((item) => (
-              <NextEpisodeRow key={item.key} item={item} upcoming={calendar.nextByKey[item.key]} />
-            ))}
-          </View>
-          {watching.length > watchingShown.length || showAll ? (
-            <Button
-              label={showAll ? 'Mostrar menos' : `Ver las ${watching.length} series`}
-              kind="secondary"
-              onPress={() => setShowAll(!showAll)}
-            />
-          ) : null}
+        <Section title="Listo en tus plataformas">
+          <PosterShelf items={readyNow} myProviders={myProviders} />
         </Section>
       ) : null}
 
       {plannedShows.length > 0 ? (
-        <Section title="Series por empezar">
-          <Shelf items={plannedShows} myProviders={myProviders} />
+        <Section title="Empieza a ver">
+          <PosterShelf
+            items={plannedShows}
+            myProviders={myProviders}
+            onCheck={(i) => {
+              const first = nextEpisode(i);
+              if (first) lib.setEpisodes(i.key, [first], true);
+            }}
+          />
         </Section>
       ) : null}
 
       {plannedMovies.length > 0 ? (
         <Section title="Películas por ver">
-          <Shelf items={plannedMovies} myProviders={myProviders} />
+          <PosterShelf items={plannedMovies} myProviders={myProviders} onCheck={(i) => lib.setMovieWatched(i.key, true)} />
         </Section>
       ) : null}
     </Screen>
-  );
-}
-
-/** Tarjeta compacta de un episodio que sale esta semana. */
-function WeekCard({ e }: { e: CalendarEpisode }) {
-  const C = useColors();
-  const styles = useStyles(makeStyles);
-  return (
-    <Link href={{ pathname: '/titulo/[tipo]/[id]', params: { tipo: 'tv', id: String(e.tmdbId) } }} asChild>
-      <Touchable>
-        {({ pressed }) => (
-          <View style={[styles.week, pressed && { opacity: 0.8 }]}>
-            <Poster path={e.posterPath} title={e.title} width={44} size="w185" />
-            <View style={{ gap: 2, maxWidth: 150 }}>
-              <T variant="caption" style={{ color: C.accentInk, fontWeight: '700' }}>
-                {dayLabel(e.airDate)}
-              </T>
-              <T variant="label" numberOfLines={1}>
-                {e.title}
-              </T>
-              <T variant="caption" muted>
-                {formatEpisode(e.season, e.episode)}
-              </T>
-            </View>
-          </View>
-        )}
-      </Touchable>
-    </Link>
   );
 }
 
@@ -165,6 +150,16 @@ function lastWatched(item: LibraryItem): string {
   let last = item.addedAt;
   for (const at of Object.values(item.watchedEpisodes)) if (at > last) last = at;
   return last;
+}
+
+/** "hoy", "1 d", "3 sem", "2 m": hace cuánto viste la serie por última vez. */
+function since(iso: string): string {
+  const days = -daysFromToday(toISO(new Date(iso)));
+  if (days <= 0) return 'hoy';
+  if (days < 14) return `${days} d`;
+  if (days < 60) return `${Math.round(days / 7)} sem`;
+  if (days < 730) return `${Math.round(days / 30)} m`;
+  return `${Math.round(days / 365)} a`;
 }
 
 /** Datos del episodio (imagen, nombre, sinopsis). Usa la caché de TMDB por temporada. */
@@ -183,17 +178,14 @@ function useEpisode(tvId: number, season: number | undefined, episode: number | 
   return ep;
 }
 
-/**
- * Tarjeta de "Continúa viendo": la imagen del próximo capítulo con su nombre y de qué trata,
- * el avance de la serie y el botón para marcarlo como visto.
- */
-function NextEpisodeRow({ item, upcoming }: { item: LibraryItem; upcoming?: CalendarEpisode }) {
+/** Tarjeta ancha de "Continúa viendo", al estilo de Trakt con el toque de Sollar. */
+function UpNextCard({ item, upcoming }: { item: LibraryItem; upcoming?: CalendarEpisode }) {
   const C = useColors();
   const styles = useStyles(makeStyles);
-  const { width } = useWindowDimensions();
+  const { width: screen } = useWindowDimensions();
   const { setEpisodes } = useLibrary();
   const nextRaw = nextEpisode(item);
-  // Si lo que sigue aún no ha salido, se avisa cuándo sale y no se puede marcar como visto.
+  // Si lo que sigue aún no ha salido, se dice cuándo sale y no se puede marcar.
   const unaired =
     !!nextRaw &&
     !!upcoming &&
@@ -201,73 +193,57 @@ function NextEpisodeRow({ item, upcoming }: { item: LibraryItem; upcoming?: Cale
   const next = unaired ? null : nextRaw;
   const target = next ?? (unaired && upcoming ? { season: upcoming.season, episode: upcoming.episode } : null);
   const ep = useEpisode(item.tmdbId, target?.season, target?.episode);
+  const width = Math.min(Math.max(screen * 0.78, 260), 340);
+  const still = sharpImage(ep?.still_path, 'still', width) ?? sharpImage(item.backdropPath, 'backdrop', width);
   const total = totalEpisodes(item.seasons);
-  const cardWidth = Math.min(width - 32, 460);
-  const still = sharpImage(ep?.still_path, 'still', cardWidth) ?? sharpImage(item.backdropPath, 'backdrop', cardWidth);
-  const status = next
-    ? formatEpisode(next.season, next.episode)
-    : unaired && upcoming
-      ? `${formatEpisode(upcoming.season, upcoming.episode)} · sale ${dayLabel(upcoming.airDate).toLowerCase()}`
-      : 'Al día';
+  const seen = watchedCount(item);
+  const left = Math.max(0, total - seen);
   const epName = ep?.name && !/^(episodio|episode) \d+$/i.test(ep.name) ? ep.name : null;
+  const code = target ? formatEpisode(target.season, target.episode) : 'Al día';
+  const isNew = ep?.air_date ? daysFromToday(ep.air_date) >= -7 && daysFromToday(ep.air_date) <= 0 : false;
 
   return (
-    <View style={styles.upCard}>
+    <View style={{ width, gap: Space.sm }}>
       <Link href={{ pathname: '/titulo/[tipo]/[id]', params: { tipo: 'tv', id: String(item.tmdbId) } }} asChild>
-        <Touchable pressScale={0.98} accessibilityLabel={`${item.title}, ${status}`}>
-          <View style={styles.still}>
-            {still ? (
-              <Image source={{ uri: still }} style={StyleSheet.absoluteFill} contentFit="cover" transition={250} />
-            ) : (
-              <LinearGradient colors={[C.g1, C.g2]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
-            )}
-            <LinearGradient
-              colors={['transparent', 'rgba(0,0,0,0.15)', 'rgba(0,0,0,0.78)']}
-              locations={[0.35, 0.55, 1]}
-              style={StyleSheet.absoluteFill}
-            />
-            <View style={styles.stillText}>
-              <T variant="caption" numberOfLines={1} style={styles.onImageMuted}>
-                {item.title}
-              </T>
-              <T numberOfLines={1} style={styles.onImageTitle}>
-                {status}
-                {epName ? ` · ${epName}` : ''}
-              </T>
-            </View>
-            {ep?.runtime ? (
-              <View style={styles.runtime}>
-                <T variant="caption" style={{ color: '#fff', fontWeight: '700' }}>
-                  {ep.runtime} min
-                </T>
-              </View>
-            ) : null}
+        <Touchable pressScale={0.97} accessibilityLabel={`${item.title}, ${code}`} style={styles.still}>
+          {still ? (
+            <Image source={{ uri: still }} style={StyleSheet.absoluteFill} contentFit="cover" transition={250} />
+          ) : (
+            <LinearGradient colors={[C.g1, C.g2]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
+          )}
+          {/* Píldora de vidrio con la duración y el avance de la serie. */}
+          <View style={styles.pill}>
+            <View style={[styles.pillFill, { width: `${total ? Math.round((seen / total) * 100) : 0}%` }]} />
+            <T style={styles.pillText}>{ep?.runtime ? `${ep.runtime} min` : ' '}</T>
+            <T style={styles.pillText}>
+              {unaired && upcoming
+                ? `Sale ${dayLabel(upcoming.airDate).toLowerCase()}`
+                : isNew
+                  ? '• Nuevo'
+                  : `${left} ${left === 1 ? 'falta' : 'faltan'} · ${since(lastWatched(item))}`}
+            </T>
           </View>
         </Touchable>
       </Link>
-      <View style={styles.upBody}>
-        <View style={{ flex: 1, gap: Space.xs }}>
-          {ep?.overview ? (
-            <T variant="small" muted numberOfLines={2}>
-              {ep.overview}
-            </T>
-          ) : null}
-          <ProgressBar value={progressOf(item)} />
-          <T variant="caption" muted>
-            {watchedCount(item)} de {total} episodios
+      <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: Space.sm }}>
+        <View style={{ flex: 1 }}>
+          <T numberOfLines={1} style={styles.cardTitle}>
+            {item.title}
+          </T>
+          <T variant="small" muted numberOfLines={1}>
+            {code}
+            {epName ? ` · ${epName}` : ''}
           </T>
         </View>
         {next ? (
           <Touchable
             haptic="success"
-            pressScale={0.85}
-            accessibilityLabel={`Marcar ${formatEpisode(next.season, next.episode)} como visto`}
+            pressScale={0.8}
+            hitSlop={10}
+            accessibilityLabel={`Marcar ${code} como visto`}
             onPress={() => setEpisodes(item.key, [next], true)}
-            style={styles.check}>
-            <LinearGradient colors={[C.g1, C.g2]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
-            <View>
-              <Icon name="check" size={24} color={C.onAccent} strokeWidth={2.6} />
-            </View>
+            style={styles.checkBtn}>
+            <Icon name="check" size={22} color={C.accentInk} strokeWidth={2.6} />
           </Touchable>
         ) : null}
       </View>
@@ -275,40 +251,181 @@ function NextEpisodeRow({ item, upcoming }: { item: LibraryItem; upcoming?: Cale
   );
 }
 
-function Shelf({ items, myProviders }: { items: LibraryItem[]; myProviders: number[] }) {
+/** Racha: días seguidos con algo visto, y los últimos 7 días como barritas. */
+function StreakCard({ items }: { items: LibraryItem[] }) {
+  const C = useColors();
+  const styles = useStyles(makeStyles);
+  const { streak, week } = useMemo(() => {
+    const days = new Set<string>();
+    for (const i of items) {
+      if (i.watchedAt) days.add(toISO(new Date(i.watchedAt)));
+      for (const at of Object.values(i.watchedEpisodes)) days.add(toISO(new Date(at)));
+    }
+    const today = todayISO();
+    // La racha sigue viva si viste algo hoy o ayer.
+    let d = days.has(today) ? today : addDays(today, -1);
+    let n = 0;
+    while (days.has(d)) {
+      n++;
+      d = addDays(d, -1);
+    }
+    return { streak: n, week: Array.from({ length: 7 }, (_, k) => days.has(addDays(today, k - 6))) };
+  }, [items]);
+
   return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: Space.md }}>
-      {items.map((i) => (
-        <TitleCard
-          key={i.key}
-          id={i.tmdbId}
-          mediaType={i.mediaType}
-          title={i.title}
-          posterPath={i.posterPath}
-          subtitle={i.year}
-          highlight={availableLabel(i, myProviders)}
-          width={110}
-        />
-      ))}
-    </ScrollView>
+    <View style={styles.streak}>
+      <View style={styles.flame}>
+        <LinearGradient colors={[C.g1, C.g2]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
+        <View>
+          <Icon name="flame" size={26} color="#fff" filled strokeWidth={1.6} />
+        </View>
+      </View>
+      <View style={{ flex: 1 }}>
+        <T style={styles.cardTitle}>
+          {streak > 0 ? `Racha de ${streak} ${streak === 1 ? 'día' : 'días'}` : 'Empieza una racha'}
+        </T>
+        <T variant="caption" muted>
+          {streak > 0 ? 'Mira algo hoy para no perderla.' : 'Marca un episodio o una película hoy.'}
+        </T>
+      </View>
+      <View style={{ flexDirection: 'row', gap: 5, alignItems: 'flex-end' }}>
+        {week.map((on, k) => (
+          <View
+            key={k}
+            style={{
+              width: 7,
+              height: k === 6 ? 26 : 20,
+              borderRadius: 4,
+              backgroundColor: on ? C.accent : C.fill,
+              borderWidth: k === 6 ? 1.5 : 0,
+              borderColor: C.accentLine,
+            }}
+          />
+        ))}
+      </View>
+    </View>
+  );
+}
+
+/** Estante de carátulas; con ✓ opcional junto al título. */
+function PosterShelf({
+  items,
+  myProviders,
+  onCheck,
+}: {
+  items: LibraryItem[];
+  myProviders: number[];
+  onCheck?: (i: LibraryItem) => void;
+}) {
+  const styles = useStyles(makeStyles);
+  return (
+    <FlatList
+      horizontal
+      data={items}
+      keyExtractor={(i) => i.key}
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={{ gap: Space.md }}
+      initialNumToRender={6}
+      windowSize={5}
+      style={styles.bleed}
+      renderItem={({ item: i }) => {
+        const first = i.mediaType === 'tv' ? nextEpisode(i) : null;
+        return (
+          <TitleCard
+            id={i.tmdbId}
+            mediaType={i.mediaType}
+            title={i.title}
+            posterPath={i.posterPath}
+            subtitle={first ? formatEpisode(first.season, first.episode) : i.year}
+            highlight={availableLabel(i, myProviders)}
+            width={124}
+            onCheck={onCheck ? () => onCheck(i) : undefined}
+            checkLabel={i.mediaType === 'tv' ? `Marcar el primer episodio de ${i.title}` : `Marcar ${i.title} como vista`}
+          />
+        );
+      }}
+    />
+  );
+}
+
+/** Tarjeta compacta de un episodio que sale esta semana. */
+function WeekCard({ e }: { e: CalendarEpisode }) {
+  const C = useColors();
+  const styles = useStyles(makeStyles);
+  return (
+    <Link href={{ pathname: '/titulo/[tipo]/[id]', params: { tipo: 'tv', id: String(e.tmdbId) } }} asChild>
+      <Touchable style={styles.week}>
+        <Poster path={e.posterPath} title={e.title} width={44} />
+        <View style={{ gap: 2, width: 140 }}>
+          <T variant="caption" style={{ color: C.accentInk, fontWeight: '700' }}>
+            {dayLabel(e.airDate)}
+          </T>
+          <T variant="label" numberOfLines={1}>
+            {e.title}
+          </T>
+          <T variant="caption" muted>
+            {formatEpisode(e.season, e.episode)}
+          </T>
+        </View>
+      </Touchable>
+    </Link>
   );
 }
 
 const makeStyles = (C: Colors) =>
   StyleSheet.create({
-    tip: {
-      ...card(C),
-      gap: Space.sm,
-      padding: Space.lg,
+    tip: { ...card(C), gap: Space.sm, padding: Space.lg, borderRadius: Radius.lg },
+    // Los estantes llegan al borde de la pantalla, como en las apps de streaming.
+    bleed: { marginHorizontal: -Space.lg, paddingHorizontal: Space.lg, flexGrow: 0 },
+    still: {
+      aspectRatio: 16 / 9,
+      width: '100%',
       borderRadius: Radius.lg,
+      overflow: 'hidden',
+      backgroundColor: C.fill,
+      justifyContent: 'flex-end',
     },
-    row: {
+    pill: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      margin: Space.sm,
+      paddingHorizontal: Space.md,
+      paddingVertical: 5,
+      borderRadius: Radius.pill,
+      backgroundColor: 'rgba(20,16,28,0.55)',
+      borderWidth: 1,
+      borderColor: 'rgba(255,255,255,0.18)',
+      overflow: 'hidden',
+    },
+    pillFill: { position: 'absolute', left: 0, top: 0, bottom: 0, backgroundColor: 'rgba(255,255,255,0.16)' },
+    pillText: { color: '#fff', fontSize: 12, lineHeight: 16, fontWeight: '700' },
+    cardTitle: { fontSize: 16, lineHeight: 21, fontWeight: '800', letterSpacing: -0.3, color: C.text },
+    checkBtn: {
+      width: 38,
+      height: 38,
+      borderRadius: 19,
+      borderWidth: 1.5,
+      borderColor: C.accentLine,
+      backgroundColor: C.accentSoft,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    streak: {
       ...card(C),
       flexDirection: 'row',
       alignItems: 'center',
       gap: Space.md,
-      padding: Space.md,
+      padding: Space.lg,
       borderRadius: Radius.lg,
+    },
+    flame: {
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+      overflow: 'hidden',
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     week: {
       ...card(C),
@@ -319,35 +436,4 @@ const makeStyles = (C: Colors) =>
       paddingRight: Space.md,
       borderRadius: Radius.lg,
     },
-    check: {
-      width: 50,
-      height: 50,
-      borderRadius: 25,
-      overflow: 'hidden',
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    upNext: { flexDirection: 'row', flexWrap: 'wrap', gap: Space.md },
-    upCard: {
-      ...card(C),
-      flexGrow: 1,
-      flexBasis: 300,
-      maxWidth: 460,
-      borderRadius: Radius.lg,
-      overflow: 'hidden',
-    },
-    still: { aspectRatio: 16 / 9, width: '100%', backgroundColor: C.fill, justifyContent: 'flex-end' },
-    stillText: { padding: Space.md, gap: 2 },
-    onImageTitle: { color: '#fff', fontSize: 17, lineHeight: 22, fontWeight: '800', letterSpacing: -0.3 },
-    onImageMuted: { color: 'rgba(255,255,255,0.85)', fontWeight: '600' },
-    runtime: {
-      position: 'absolute',
-      top: Space.sm,
-      right: Space.sm,
-      backgroundColor: 'rgba(0,0,0,0.45)',
-      borderRadius: Radius.pill,
-      paddingHorizontal: Space.sm,
-      paddingVertical: 2,
-    },
-    upBody: { flexDirection: 'row', alignItems: 'center', gap: Space.md, padding: Space.md },
   });

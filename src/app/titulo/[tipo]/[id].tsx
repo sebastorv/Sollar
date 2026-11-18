@@ -17,7 +17,7 @@ import { useColors, useStyles } from '@/store/theme';
 import { itemKey, newItemFromMovie, newItemFromTv, seasonsFromTv } from '@/lib/library-item';
 import { formatEpisode, nextEpisode, progressOf, totalEpisodes, watchedCount } from '@/lib/progress';
 import { availabilityFrom } from '@/lib/providers';
-import { getMovie, getSeason, getTv, getWatchProviders, isDemo, sharpImage } from '@/lib/tmdb';
+import { getExtras, getMovie, getSeason, getTv, getWatchProviders, isDemo, sharpImage, type TitleExtras } from '@/lib/tmdb';
 import {
   STATUS_LABEL,
   STATUS_ORDER,
@@ -33,6 +33,8 @@ import {
 import { useLibrary } from '@/store/library';
 import { useSettings } from '@/store/settings';
 import { Touchable } from '@/components/touch';
+import { CastShelf, DetailsBlock, QuickActions, Recommendations, SeasonQuality } from '@/components/title-extras';
+import { entryFrom } from '@/components/lists';
 
 type Details = { kind: 'movie'; data: TmdbMovie } | { kind: 'tv'; data: TmdbTv };
 
@@ -52,6 +54,7 @@ export default function TitleScreen() {
   const [providers, setProviders] = useState<TmdbWatchProviders | null>(null);
   const [providersLoaded, setProvidersLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [extras, setExtras] = useState<TitleExtras | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -61,6 +64,10 @@ export default function TitleScreen() {
         ? getTv(id).then((data): Details => ({ kind: 'tv', data }))
         : getMovie(id).then((data): Details => ({ kind: 'movie', data }));
     load.then((d) => !cancelled && setDetails(d)).catch((e: Error) => !cancelled && setError(e.message));
+    setExtras(null);
+    getExtras(type, id)
+      .then((x) => !cancelled && setExtras(x))
+      .catch(() => {});
     setProvidersLoaded(false);
     getWatchProviders(type, id)
       .then((p) => {
@@ -117,6 +124,7 @@ export default function TitleScreen() {
         ? `${details.data.runtime} min`
         : null,
     d.genres.slice(0, 3).map((g) => g.name).join(', '),
+    extras?.certification,
   ]
     .filter(Boolean)
     .join(' · ');
@@ -157,11 +165,22 @@ export default function TitleScreen() {
             <T variant="small" muted>
               {meta}
             </T>
-            {d.vote_average > 0 ? (
-              <T variant="small" muted>
-                TMDB {d.vote_average.toFixed(1)}/10
-              </T>
-            ) : null}
+            <View style={{ flexDirection: 'row', gap: Space.sm, flexWrap: 'wrap', marginTop: 2 }}>
+              {d.vote_average > 0 ? (
+                <View style={styles.score}>
+                  <T variant="caption" style={{ fontWeight: '800', color: C.text }}>
+                    TMDB {d.vote_average.toFixed(1)}
+                  </T>
+                </View>
+              ) : null}
+              {item?.rating ? (
+                <View style={[styles.score, { backgroundColor: C.accentSoft, borderColor: C.accentLine }]}>
+                  <T variant="caption" style={{ fontWeight: '800', color: C.accentInk }}>
+                    Tu nota {item.rating}
+                  </T>
+                </View>
+              ) : null}
+            </View>
           </View>
         </View>
 
@@ -172,12 +191,36 @@ export default function TitleScreen() {
         ) : null}
         {d.overview ? <T>{d.overview}</T> : <T muted>Sin sinopsis en español todavía.</T>}
 
+        <QuickActions
+          title={title}
+          extras={extras}
+          entry={entryFrom({
+            key,
+            tmdbId: id,
+            mediaType: type,
+            title,
+            posterPath: d.poster_path,
+            year: date ? date.slice(0, 4) : null,
+          })}
+        />
+
         {/* Dónde ver va arriba: es lo primero que se quiere saber de un título. */}
         <WhereToWatch providers={providers} loaded={providersLoaded} />
 
         {item ? <SavedControls item={item} /> : <AddButtons kind={details.kind} onAdd={add} />}
 
         {details.kind === 'tv' ? <Seasons tv={details.data} item={item} /> : null}
+        {details.kind === 'tv' ? <SeasonQuality seasons={details.data.seasons} /> : null}
+        {extras ? <CastShelf cast={extras.cast} /> : null}
+        {extras ? (
+          <DetailsBlock
+            extras={extras}
+            type={type}
+            id={id}
+            status={details.kind === 'tv' ? details.data.status : undefined}
+          />
+        ) : null}
+        {extras ? <Recommendations items={extras.recommendations} /> : null}
       </SafeAreaView>
     </ScrollView>
     </View>
@@ -458,6 +501,14 @@ function WhereToWatch({ providers, loaded }: { providers: TmdbWatchProviders | n
 
 const makeStyles = (C: Colors) =>
   StyleSheet.create({
+    score: {
+      borderWidth: 1,
+      borderColor: C.border,
+      backgroundColor: C.surface,
+      borderRadius: Radius.pill,
+      paddingHorizontal: Space.sm + 2,
+      paddingVertical: 3,
+    },
   page: { flex: 1, backgroundColor: C.bg },
   hero: { height: 280 },
   content: {

@@ -4,7 +4,8 @@
  * Se usan:
  * - tracklog.csv: películas vistas o por ver, estado de cada serie y cada episodio visto con su fecha.
  * - ratings.csv: calificaciones de 1 a 10 de películas y series (las medias se redondean).
- * Las listas personalizadas y los favoritos se guardan para cuando Sollar tenga listas propias.
+ * - lists.csv: tus listas personalizadas, en su orden.
+ * - favorites.csv: los títulos marcados como favoritos.
  *
  * Los CSV traen el identificador de TMDB de cada título, así que no hay que adivinar nada:
  * después se piden a TMDB la carátula, las temporadas y la duración de cada uno.
@@ -30,9 +31,15 @@ export type ImportedShow = {
   addedAt: string;
 };
 
+export type ImportedListEntry = { tmdbId: number; mediaType: 'movie' | 'tv'; title: string; year: string | null };
+export type ImportedList = { name: string; description: string; entries: ImportedListEntry[] };
+
 export type ImportPlan = {
   movies: ImportedMovie[];
   shows: ImportedShow[];
+  lists: ImportedList[];
+  /** Claves "movie:123" o "tv:456" de los favoritos. */
+  favorites: string[];
   episodes: number;
   ratings: number;
   /** Archivos reconocidos, para mostrarlos en pantalla. */
@@ -189,9 +196,63 @@ export function planFromWetrakr(files: { name: string; text: string }[]): Import
     if (first && (s.addedAt === now || first < s.addedAt)) s.addedAt = first;
   }
 
+  // Listas: solo series y películas (las temporadas y episodios sueltos no aplican aquí).
+  const lists: ImportedList[] = [];
+  const listFile = byName('lists');
+  if (listFile) {
+    const byList = new Map<string, { list: ImportedList; rows: { rank: number; e: ImportedListEntry }[] }>();
+    for (const r of parseCsv(listFile.text)) {
+      const id = Number(r.tmdb_id);
+      if (!id || (r.type !== 'show' && r.type !== 'movie')) continue;
+      const name = r.list_name || 'Lista importada';
+      let g = byList.get(name);
+      if (!g) {
+        g = { list: { name, description: r.list_description ?? '', entries: [] }, rows: [] };
+        byList.set(name, g);
+      }
+      g.rows.push({
+        rank: Number(r.rank) || g.rows.length + 1,
+        e: { tmdbId: id, mediaType: r.type === 'show' ? 'tv' : 'movie', title: r.title, year: r.year || null },
+      });
+    }
+    for (const g of byList.values()) {
+      const seen = new Set<string>();
+      g.list.entries = g.rows
+        .sort((a, b) => a.rank - b.rank)
+        .map((x) => x.e)
+        .filter((e) => {
+          const k = `${e.mediaType}:${e.tmdbId}`;
+          if (seen.has(k)) return false;
+          seen.add(k);
+          return true;
+        });
+      lists.push(g.list);
+    }
+  }
+
+  const favorites: string[] = [];
+  const favFile = byName('favorites');
+  if (favFile) {
+    for (const r of parseCsv(favFile.text)) {
+      const id = Number(r.tmdb_id);
+      if (!id || (r.type !== 'show' && r.type !== 'movie')) continue;
+      const type = r.type === 'show' ? 'tv' : 'movie';
+      favorites.push(`${type}:${id}`);
+      // Un favorito que no estaba en el historial se agrega a la lista general.
+      if (type === 'movie' && !movies.has(id)) {
+        movies.set(id, { tmdbId: id, title: r.title, status: 'completed', watchedAt: r.created_at || now, rating: null, addedAt: r.created_at || now });
+      }
+      if (type === 'tv' && !shows.has(id)) {
+        shows.set(id, { tmdbId: id, title: r.title, status: 'completed', episodes: {}, rating: null, addedAt: r.created_at || now });
+      }
+    }
+  }
+
   return {
     movies: [...movies.values()],
     shows: [...shows.values()],
+    lists,
+    favorites,
     episodes,
     ratings,
     files: files.map((f) => f.name),
