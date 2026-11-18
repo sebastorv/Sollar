@@ -5,7 +5,7 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { useColorScheme } from 'react-native';
+import { Platform, useColorScheme } from 'react-native';
 
 import { makeColors, type AccentName, type Colors } from '@/constants/theme';
 
@@ -47,7 +47,37 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const resolved = mode === 'system' ? (system === 'dark' ? 'dark' : 'light') : mode;
   const colors = useMemo(() => makeColors(resolved, accent), [resolved, accent]);
   const value = useMemo(() => ({ mode, accent, setMode, setAccent, colors }), [mode, accent, colors]);
+  useWebChrome(colors.bg);
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
+}
+
+/**
+ * En la web (iPhone sobre todo), el fondo de la página y el color de las barras del sistema
+ * siguen al tema de la app, para que no aparezcan franjas de otro color arriba o abajo.
+ */
+const chromeStack: string[] = [];
+function applyChrome() {
+  if (Platform.OS !== 'web' || typeof document === 'undefined') return;
+  const color = chromeStack[chromeStack.length - 1];
+  if (!color) return;
+  document.documentElement.style.background = color;
+  document.body.style.background = color;
+  document.querySelectorAll('meta[name="theme-color"]').forEach((m) => m.remove());
+  const meta = document.createElement('meta');
+  meta.name = 'theme-color';
+  meta.content = color;
+  document.head.appendChild(meta);
+}
+export function useWebChrome(color: string) {
+  useEffect(() => {
+    chromeStack.push(color);
+    applyChrome();
+    return () => {
+      const i = chromeStack.lastIndexOf(color);
+      if (i >= 0) chromeStack.splice(i, 1);
+      applyChrome();
+    };
+  }, [color]);
 }
 
 export function useThemeSettings() {
@@ -75,5 +105,6 @@ export function DarkScope({ children }: { children: ReactNode }) {
   const parent = useThemeSettings();
   const colors = useMemo(() => makeColors('dark', parent.accent), [parent.accent]);
   const value = useMemo(() => ({ ...parent, colors }), [parent, colors]);
+  useWebChrome(colors.bg);
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

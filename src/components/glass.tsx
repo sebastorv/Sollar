@@ -50,6 +50,10 @@ export function Glass({
     );
   }
   const light = C.mode === 'light';
+  // Vidrio líquido: casi transparente, con desenfoque y saturación del fondo, borde de luz
+  // arriba, un reflejo suave y un brillo en el borde de abajo, como una gota.
+  const tintBg = strong ? C.glassStrong : light ? 'rgba(255,255,255,0.22)' : 'rgba(30,29,38,0.32)';
+  const web = Platform.OS === 'web';
   return (
     <View
       style={[
@@ -57,26 +61,45 @@ export function Glass({
           overflow: 'hidden',
           borderRadius: radius,
           borderWidth: 1,
-          borderColor: C.glassEdge,
-          // Borde de luz arriba: la luz cae sobre el vidrio.
-          borderTopColor: light ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.18)',
+          borderColor: light ? 'rgba(255,255,255,0.55)' : 'rgba(255,255,255,0.12)',
+          borderTopColor: light ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.28)',
         },
         floating(C),
         style,
       ]}>
-      <BlurView
-        intensity={strong ? 90 : 70}
-        tint={light ? 'light' : 'dark'}
-        experimentalBlurMethod="dimezisBlurView"
-        style={StyleSheet.absoluteFill}
-      />
-      <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: strong ? C.glassStrong : C.glass }]} />
-      {/* Reflejo: brillo suave en la mitad de arriba, como la luz sobre una gota. */}
+      {web ? (
+        <View
+          pointerEvents="none"
+          style={[
+            StyleSheet.absoluteFill,
+            {
+              backgroundColor: tintBg,
+              // @ts-expect-error: propiedades de CSS que react-native-web pasa al navegador.
+              backdropFilter: `blur(${strong ? 30 : 18}px) saturate(${light ? 190 : 160}%)`,
+              WebkitBackdropFilter: `blur(${strong ? 30 : 18}px) saturate(${light ? 190 : 160}%)`,
+            },
+          ]}
+        />
+      ) : (
+        <>
+          <BlurView
+            intensity={strong ? 90 : 60}
+            tint={light ? 'light' : 'dark'}
+            experimentalBlurMethod="dimezisBlurView"
+            style={StyleSheet.absoluteFill}
+          />
+          <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: tintBg }]} />
+        </>
+      )}
+      {/* Reflejo arriba y brillo en el borde de abajo. */}
       <LinearGradient
         pointerEvents="none"
-        colors={light ? ['rgba(255,255,255,0.75)', 'rgba(255,255,255,0)'] : ['rgba(255,255,255,0.10)', 'rgba(255,255,255,0)']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 0, y: 0.6 }}
+        colors={
+          light
+            ? ['rgba(255,255,255,0.55)', 'rgba(255,255,255,0.05)', 'rgba(255,255,255,0)', 'rgba(255,255,255,0.35)']
+            : ['rgba(255,255,255,0.14)', 'rgba(255,255,255,0.02)', 'rgba(255,255,255,0)', 'rgba(255,255,255,0.08)']
+        }
+        locations={[0, 0.4, 0.7, 1]}
         style={StyleSheet.absoluteFill}
       />
       {children}

@@ -80,12 +80,6 @@ export function Screen({
       ) : (
         inner
       )}
-      {/* Borde superior que se desvanece, como en iOS 26: el contenido se pierde bajo la hora. */}
-      <LinearGradient
-        pointerEvents="none"
-        colors={[C.bg, C.mode === 'dark' ? 'rgba(11,11,13,0)' : 'rgba(246,246,247,0)']}
-        style={{ position: 'absolute', top: 0, left: 0, right: 0, height: insets.top + 14 }}
-      />
     </SafeAreaView>
   );
 }

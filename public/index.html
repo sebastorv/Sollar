@@ -38,6 +38,21 @@
         height: 100%;
         flex: 1;
       }
+      /* App de la pantalla de inicio: ocupa toda la pantalla, también detrás de la hora y del
+         indicador de inicio, sin franja vacía abajo. */
+      @media (display-mode: standalone) {
+        html,
+        body {
+          height: 100lvh;
+        }
+        #root {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          height: 100lvh;
+        }
+      }
     </style>
   </head>
 
