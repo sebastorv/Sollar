@@ -37,13 +37,20 @@ export type CalendarMovie = {
 /** Hasta dónde mirar hacia adelante. */
 const HORIZON_DAYS = 120;
 
-const showCache = new Map<number, { at: number; episodes: CalendarEpisode[] }>();
+const showCache = new Map<number, { at: number; episodes: CalendarEpisode[]; recent: RecentEpisode | null }>();
+
+/** El último episodio que salió, si fue en los últimos 7 días (para avisar que hay algo nuevo). */
+export type RecentEpisode = { key: string; season: number; episode: number; airDate: string };
+const recentCache = new Map<string, RecentEpisode>();
 const movieCache = new Map<number, { at: number; date: string | null }>();
 const TTL = 30 * 60 * 1000;
 
 async function upcomingFor(item: LibraryItem): Promise<CalendarEpisode[]> {
   const hit = showCache.get(item.tmdbId);
-  if (hit && Date.now() - hit.at < TTL) return hit.episodes;
+  if (hit && Date.now() - hit.at < TTL) {
+    if (hit.recent) recentCache.set(item.key, hit.recent);
+    return hit.episodes;
+  }
   const today = todayISO();
   const limit = addDays(today, HORIZON_DAYS);
   const tv = await getTv(item.tmdbId);
@@ -92,7 +99,14 @@ async function upcomingFor(item: LibraryItem): Promise<CalendarEpisode[]> {
       }));
     if (episodes[0]) episodes[0].isNext = true;
   }
-  showCache.set(item.tmdbId, { at: Date.now(), episodes });
+  const last = tv.last_episode_to_air;
+  const recent =
+    last?.air_date && last.air_date >= addDays(today, -7) && last.air_date <= today
+      ? { key: item.key, season: last.season_number, episode: last.episode_number, airDate: last.air_date }
+      : null;
+  if (recent) recentCache.set(item.key, recent);
+  else recentCache.delete(item.key);
+  showCache.set(item.tmdbId, { at: Date.now(), episodes, recent });
   return episodes;
 }
 
@@ -119,8 +133,23 @@ export function useCalendar() {
   const { items, ready } = useLibrary();
   const list = items;
 
-  // Series que tiene sentido vigilar: todas menos las abandonadas.
-  const shows = useMemo(() => list.filter((i) => i.mediaType === 'tv' && i.status !== 'dropped'), [list]);
+  // Series que tiene sentido vigilar. Con historiales grandes (cientos de series) no se
+  // consultan todas: las que estás viendo o pausaste, las terminadas que viste en el último año
+  // (por si vuelven) y las 60 por empezar agregadas más recientemente.
+  const shows = useMemo(() => {
+    const tv = list.filter((i) => i.mediaType === 'tv');
+    const yearAgo = new Date(Date.now() - 365 * 86400000).toISOString();
+    const lastSeen = (i: (typeof tv)[number]) =>
+      Object.values(i.watchedEpisodes).reduce((m: string, at) => (at > m ? at : m), i.addedAt);
+    const active = tv.filter(
+      (i) => i.status === 'watching' || i.status === 'paused' || (i.status === 'completed' && lastSeen(i) > yearAgo),
+    );
+    const planned = tv
+      .filter((i) => i.status === 'planned')
+      .sort((a, b) => b.addedAt.localeCompare(a.addedAt))
+      .slice(0, 60);
+    return [...active, ...planned];
+  }, [list]);
   // Películas pendientes que podrían no haberse estrenado aún.
   const thisYear = new Date().getFullYear();
   const movies = useMemo(
@@ -176,5 +205,25 @@ export function useCalendar() {
     return map;
   }, [episodes]);
 
-  return { loading, failed, episodes, releases, nextByKey, watchedShows: shows.length };
+  /** Series con un episodio que salió esta semana y que aún no marcaste. */
+  const fresh = useMemo(() => {
+    if (loading) return [] as RecentEpisode[];
+    return shows
+      .map((s) => recentCache.get(s.key))
+      .filter((r): r is RecentEpisode => !!r)
+      .filter((r) => {
+        const it = shows.find((s) => s.key === r.key);
+        return it && !(it.watchedEpisodes as Record<string, string>)[`${r.season}:${r.episode}`];
+      });
+  }, [loading, shows]);
+
+  // El ícono de la app muestra cuántas series tienen algo nuevo (iPhone, Android y computador).
+  useEffect(() => {
+    if (typeof navigator === 'undefined') return;
+    const nav = navigator as Navigator & { setAppBadge?: (n: number) => Promise<void>; clearAppBadge?: () => Promise<void> };
+    if (fresh.length) nav.setAppBadge?.(fresh.length).catch(() => {});
+    else nav.clearAppBadge?.().catch(() => {});
+  }, [fresh.length]);
+
+  return { loading, failed, episodes, releases, nextByKey, fresh, watchedShows: shows.length };
 }

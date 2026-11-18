@@ -37,8 +37,11 @@ export async function pushRows(userId: string, rows: PushRow[]): Promise<void> {
   }
 }
 
-/** Cambios del servidor desde la última vez (con un margen de seguridad). */
-export async function pullRows(since: string | null): Promise<RemoteRow[]> {
+/**
+ * Cambios del servidor desde la última vez (con un margen de seguridad).
+ * Siempre filtra por la cuenta: con la parte social, también se pueden leer filas de amigos.
+ */
+export async function pullRows(userId: string, since: string | null): Promise<RemoteRow[]> {
   if (!supabase) return [];
   const out: RemoteRow[] = [];
   const from = since ? new Date(new Date(since).getTime() - OVERLAP_MS).toISOString() : null;
@@ -46,6 +49,7 @@ export async function pullRows(since: string | null): Promise<RemoteRow[]> {
     let q = supabase
       .from('library')
       .select('key, data, deleted, client_updated_at, updated_at')
+      .eq('user_id', userId)
       .order('updated_at', { ascending: true })
       .range(page * 1000, page * 1000 + 999);
     if (from) q = q.gt('updated_at', from);
@@ -61,7 +65,7 @@ export type RemoteSettings = { data: { myProviders?: number[] }; client_updated_
 
 export async function pullSettings(): Promise<RemoteSettings> {
   if (!supabase) return null;
-  const { data, error } = await supabase.from('user_settings').select('data, client_updated_at').maybeSingle();
+  const { data, error } = await supabase.from('user_settings').select('data, client_updated_at').limit(1).maybeSingle();
   if (error) throw new Error(error.message);
   return (data as RemoteSettings) ?? null;
 }

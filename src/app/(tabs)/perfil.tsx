@@ -59,6 +59,7 @@ export default function ProfileScreen() {
         <View style={{ flexDirection: 'row', gap: Space.sm, flexWrap: 'wrap' }}>
           <Button label="Estadísticas y tu año" onPress={() => router.push('/estadisticas')} />
           <Button label="Historial" kind="secondary" onPress={() => router.push('/historial')} />
+          <Button label="Amigos" kind="secondary" onPress={() => router.push('/amigos')} />
         </View>
       </Section>
 

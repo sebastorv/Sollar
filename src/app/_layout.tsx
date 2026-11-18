@@ -84,6 +84,10 @@ function Navigation() {
           options={{ title: '', headerTransparent: true, headerTintColor: C.text, headerLeft: () => <BackButton /> }}
         />
         <Stack.Screen
+          name="amigos"
+          options={{ title: '', headerTransparent: true, headerTintColor: C.text, headerLeft: () => <BackButton /> }}
+        />
+        <Stack.Screen
           name="importar"
           options={{ title: '', headerTransparent: true, headerTintColor: C.text, headerLeft: () => <BackButton /> }}
         />

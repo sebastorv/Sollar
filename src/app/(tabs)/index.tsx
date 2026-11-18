@@ -67,6 +67,24 @@ export default function FollowingScreen() {
 
       {isDemo ? <TokenWarning /> : null}
 
+      {calendar.fresh.length > 0 ? (
+        <View style={styles.fresh}>
+          <View style={styles.freshDot} />
+          <T variant="small" style={{ flex: 1 }}>
+            <T variant="small" style={{ fontWeight: '800' }}>
+              {calendar.fresh.length === 1 ? 'Episodio nuevo' : `${calendar.fresh.length} series con episodio nuevo`}
+            </T>
+            {': '}
+            {calendar.fresh
+              .slice(0, 3)
+              .map((f) => lib.get(f.key)?.title)
+              .filter(Boolean)
+              .join(', ')}
+            {calendar.fresh.length > 3 ? ' y más' : ''}
+          </T>
+        </View>
+      ) : null}
+
       {items.length === 0 ? (
         <Empty
           title="Aún no sigues nada"
@@ -375,6 +393,17 @@ function WeekCard({ e }: { e: CalendarEpisode }) {
 const makeStyles = (C: Colors) =>
   StyleSheet.create({
     tip: { ...card(C), gap: Space.sm, padding: Space.lg, borderRadius: Radius.lg },
+    fresh: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Space.sm,
+      padding: Space.md,
+      borderRadius: Radius.lg,
+      backgroundColor: C.accentSoft,
+      borderWidth: 1,
+      borderColor: C.accentLine,
+    },
+    freshDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: C.accent },
     // Los estantes llegan al borde de la pantalla, como en las apps de streaming.
     bleed: { marginHorizontal: -Space.lg, paddingHorizontal: Space.lg, flexGrow: 0 },
     still: {

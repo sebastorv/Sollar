@@ -77,7 +77,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       const m = meta.current;
 
       // 1. Bajar lo nuevo del servidor y aplicarlo.
-      const rows = await pullRows(m.lastPull);
+      const rows = await pullRows(userId, m.lastPull);
       if (rows.length) {
         libRef.current.applyRemote(rows);
         for (const r of rows) {
