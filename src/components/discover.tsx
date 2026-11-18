@@ -149,7 +149,7 @@ function ShelfSection({
                 mediaType={type}
                 title={r.title ?? r.name ?? ''}
                 posterPath={r.poster_path}
-                subtitle={[type === 'tv' ? 'Serie' : 'Película', year].filter(Boolean).join(' · ')}
+                subtitle={year || null}
                 badge={saved ? saved.status : null}
                 width={124}
               />

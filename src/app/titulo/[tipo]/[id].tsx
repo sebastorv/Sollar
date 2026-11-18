@@ -5,41 +5,41 @@
  * Detalles. Sobria: tinta negra o blanca, sin degradados.
  */
 
-import { tr, useLang } from '@/i18n';
+import { tr } from '@/i18n';
 import { HScroll } from '@/components/hscroll';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Link, router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { Linking, Platform, ScrollView, Share, StyleSheet, TextInput, useWindowDimensions, View, type ScrollViewInstance } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { Linking, Platform, ScrollView, Share, StyleSheet, TextInput, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Rating, RATING_LABELS, Reactions } from '@/components/rating';
-import { Backdrop, card, Glass, GlassButton, glassFill, shadow } from '@/components/glass';
+import { Rating, Reactions } from '@/components/rating';
+import { Backdrop, card, GlassButton, glassFill } from '@/components/glass';
 import { Icon, type IconName } from '@/components/icons';
 import { AddToListSheet, entryFrom } from '@/components/lists';
 import { ProviderLogo } from '@/components/platforms';
 import { Gallery } from '@/components/gallery';
-import { BubbleMenu, measure, Sheet, type Anchor } from '@/components/sheet';
-import { CastShelf, DetailsBlock, Recommendations, SeasonQuality } from '@/components/title-extras';
+import { anchorOf, BubbleMenu, Sheet, type Anchor, type PressLike } from '@/components/sheet';
+import { EpisodePanel, ProgressSummary, SeasonsBlock, UpNext } from '@/components/episodes';
+import { Credits } from '@/components/credits';
+import { Soundtrack } from '@/components/soundtrack';
+import { DetailsBlock, Recommendations, SeasonQuality } from '@/components/title-extras';
 import { Touchable } from '@/components/touch';
 import { Button, Empty, Loading, Poster, T } from '@/components/ui';
 import { Radius, Space, type Colors } from '@/constants/theme';
 import { withAlpha } from '@/constants/theme';
 import { addDays, fromISO, todayISO } from '@/lib/dates';
 import { itemKey, newItemFromMovie, newItemFromTv, seasonsFromTv } from '@/lib/library-item';
-import { formatDuration, formatEpisode, nextEpisode, totalEpisodes, watchedCount } from '@/lib/progress';
+import { formatDuration, formatEpisode, nextEpisode } from '@/lib/progress';
 import { availabilityFrom } from '@/lib/providers';
-import { getRatings, type ExternalRating, getExtras, getMovie, getSeason, getTv, getWatchProviders, isDemo, sharpImage, type TitleExtras } from '@/lib/tmdb';
+import { getRatings, type ExternalRating, getExtras, getMovie, getTv, getWatchProviders, isDemo, sharpImage, type TitleExtras } from '@/lib/tmdb';
 import {
   STATUS_LABEL,
   STATUS_ORDER,
-  episodeKey,
   type LibraryItem,
   type MediaType,
-  type TmdbEpisode,
   type TmdbMovie,
-  type TmdbSeason,
   type TmdbTv,
   type TmdbWatchProviders,
   type WatchStatus,
@@ -49,7 +49,7 @@ import { useSettings } from '@/store/settings';
 import { DarkScope, useColors, useStyles } from '@/store/theme';
 
 type Details = { kind: 'movie'; data: TmdbMovie } | { kind: 'tv'; data: TmdbTv };
-type Tab = 'info' | 'episodes' | 'cast' | 'media';
+type Tab = 'info' | 'episodes' | 'cast' | 'music' | 'media';
 
 const MONTHS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sept', 'oct', 'nov', 'dic'];
 /** "12 mar 2024". */
@@ -106,9 +106,30 @@ function TitleScreenBody() {
   const [extras, setExtras] = useState<TitleExtras | null>(null);
   const [tab, setTab] = useState<Tab>('info');
   const [bubble, setBubble] = useState<{ kind: 'status' | 'more'; anchor: Anchor } | null>(null);
-  async function openBubble(kind: 'status' | 'more', e?: { currentTarget?: unknown }) {
-    const a = await measure(e?.currentTarget);
-    setBubble({ kind, anchor: a ?? { x: screenWidth / 2 - 20, y: 300, width: 40, height: 40 } });
+  const center = { x: screenWidth / 2 - 20, y: 300, width: 40, height: 40 };
+  async function openBubble(kind: 'status' | 'more', e?: PressLike) {
+    setBubble({ kind, anchor: await anchorOf(e, center) });
+  }
+  // Calificar, Listas y "La vi" salen en una burbuja pegada al botón tocado.
+  const [sheetAnchor, setSheetAnchor] = useState<Anchor | null>(null);
+  async function openSheet(kind: 'rate' | 'lists' | 'watched', e?: PressLike) {
+    setSheetAnchor(await anchorOf(e, center));
+    setSheet(kind);
+  }
+  /** Ir a una parte de la ficha: en celular, su pestaña; en computador, se baja hasta ella. */
+  function jump(k: Tab) {
+    if (!wide) return setTab(k);
+    if (Platform.OS === 'web' && typeof document !== 'undefined')
+      document.getElementById(`sec-${k}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+  /** En computador el episodio se abre en un panel a la derecha; en celular, en su página. */
+  function openEpisode(t: { season: number; episode: number }) {
+    if (wide) setEpisodeOpen(t);
+    else
+      router.push({
+        pathname: '/episodio/[id]/[temporada]/[episodio]',
+        params: { id: String(id), temporada: String(t.season), episodio: String(t.episode) },
+      });
   }
   const [episodeOpen, setEpisodeOpen] = useState<{ season: number; episode: number } | null>(null);
   const insets = useSafeAreaInsets();
@@ -313,8 +334,8 @@ function TitleScreenBody() {
         ensure(isTv ? 'watching' : 'completed');
         lib.toggleFavorite(key);
       }}
-      onLists={() => setSheet('lists')}
-      onRate={() => setSheet('rate')}
+      onLists={(e) => openSheet('lists', e)}
+      onRate={(e) => openSheet('rate', e)}
       onMore={(e) => openBubble('more', e)}
     />
   );
@@ -322,16 +343,11 @@ function TitleScreenBody() {
   // "Estoy viendo T1 · E3" o "La vi": el atajo de lo siguiente que toca marcar.
   // Cuánto falta: episodios, porcentaje y horas, con una barra por temporada.
   const remaining =
-    details.kind === 'tv' && item ? <Remaining item={item} runtime={details.data.episode_run_time.find((x) => x > 0) ?? 0} /> : null;
+    details.kind === 'tv' && item && !wide ? <ProgressSummary item={item} runtime={details.data.episode_run_time.find((x) => x > 0) ?? 0} /> : null;
 
   const watchRow = isTv ? (
     nextUp ? (
-      <Touchable haptic="light" pressScale={0.98} onPress={() =>
-          router.push({
-            pathname: '/episodio/[id]/[temporada]/[episodio]',
-            params: { id: String(id), temporada: String(nextUp.season), episodio: String(nextUp.episode) },
-          })
-        } style={styles.watchRow}>
+      <Touchable haptic="light" pressScale={0.98} onPress={() => openEpisode(nextUp)} style={styles.watchRow}>
         <View>
           <Icon name="clock" size={22} color={C.text} strokeWidth={2} />
         </View>
@@ -342,7 +358,7 @@ function TitleScreenBody() {
       </Touchable>
     ) : null
   ) : (
-    <Touchable haptic="light" pressScale={0.98} onPress={() => setSheet('watched')} style={styles.watchRow}>
+    <Touchable haptic="light" pressScale={0.98} onPress={(e) => openSheet('watched', e)} style={styles.watchRow}>
       <View>
         <Icon name="check" size={22} color={item?.watchedAt ? C.accentInk : C.text} strokeWidth={2.4} />
       </View>
@@ -393,8 +409,8 @@ function TitleScreenBody() {
         ) : null}
         <LinearGradient
           pointerEvents="none"
-          colors={[withAlpha(C.bg, 0.6), withAlpha(C.bg, 0.25), withAlpha(C.bg, 0.7), C.bg]}
-          locations={[0, 0.3, 0.72, 1]}
+          colors={[withAlpha(C.bg, C.mode === 'light' ? 0.5 : 0.6), withAlpha(C.bg, 0.2), withAlpha(C.bg, C.mode === 'light' ? 0.86 : 0.78), C.bg]}
+          locations={[0, 0.28, 0.6, 0.84]}
           style={imageBox}
         />
         {wide ? (
@@ -463,20 +479,55 @@ function TitleScreenBody() {
     );
   };
 
-    const tabs: [Tab, string][] = isTv
-    ? [
-        ['info', 'Info'],
-        ['episodes', 'Episodios'],
-        ['cast', 'Reparto'],
-        ['media', 'Videos'],
-      ]
-    : [
-        ['info', 'Info'],
-        ['cast', 'Reparto'],
-        ['media', 'Videos'],
-      ];
+  const tabs: [Tab, string][] = [
+    ['info', 'Info'],
+    ...(isTv ? ([['episodes', 'Episodios']] as [Tab, string][]) : []),
+    ['cast', 'Reparto'],
+    ['music', 'Música'],
+    ['media', 'Videos'],
+  ];
 
-  const body = (
+  const titles = [title, extras?.originalTitle ?? ''].filter((t, i, a) => t && a.indexOf(t) === i);
+  const episodesPart =
+    details.kind === 'tv' ? (
+      <View style={{ gap: Space.xxl }}>
+        {item ? <UpNext tv={details.data} item={item} wide={wide} onOpen={openEpisode} onNeedItem={() => ensure('watching')} /> : null}
+        <SeasonsBlock tv={details.data} item={item} wide={wide} onNeedItem={() => ensure('watching')} onOpen={openEpisode} />
+      </View>
+    ) : null;
+  const creditsPart = extras ? <Credits cast={extras.cast} crew={extras.crew} isTv={isTv} wide={wide} /> : <Loading />;
+  const musicPart = <Soundtrack titles={titles} year={year ?? null} wide={wide} />;
+  const mediaPart = extras ? <Gallery extras={extras} /> : <Loading />;
+  const reactionsPart = item ? <Reactions value={item.reactions?.title ?? []} onChange={(list) => lib.setReactions(key, 'title', list)} /> : null;
+  const sidePart = (
+    <View style={{ gap: Space.xxl }}>
+      <WhereToWatch providers={providers} loaded={providersLoaded} />
+      {extras ? <DetailsBlock extras={extras} type={type} id={id} status={isTv ? details.data.status : undefined} /> : null}
+      {details.kind === 'tv' ? <SeasonQuality seasons={details.data.seasons} /> : null}
+      <InYourLists entryKey={key} />
+      {item ? <NoteBox item={item} /> : null}
+    </View>
+  );
+
+  // Computador: dos columnas, como Trakt (a la izquierda dónde ver y detalles; a la derecha lo
+  // que sigue, temporadas, episodios, reparto, música y videos). Celular: pestañas.
+  const body = wide ? (
+    <View style={{ gap: Space.xxl + Space.lg }}>
+      <View style={{ flexDirection: 'row', gap: Space.xxl + Space.lg, alignItems: 'flex-start' }}>
+        <View style={{ width: 340 }} nativeID="sec-info">
+          {sidePart}
+        </View>
+        <View style={{ flex: 1, minWidth: 0, gap: Space.xxl + Space.lg }}>
+          {episodesPart}
+          {reactionsPart}
+          <View nativeID="sec-cast">{creditsPart}</View>
+          <View nativeID="sec-music">{musicPart}</View>
+          {extras && (extras.videos.length || extras.backdrops.length) ? <View nativeID="sec-media">{mediaPart}</View> : null}
+        </View>
+      </View>
+      {extras ? <Recommendations items={extras.recommendations} /> : null}
+    </View>
+  ) : (
     <View style={{ gap: Space.xl }}>
       <View style={styles.segment}>
         {tabs.map(([k, label]) => {
@@ -489,8 +540,8 @@ function TitleScreenBody() {
               onPress={() => setTab(k)}
               accessibilityRole="tab"
               accessibilityState={{ selected: on }}
-              style={[styles.segmentBtn, on && { backgroundColor: C.surfaceHigh, ...shadow(C) }]}>
-              <T numberOfLines={1} style={{ fontSize: 15, fontWeight: on ? '700' : '500', color: on ? C.text : C.textMuted }}>
+              style={[styles.segmentBtn, on && styles.segmentOn]}>
+              <T numberOfLines={1} style={{ fontSize: 14, fontWeight: on ? '700' : '500', color: on ? C.text : C.textMuted }}>
                 {label}
               </T>
             </Touchable>
@@ -499,34 +550,16 @@ function TitleScreenBody() {
       </View>
 
       {tab === 'info' ? (
-        <View style={{ gap: Space.xl }}>
-          <WhereToWatch providers={providers} loaded={providersLoaded} />
-          {item ? (
-            <Reactions value={item.reactions?.title ?? []} onChange={(list) => lib.setReactions(key, 'title', list)} />
-          ) : null}
-          {extras ? <DetailsBlock extras={extras} type={type} id={id} status={isTv ? details.data.status : undefined} /> : null}
-          {details.kind === 'tv' ? <SeasonQuality seasons={details.data.seasons} /> : null}
-          {item ? <NoteBox item={item} /> : null}
+        <View style={{ gap: Space.xxl }}>
+          {reactionsPart}
+          {sidePart}
         </View>
       ) : null}
-      {tab === 'episodes' && details.kind === 'tv' ? (
-        <Episodes tv={details.data} item={item} wide={wide} onNeedItem={() => ensure('watching')} />
-      ) : null}
-      {tab === 'cast' ? (
-        extras ? (
-          extras.cast.length ? (
-            <CastShelf cast={extras.cast} />
-          ) : (
-            <T muted>Sin reparto registrado.</T>
-          )
-        ) : (
-          <Loading />
-        )
-      ) : null}
+      {tab === 'episodes' ? episodesPart : null}
+      {tab === 'cast' ? creditsPart : null}
+      {tab === 'music' ? musicPart : null}
+      {tab === 'media' ? mediaPart : null}
 
-      {tab === 'media' ? extras ? <Gallery extras={extras} /> : <Loading /> : null}
-
-      <InYourLists entryKey={key} />
       {extras ? <Recommendations items={extras.recommendations} /> : null}
     </View>
   );
@@ -550,13 +583,16 @@ function TitleScreenBody() {
         </View>
       ) : null}
 
-      <EpisodeSheet
-        tvId={id}
-        target={episodeOpen}
-        item={item}
-        onClose={() => setEpisodeOpen(null)}
-        onNeedItem={() => ensure('watching')}
-      />
+      {details.kind === 'tv' && wide ? (
+        <EpisodePanel
+          tv={details.data}
+          target={episodeOpen}
+          item={item}
+          onClose={() => setEpisodeOpen(null)}
+          onNeedItem={() => ensure('watching')}
+          onNavigate={setEpisodeOpen}
+        />
+      ) : null}
 
       {/* Estado y Más: burbujas que salen del botón tocado. */}
       <BubbleMenu
@@ -576,7 +612,7 @@ function TitleScreenBody() {
         ]}
       />
 
-      <Sheet visible={sheet === 'rate'} onClose={() => setSheet(null)} title="¿Qué tal estuvo?" subtitle={title}>
+      <Sheet visible={sheet === 'rate'} anchor={sheetAnchor} onClose={() => setSheet(null)} title="¿Qué tal estuvo?" subtitle={title}>
         <Rating
           value={item?.rating ?? null}
           onChange={(v) => {
@@ -590,6 +626,7 @@ function TitleScreenBody() {
       {details.kind === 'movie' ? (
         <WatchSheet
           visible={sheet === 'watched'}
+          anchor={sheetAnchor}
           onClose={() => setSheet(null)}
           item={item}
           releaseDate={details.data.release_date}
@@ -605,8 +642,9 @@ function TitleScreenBody() {
           ...(extras?.trailerKey
             ? [{ label: 'Ver tráiler', icon: 'film' as IconName, onPress: () => Linking.openURL(`https://www.youtube.com/watch?v=${extras.trailerKey}`) }]
             : []),
-          { label: 'Videos e imágenes', icon: 'camera' as IconName, onPress: () => setTab('media') },
-          { label: 'Notas personales', icon: 'edit' as IconName, onPress: () => setTab('info') },
+          { label: 'Videos e imágenes', icon: 'camera' as IconName, onPress: () => jump('media') },
+          { label: 'Banda sonora', icon: 'music' as IconName, onPress: () => jump('music') },
+          { label: 'Notas personales', icon: 'edit' as IconName, onPress: () => jump('info') },
           { label: 'Compartir', icon: 'share' as IconName, onPress: share },
           'divider' as const,
           { label: 'Ver en TMDB', icon: 'screen' as IconName, onPress: () => Linking.openURL(`https://www.themoviedb.org/${type}/${id}`) },
@@ -617,7 +655,7 @@ function TitleScreenBody() {
         ]}
       />
 
-      <AddToListSheet visible={sheet === 'lists'} entry={entry} onClose={() => setSheet(null)} />
+      <AddToListSheet visible={sheet === 'lists'} anchor={sheetAnchor} entry={entry} onClose={() => setSheet(null)} />
     </View>
   );
 }
@@ -760,11 +798,11 @@ function ActionTiles({
   item: LibraryItem | undefined;
   isTv: boolean;
   inLists: number;
-  onTrack: (e?: { currentTarget?: unknown }) => void;
+  onTrack: (e?: PressLike) => void;
   onFavorite: () => void;
-  onLists: () => void;
-  onRate: () => void;
-  onMore: (e?: { currentTarget?: unknown }) => void;
+  onLists: (e?: PressLike) => void;
+  onRate: (e?: PressLike) => void;
+  onMore: (e?: PressLike) => void;
 }) {
   const C = useColors();
   const styles = useStyles(makeStyles);
@@ -793,7 +831,7 @@ function ActionTiles({
   );
 }
 
-function Tile({ icon, label, on, onPress, chevron }: { icon: IconName; label: string; on?: boolean; onPress: () => void; chevron?: boolean }) {
+function Tile({ icon, label, on, onPress, chevron }: { icon: IconName; label: string; on?: boolean; onPress: (e?: PressLike) => void; chevron?: boolean }) {
   const C = useColors();
   const styles = useStyles(makeStyles);
   return (
@@ -861,6 +899,7 @@ function OptionRow({
 
 function WatchSheet({
   visible,
+  anchor,
   onClose,
   item,
   releaseDate,
@@ -868,6 +907,7 @@ function WatchSheet({
   itemKey: key,
 }: {
   visible: boolean;
+  anchor?: Anchor | null;
   onClose: () => void;
   item: LibraryItem | undefined;
   releaseDate: string;
@@ -896,6 +936,7 @@ function WatchSheet({
   return (
     <Sheet
       visible={visible}
+      anchor={anchor}
       onClose={() => {
         setPicking(false);
         onClose();
@@ -964,304 +1005,6 @@ function WatchSheet({
   );
 }
 
-// --- Episodios ---
-
-function Episodes({
-  tv,
-  item,
-  wide,
-  onNeedItem,
-}: {
-  tv: TmdbTv;
-  item: LibraryItem | undefined;
-  wide: boolean;
-  onNeedItem: () => void;
-}) {
-  const C = useColors();
-  const styles = useStyles(makeStyles);
-  const lib = useLibrary();
-  const seasons = useMemo(() => seasonsFromTv(tv), [tv]);
-  const next = item ? nextEpisode(item) : seasons.length ? { season: seasons[0].seasonNumber, episode: 1 } : null;
-  const [season, setSeason] = useState<number>(next?.season ?? seasons[0]?.seasonNumber ?? 1);
-  const [data, setData] = useState<TmdbSeason | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [newest, setNewest] = useState(false);
-  const [hideWatched, setHideWatched] = useState(false);
-  const shelf = useRef<ScrollViewInstance>(null);
-
-  useEffect(() => {
-    let off = false;
-    setData(null);
-    setError(null);
-    getSeason(tv.id, season)
-      .then((s) => !off && setData(s))
-      .catch((e: Error) => !off && setError(e.message));
-    return () => {
-      off = true;
-    };
-  }, [tv.id, season]);
-
-  if (!seasons.length) return <T muted>Aún no hay episodios anunciados.</T>;
-
-  const today = todayISO();
-  const key = itemKey('tv', tv.id);
-  const seen = (s: number, e: number) => Boolean(item?.watchedEpisodes[episodeKey(s, e)]);
-  const aired = (data?.episodes ?? []).filter((e) => e.air_date && e.air_date <= today);
-  const allSeen = aired.length > 0 && aired.every((e) => seen(season, e.episode_number));
-  const seasonRuntime = (data?.episodes ?? []).reduce((a, e) => a + (e.runtime ?? 0), 0);
-  const first = data?.episodes[0]?.air_date;
-  const last = data?.episodes[data.episodes.length - 1]?.air_date;
-
-  function toggle(ep: TmdbEpisode) {
-    onNeedItem();
-    lib.setEpisodes(key, [{ season, episode: ep.episode_number }], !seen(season, ep.episode_number));
-  }
-  function open(ep: { season: number; episode: number }) {
-    router.push({
-      pathname: '/episodio/[id]/[temporada]/[episodio]',
-      params: { id: String(tv.id), temporada: String(ep.season), episodio: String(ep.episode) },
-    });
-  }
-
-  let list = data?.episodes ?? [];
-  if (hideWatched) list = list.filter((e) => !seen(season, e.episode_number));
-  if (newest) list = [...list].reverse();
-  const nextEp = next && next.season === season ? data?.episodes.find((e) => e.episode_number === next.episode) : null;
-  const nextStill = nextEp ? sharpImage(nextEp.still_path, 'still', wide ? 260 : 140) : null;
-  const cardW = wide ? 320 : 260;
-
-  return (
-    <View style={{ gap: Space.lg }}>
-      {/* Lo que sigue: "Empieza desde" o "Sigue con". */}
-      {nextEp && nextEp.air_date && nextEp.air_date <= today ? (
-        <Touchable haptic="select" pressScale={0.98} onPress={() => open({ season, episode: nextEp.episode_number })} style={styles.nextCard}>
-          <View style={[styles.nextStill, wide && { width: 220 }]}>
-            {nextStill ? <Image source={{ uri: nextStill }} style={StyleSheet.absoluteFill} contentFit="cover" /> : null}
-          </View>
-          <View style={{ flex: 1, gap: 2, justifyContent: 'center', minWidth: 0 }}>
-            <T variant="caption" style={{ fontWeight: '700', letterSpacing: 0.6, color: C.accentInk }}>
-              {(item && watchedCount(item) > 0 ? 'Sigue con' : 'Empieza desde').toUpperCase()}
-            </T>
-            <T style={{ fontSize: 16, fontWeight: '700' }} numberOfLines={1}>
-              {formatEpisode(season, nextEp.episode_number)} · {nextEp.name}
-            </T>
-            <T variant="caption" muted numberOfLines={1}>
-              {[nextEp.runtime ? `${nextEp.runtime} min` : null, isDemo ? null : shortDate(nextEp.air_date)].filter(Boolean).join(' · ')}
-            </T>
-          </View>
-          <CheckButton on={false} onPress={() => toggle(nextEp)} />
-        </Touchable>
-      ) : null}
-
-      {/* Temporadas, con su carátula, avance y ✓ si está completa. */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: Space.md, flexWrap: 'wrap' }}>
-        <T style={{ fontSize: 24, fontWeight: '800', letterSpacing: -0.5 }}>Temporadas</T>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: Space.sm }}>
-          <Pill label={newest ? 'Recientes' : 'Antiguos'} icon={newest ? 'arrowDown' : 'arrowUp'} onPress={() => setNewest(!newest)} />
-          <Pill label="Ocultar vistos" on={hideWatched} onPress={() => setHideWatched(!hideWatched)} />
-        </View>
-      </View>
-      <HScroll showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: Space.md }}>
-        {seasons.map((s) => {
-          const on = s.seasonNumber === season;
-          const count = item
-            ? Array.from({ length: s.episodeCount }, (_, i) => i + 1).filter((e) => seen(s.seasonNumber, e)).length
-            : 0;
-          const stub = tv.seasons.find((x) => x.season_number === s.seasonNumber);
-          const art = sharpImage(stub?.poster_path ?? tv.poster_path, 'poster', 120);
-          const done = count === s.episodeCount && count > 0;
-          return (
-            <Touchable
-              key={s.seasonNumber}
-              haptic="select"
-              pressScale={0.95}
-              onPress={() => {
-                setSeason(s.seasonNumber);
-                shelf.current?.scrollTo({ x: 0, animated: false });
-              }}
-              accessibilityRole="tab"
-              accessibilityState={{ selected: on }}
-              style={{ width: 120, gap: 6 }}>
-              <View style={[styles.seasonArt, on && { borderColor: C.accent }]}>
-                {art ? <Image source={{ uri: art }} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} /> : null}
-                {done ? (
-                  <View style={styles.doneBadge}>
-                    <Icon name="check" size={13} color="#fff" strokeWidth={3} />
-                  </View>
-                ) : null}
-              </View>
-              <T numberOfLines={1} style={{ fontSize: 14, fontWeight: '700' }}>
-                Temporada {s.seasonNumber}{' '}
-                <T style={{ fontSize: 14, color: C.textFaint, fontWeight: '500' }}>{stub?.air_date?.slice(0, 4) ?? ''}</T>
-              </T>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <View style={{ flex: 1, height: 3, borderRadius: 2, backgroundColor: C.fill, overflow: 'hidden' }}>
-                  <View style={{ height: '100%', width: `${Math.round((count / s.episodeCount) * 100)}%`, backgroundColor: C.accent }} />
-                </View>
-                <T variant="caption" muted style={{ fontWeight: '700' }}>
-                  {count}/{s.episodeCount}
-                </T>
-              </View>
-            </Touchable>
-          );
-        })}
-      </HScroll>
-
-      {/* Resumen de la temporada elegida. */}
-      <View style={styles.seasonBar}>
-        <T style={{ flex: 1, fontSize: 15 }} numberOfLines={2}>
-          <T style={{ fontSize: 15, fontWeight: '700' }}>Temporada {season}</T>
-          <T muted style={{ fontSize: 15 }}>
-            {[
-              !isDemo && first ? (last && last !== first ? `${shortDate(first)} a ${shortDate(last)}` : shortDate(first)) : null,
-              data ? `${data.episodes.length} ep.` : null,
-              seasonRuntime ? formatDuration(seasonRuntime) : null,
-            ]
-              .filter(Boolean)
-              .map((x) => ` · ${x}`)
-              .join('')}
-          </T>
-        </T>
-        <Touchable
-          haptic="medium"
-          disabled={aired.length === 0}
-          onPress={() => {
-            onNeedItem();
-            lib.setEpisodes(
-              key,
-              aired.map((e) => ({ season, episode: e.episode_number })),
-              !allSeen,
-            );
-          }}
-          style={{ flexDirection: 'row', alignItems: 'center', gap: 6, opacity: aired.length ? 1 : 0.4 }}>
-          <View>
-            <Icon name="check" size={16} color={C.accentInk} strokeWidth={2.6} />
-          </View>
-          <T variant="label" style={{ color: C.accentInk }}>
-            {allSeen ? 'Desmarcar' : 'Marcar temporada'}
-          </T>
-        </Touchable>
-      </View>
-
-      {error ? <T style={{ color: C.danger }}>{error}</T> : null}
-      {!data && !error ? <Loading /> : null}
-
-      {/* Episodios en fila horizontal: imagen, duración, ✓, título y un poco de sinopsis. */}
-      <HScroll innerRef={shelf} showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: Space.lg, paddingRight: Space.lg }}>
-        {list.map((ep) => {
-          const isSeen = seen(season, ep.episode_number);
-          const upcoming = !ep.air_date || ep.air_date > today;
-          const still = sharpImage(ep.still_path, 'still', cardW);
-          const tag =
-            ep.episode_type === 'finale' ? 'FINAL' : ep.episode_number === 1 ? 'ESTRENO' : ep.episode_type === 'mid_season' ? 'MITAD' : null;
-          return (
-            <Touchable
-              key={ep.id}
-              haptic="select"
-              pressScale={0.97}
-              onPress={() => open({ season, episode: ep.episode_number })}
-              accessibilityRole="button"
-              accessibilityLabel={`${formatEpisode(season, ep.episode_number)}, ${ep.name}`}
-              style={{ width: cardW, gap: 6, opacity: upcoming ? 0.6 : 1 }}>
-              <View style={styles.epStill}>
-                {still ? <Image source={{ uri: still }} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} /> : null}
-                {tag ? (
-                  <View style={styles.epTag}>
-                    <T style={{ color: '#fff', fontSize: 10.5, fontWeight: '800', letterSpacing: 0.8 }}>{tag}</T>
-                  </View>
-                ) : null}
-                {ep.runtime ? (
-                  <View style={styles.epTime}>
-                    <T style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>{ep.runtime} min</T>
-                  </View>
-                ) : null}
-                {!upcoming ? (
-                  <View style={{ position: 'absolute', right: 8, bottom: 8 }}>
-                    <CheckButton on={isSeen} onPress={() => toggle(ep)} overlay />
-                  </View>
-                ) : null}
-              </View>
-              <T numberOfLines={1} style={{ fontSize: 16, fontWeight: '700' }}>
-                {ep.name}
-              </T>
-              <T variant="caption" muted numberOfLines={1}>
-                {[
-                  formatEpisode(season, ep.episode_number),
-                  upcoming ? (ep.air_date ? `Sale el ${shortDate(ep.air_date)}` : 'Por anunciar') : isDemo ? null : shortDate(ep.air_date),
-                  ep.vote_average ? `★ ${ep.vote_average.toFixed(1)}` : null,
-                ]
-                  .filter(Boolean)
-                  .join(' · ')}
-              </T>
-              {ep.overview ? (
-                <T variant="small" muted numberOfLines={2}>
-                  {ep.overview}
-                </T>
-              ) : null}
-            </Touchable>
-          );
-        })}
-        {data && list.length === 0 ? <T muted>Viste toda esta temporada.</T> : null}
-      </HScroll>
-    </View>
-  );
-}
-
-function CheckButton({ on, onPress, overlay }: { on: boolean; onPress: () => void; overlay?: boolean }) {
-  const C = useColors();
-  return (
-    <Touchable
-      haptic={on ? 'light' : 'success'}
-      pressScale={0.85}
-      onPress={onPress}
-      accessibilityRole="checkbox"
-      accessibilityState={{ checked: on }}
-      accessibilityLabel={on ? 'Desmarcar' : 'Marcar como visto'}
-      style={{
-        width: 36,
-        height: 36,
-        borderRadius: 18,
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: on ? C.accent : overlay ? 'rgba(14,13,18,0.55)' : 'transparent',
-        borderWidth: on ? 0 : 1.8,
-        borderColor: overlay ? 'rgba(255,255,255,0.75)' : C.accentLine,
-      }}>
-      <View>
-        <Icon name="check" size={18} color={on || overlay ? '#fff' : C.accentInk} strokeWidth={2.6} />
-      </View>
-    </Touchable>
-  );
-}
-
-function Pill({ label, icon, on, onPress }: { label: string; icon?: IconName; on?: boolean; onPress: () => void }) {
-  const C = useColors();
-  return (
-    <Touchable
-      haptic="select"
-      onPress={onPress}
-      accessibilityState={{ selected: on }}
-      style={{
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 5,
-        paddingHorizontal: Space.md,
-        height: 34,
-        borderRadius: Radius.pill,
-        backgroundColor: on ? C.ink : C.fill,
-      }}>
-      {icon ? (
-        <View>
-          <Icon name={icon} size={14} color={on ? C.onInk : C.text} strokeWidth={2.4} />
-        </View>
-      ) : null}
-      <T variant="label" style={{ fontSize: 13, color: on ? C.onInk : C.text }}>
-        {label}
-      </T>
-    </Touchable>
-  );
-}
-
 // --- Nota personal ---
 
 function NoteBox({ item }: { item: LibraryItem }) {
@@ -1317,100 +1060,6 @@ function InYourLists({ entryKey }: { entryKey: string }) {
         ))}
       </View>
     </View>
-  );
-}
-
-// --- Detalle de un episodio ---
-
-function EpisodeSheet({
-  tvId,
-  target,
-  item,
-  onClose,
-  onNeedItem,
-}: {
-  tvId: number;
-  target: { season: number; episode: number } | null;
-  item: LibraryItem | undefined;
-  onClose: () => void;
-  onNeedItem: () => void;
-}) {
-  const C = useColors();
-  const lib = useLibrary();
-  const [data, setData] = useState<TmdbSeason | null>(null);
-  useEffect(() => {
-    if (!target) return;
-    let off = false;
-    getSeason(tvId, target.season)
-      .then((s) => !off && setData(s))
-      .catch(() => {});
-    return () => {
-      off = true;
-    };
-  }, [tvId, target]);
-  const ep = target && data?.season_number === target.season ? data.episodes.find((e) => e.episode_number === target.episode) : null;
-  const key = itemKey('tv', tvId);
-  const seen = target ? Boolean(item?.watchedEpisodes[episodeKey(target.season, target.episode)]) : false;
-  const aired = !!ep?.air_date && ep.air_date <= todayISO();
-  const still = ep ? sharpImage(ep.still_path, 'still', 520) : null;
-  return (
-    <Sheet visible={!!target} onClose={onClose}>
-      {!ep || !target ? (
-        <Loading />
-      ) : (
-        <View style={{ gap: Space.md }}>
-          <View style={{ aspectRatio: 16 / 9, borderRadius: Radius.md, overflow: 'hidden', backgroundColor: C.fill }}>
-            {still ? <Image source={{ uri: still }} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} /> : null}
-          </View>
-          <T variant="small" style={{ color: C.accentInk, fontWeight: '700' }}>
-            {[formatEpisode(target.season, target.episode), ep.runtime ? `${ep.runtime} min` : null, isDemo ? null : shortDate(ep.air_date)]
-              .filter(Boolean)
-              .join(' · ')}
-          </T>
-          <T variant="heading">{ep.name}</T>
-          <ScrollView style={{ maxHeight: 220 }}>
-            <T muted style={{ fontSize: 15, lineHeight: 22 }}>
-              {ep.overview || 'Sin sinopsis en español todavía.'}
-            </T>
-          </ScrollView>
-          {aired ? (
-            <View style={{ flexDirection: 'row', gap: Space.sm }}>
-              <Button
-                label={seen ? 'Desmarcar' : 'Visto'}
-                kind={seen ? 'secondary' : 'primary'}
-                icon="check"
-                style={{ flex: 1 }}
-                onPress={() => {
-                  onNeedItem();
-                  lib.setEpisodes(key, [target], !seen);
-                  onClose();
-                }}
-              />
-              {!seen && target.episode > 1 ? (
-                <Button
-                  label="Hasta aquí"
-                  kind="secondary"
-                  style={{ flex: 1 }}
-                  onPress={() => {
-                    onNeedItem();
-                    lib.setEpisodes(
-                      key,
-                      data!.episodes
-                        .filter((e) => e.episode_number <= target.episode && e.air_date && e.air_date <= todayISO())
-                        .map((e) => ({ season: target.season, episode: e.episode_number })),
-                      true,
-                    );
-                    onClose();
-                  }}
-                />
-              ) : null}
-            </View>
-          ) : (
-            <T muted>{ep.air_date ? `Se estrena el ${shortDate(ep.air_date)}.` : 'Fecha por anunciar.'}</T>
-          )}
-        </View>
-      )}
-    </Sheet>
   );
 }
 
@@ -1516,7 +1165,7 @@ function WhereToWatch({ providers, loaded }: { providers: TmdbWatchProviders | n
 const makeStyles = (C: Colors) =>
   StyleSheet.create({
     page: { flex: 1, backgroundColor: C.bg },
-    content: { width: '100%', maxWidth: 1200, alignSelf: 'center', paddingHorizontal: Space.lg },
+    content: { width: '100%', maxWidth: 1480, alignSelf: 'center', paddingHorizontal: Space.lg },
     contentWide: { paddingHorizontal: Space.xxl + Space.md },
     poster: {
       shadowColor: '#000',
@@ -1534,13 +1183,12 @@ const makeStyles = (C: Colors) =>
     scoreValue: { fontSize: 30, lineHeight: 36, fontWeight: '800', letterSpacing: -0.8, color: C.text },
     metaLine: { flexDirection: 'row', alignItems: 'center', gap: Space.sm, flexWrap: 'wrap' },
     // Sombra suave: el texto se lee aunque la imagen de fondo sea clara.
-    metaText: { fontSize: 16, lineHeight: 22, textShadowColor: 'rgba(0,0,0,0.65)', textShadowRadius: 8 },
+    metaText: { fontSize: 16, lineHeight: 22 },
     cert: { borderWidth: 1.5, borderColor: C.textFaint, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 1 },
     tile: {
       flex: 1,
       height: 72,
       borderRadius: 16,
-      borderWidth: 1,
       ...glassFill(C),
       alignItems: 'center',
       justifyContent: 'center',
@@ -1555,11 +1203,11 @@ const makeStyles = (C: Colors) =>
       height: 56,
       paddingHorizontal: Space.lg,
       borderRadius: 16,
-      borderWidth: 1,
       ...glassFill(C),
     },
-    segment: { flexDirection: 'row', borderRadius: 16, padding: 4, borderWidth: 1, ...glassFill(C) },
-    segmentBtn: { flex: 1, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6 },
+    segment: { flexDirection: 'row', borderRadius: 999, padding: 4, ...glassFill(C) },
+    segmentOn: { backgroundColor: C.mode === 'light' ? '#FFFFFF' : 'rgba(255,255,255,0.14)', boxShadow: '0 1px 6px rgba(0,0,0,0.12)' },
+    segmentBtn: { flex: 1, height: 40, borderRadius: 999, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
     seasonArt: {
       width: 120,
       aspectRatio: 2 / 3,
@@ -1608,7 +1256,7 @@ const makeStyles = (C: Colors) =>
       paddingHorizontal: 9,
       paddingVertical: 4,
     },
-    providers: { borderWidth: 1, ...glassFill(C), borderRadius: Radius.lg, paddingHorizontal: Space.md },
+    providers: { ...glassFill(C), borderRadius: Radius.lg, paddingHorizontal: Space.md },
     providerRow: { flexDirection: 'row', alignItems: 'center', gap: Space.md, paddingVertical: Space.md },
     planTag: { backgroundColor: C.accentSoft, borderRadius: Radius.pill, paddingHorizontal: 8, paddingVertical: 3 },
     scoreOf: { fontSize: 13, fontWeight: '600', color: C.textFaint },
@@ -1671,86 +1319,3 @@ const makeStyles = (C: Colors) =>
     },
   });
 
-/** "13 de 23 · 57 % · faltan ~3 h", con una barra partida por temporada (como Bingebase). */
-function Remaining({ item, runtime }: { item: LibraryItem; runtime: number }) {
-  const C = useColors();
-  const { lang } = useLang();
-  // Tiempo exacto: se suman las duraciones reales de los episodios que faltan (ya emitidos).
-  const [exact, setExact] = useState<{ minutes: number; aired: number; upcoming: number } | null>(null);
-  const watchedJson = JSON.stringify(item.watchedEpisodes);
-  useEffect(() => {
-    let off = false;
-    const nums = item.seasons.filter((x) => x.seasonNumber > 0 && x.episodeCount > 0).map((x) => x.seasonNumber).slice(0, 40);
-    Promise.all(nums.map((n) => getSeason(item.tmdbId, n).catch(() => null))).then((all) => {
-      if (off) return;
-      const today = todayISO();
-      let minutes = 0;
-      let aired = 0;
-      let upcoming = 0;
-      for (const season of all) {
-        if (!season) continue;
-        for (const e of season.episodes) {
-          if (item.watchedEpisodes[episodeKey(season.season_number, e.episode_number)]) continue;
-          if (e.air_date && e.air_date <= today) {
-            aired++;
-            minutes += e.runtime || runtime;
-          } else upcoming++;
-        }
-      }
-      setExact({ minutes, aired, upcoming });
-    });
-    return () => {
-      off = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [item.tmdbId, watchedJson]);
-  const seasons = item.seasons.filter((s) => s.seasonNumber > 0 && s.episodeCount > 0);
-  const total = totalEpisodes(seasons);
-  if (!total) return null;
-  const seenIn = (n: number) => Object.keys(item.watchedEpisodes).filter((k) => k.startsWith(`${n}:`)).length;
-  const seen = seasons.reduce((a, s) => a + Math.min(seenIn(s.seasonNumber), s.episodeCount), 0);
-  const left = total - seen;
-  const pct = Math.round((seen / total) * 100);
-  return (
-    <View style={{ gap: Space.sm }}>
-      <View style={{ flexDirection: 'row', gap: 3, height: 8 }}>
-        {seasons.map((s) => {
-          const f = Math.min(seenIn(s.seasonNumber), s.episodeCount) / s.episodeCount;
-          return (
-            <View key={s.seasonNumber} style={{ flex: s.episodeCount, borderRadius: 4, overflow: 'hidden', backgroundColor: C.fill }}>
-              <LinearGradient
-                colors={[C.g1, C.g2]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={{ width: `${Math.round(f * 100)}%`, height: '100%' }}
-              />
-            </View>
-          );
-        })}
-      </View>
-      <T style={{ fontSize: 15, color: C.textMuted }}>
-        <T style={{ fontSize: 15, fontWeight: '800', color: C.text }}>{seen}</T>
-        {lang === 'es' ? ` de ${total} vistos · ${pct} %` : ` of ${total} watched · ${pct}%`}
-      </T>
-      {exact ? (
-        exact.aired > 0 ? (
-          <T style={{ fontSize: 15, color: C.text }}>
-            {lang === 'es' ? 'Te faltan ' : ''}
-            <T style={{ fontSize: 15, fontWeight: '800', color: C.accentInk }}>{formatDuration(exact.minutes)}</T>
-            {lang === 'es'
-              ? ` para terminarla (${exact.aired} ${exact.aired === 1 ? 'episodio' : 'episodios'})${exact.upcoming ? `, y ${exact.upcoming} por estrenarse` : ''}.`
-              : ` left to finish it (${exact.aired} ${exact.aired === 1 ? 'episode' : 'episodes'})${exact.upcoming ? `, plus ${exact.upcoming} still to air` : ''}.`}
-          </T>
-        ) : (
-          <T style={{ fontSize: 15, color: C.text }}>
-            {lang === 'es'
-              ? `¡Estás al día!${exact.upcoming ? ` Faltan ${exact.upcoming} episodios por estrenarse.` : ''}`
-              : `You're all caught up!${exact.upcoming ? ` ${exact.upcoming} episodes still to air.` : ''}`}
-          </T>
-        )
-      ) : left > 0 && runtime ? (
-        <T style={{ fontSize: 15, color: C.textMuted }}>Calculando el tiempo exacto…</T>
-      ) : null}
-    </View>
-  );
-}

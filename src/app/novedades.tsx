@@ -175,5 +175,5 @@ export default function NewsScreen() {
 }
 
 const styles = StyleSheet.create({
-  newTag: { position: 'absolute', right: 6, bottom: 62, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
+  newTag: { position: 'absolute', left: 6, top: 6, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
 });

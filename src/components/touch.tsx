@@ -16,6 +16,7 @@ import {
   type ViewStyle,
 } from 'react-native';
 
+import { tr } from '@/i18n';
 import { haptic, type HapticKind } from '@/lib/haptics';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
@@ -72,6 +73,7 @@ export function Touchable({
     <AnimatedPressable
       ref={ref}
       {...rest}
+      accessibilityLabel={typeof rest.accessibilityLabel === 'string' ? tr(rest.accessibilityLabel) : rest.accessibilityLabel}
       disabled={disabled}
       onPressIn={down}
       onPressOut={up}

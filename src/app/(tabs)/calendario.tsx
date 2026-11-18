@@ -156,7 +156,7 @@ function ViewSwitch({ value, onChange }: { value: View3; onChange: (v: View3) =>
     ['posters', 'Carátulas', 'grid'],
   ];
   return (
-    <View style={{ flexDirection: 'row', borderRadius: 16, padding: 4, borderWidth: 1, ...glassFill(C), alignSelf: 'flex-start' }}>
+    <View style={{ flexDirection: 'row', borderRadius: 16, padding: 4, ...glassFill(C), alignSelf: 'flex-start' }}>
       {opts.map(([k, label, icon]) => {
         const on = value === k;
         return (
@@ -226,7 +226,7 @@ function MonthView({ episodes }: { episodes: CalendarEpisode[] }) {
           <GlassButton icon="chevronRight" label="Mes siguiente" onPress={() => shift(1)} size={40} />
         </View>
       </View>
-      <View style={{ borderRadius: 22, borderWidth: 1, ...glassFill(C), padding: Space.sm }}>
+      <View style={{ borderRadius: 22, ...glassFill(C), padding: Space.sm }}>
         <View style={{ flexDirection: 'row' }}>
           {head.map((d, i) => (
             <T key={i} style={{ flex: 1, textAlign: 'center', fontSize: 12, fontWeight: '700', color: C.textMuted, paddingVertical: 6 }}>
@@ -499,8 +499,8 @@ function Premieres() {
                     mediaType={type}
                     title={r.title ?? r.name ?? ''}
                     posterPath={r.poster_path}
-                    subtitle={type === 'tv' ? 'Serie' : 'Película'}
-                    highlight={availableLabel({ availability: availability[itemKey(type, r.id)] }, myProviders)}
+                    subtitle={(r.release_date ?? r.first_air_date ?? '').slice(0, 4) || null}
+                    availability={availability[itemKey(type, r.id)]}
                   />
                 );
               })}

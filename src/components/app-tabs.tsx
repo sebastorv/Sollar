@@ -12,7 +12,7 @@
 import { tr } from '@/i18n';
 import { usePathname } from 'expo-router';
 import { Tabs, TabList, TabSlot, TabTrigger, type TabListProps, type TabTriggerSlotProps } from 'expo-router/ui';
-import { Children, isValidElement, useEffect, useRef, type ReactElement, type ReactNode } from 'react';
+import { Children, createContext, isValidElement, useContext, useEffect, useRef, type ReactElement, type ReactNode } from 'react';
 import { Animated, Platform, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -33,6 +33,8 @@ const PILL = ['/', '/calendario', '/lista', '/perfil'];
 const SLOT = 46;
 const PAD = 6;
 const native = Platform.OS !== 'web';
+/** Ancho de cada pestaña: en celular la barra ocupa casi todo el ancho y las reparte parejo. */
+const SlotWidth = createContext(SLOT);
 
 export default function AppTabs() {
   const { width } = useWindowDimensions();
@@ -74,26 +76,31 @@ function BarLayout({ narrow, children, ...rest }: TabListProps & { narrow: boole
   const pathname = usePathname();
   const vertical0 = !narrow;
   const index = PILL.findIndex((r) => (r === '/' ? pathname === '/' : pathname.startsWith(r)));
+  const { width: screenW } = useWindowDimensions();
+  // Celular: la píldora llega casi a los bordes (deja sitio a la lupa) y cada pestaña se ensancha.
+  const small = SLOT + PAD * 2;
+  const full = narrow ? Math.min(screenW - Space.lg * 2, 480) - Space.sm - small : PILL.length * SLOT + PAD * 2;
+  const slotW = narrow ? (full - PAD * 2) / PILL.length : SLOT;
 
   const items = Children.toArray(children).filter(isValidElement) as ReactElement<{ name: string; children: ReactNode }>[];
   const search = items.find((c) => c.props.name === 'buscar');
   const pill = items.filter((c) => c.props.name !== 'buscar');
 
   // La gota: se desliza con resorte y se estira mientras viaja.
-  const pos = useRef(new Animated.Value(Math.max(index, 0) * SLOT)).current;
+  const pos = useRef(new Animated.Value(Math.max(index, 0) * slotW)).current;
   const stretch = useRef(new Animated.Value(1)).current;
   const show = useRef(new Animated.Value(index >= 0 ? 1 : 0)).current;
   useEffect(() => {
     Animated.timing(show, { toValue: index >= 0 ? 1 : 0, duration: 160, useNativeDriver: native }).start();
     if (index < 0) return;
     Animated.parallel([
-      Animated.spring(pos, { toValue: index * SLOT, useNativeDriver: native, speed: 14, bounciness: 8 }),
+      Animated.spring(pos, { toValue: index * slotW, useNativeDriver: native, speed: 14, bounciness: 8 }),
       Animated.sequence([
         Animated.timing(stretch, { toValue: 1.38, duration: 110, useNativeDriver: native }),
         Animated.spring(stretch, { toValue: 1, useNativeDriver: native, speed: 9, bounciness: 16 }),
       ]),
     ]).start();
-  }, [index, pos, stretch, show]);
+  }, [index, pos, stretch, show, slotW]);
 
   const { collapsed, setCollapsed } = useTabScroll();
   const fold = useRef(new Animated.Value(0)).current;
@@ -110,7 +117,7 @@ function BarLayout({ narrow, children, ...rest }: TabListProps & { narrow: boole
       pointerEvents="none"
       style={[
         styles.drop,
-        { backgroundColor: dropColor, opacity: show },
+        { backgroundColor: dropColor, opacity: show, width: slotW },
         vertical
           ? { transform: [{ translateY: pos }, { scaleY: stretch }, { scaleX: Animated.divide(1, stretch) }] }
           : { transform: [{ translateX: pos }, { scaleX: stretch }, { scaleY: Animated.divide(1, stretch) }] },
@@ -145,11 +152,9 @@ function BarLayout({ narrow, children, ...rest }: TabListProps & { narrow: boole
 
   // Celular: al bajar, la píldora se encoge hasta dejar solo la pestaña actual (como iOS 26);
   // al subir o al tocarla, vuelve a abrirse. La lupa siempre queda aparte, a la derecha.
-  const full = PILL.length * SLOT + PAD * 2;
-  const small = SLOT + PAD * 2;
   const at = Math.max(index, 0);
-  const width = fold.interpolate({ inputRange: [0, 1], outputRange: [full, small] });
-  const shift = fold.interpolate({ inputRange: [0, 1], outputRange: [0, -at * SLOT] });
+  const width = fold.interpolate({ inputRange: [0, 1], outputRange: [full, slotW + PAD * 2] });
+  const shift = fold.interpolate({ inputRange: [0, 1], outputRange: [0, -at * slotW] });
   return (
     <View
       {...rest}
@@ -160,7 +165,7 @@ function BarLayout({ narrow, children, ...rest }: TabListProps & { narrow: boole
           <Glass radius={999} style={{ width: '100%' }}>
             <Animated.View style={{ flexDirection: 'row', padding: PAD, width: full, transform: [{ translateX: shift }] }}>
               {drop}
-              {pill}
+              <SlotWidth value={slotW}>{pill}</SlotWidth>
             </Animated.View>
             {collapsed ? (
               <Touchable
@@ -190,6 +195,7 @@ function TabButton({
   ...props
 }: TabTriggerSlotProps & { icon: IconName; label: string; round?: boolean }) {
   const avatar = useSettings().profile.avatar;
+  const slotW = useContext(SlotWidth);
   const C = useColors();
   const styles = useStyles(makeStyles);
   return (
@@ -200,7 +206,7 @@ function TabButton({
       accessibilityRole="tab"
       accessibilityLabel={tr(label)}
       accessibilityState={{ selected: isFocused }}
-      style={[round ? styles.roundBtn : styles.slot, round && isFocused && { backgroundColor: C.accentSoft }]}>
+      style={[round ? styles.roundBtn : [styles.slot, { width: slotW }], round && isFocused && { backgroundColor: C.accentSoft }]}>
       <View>
         {icon === 'person' && avatar ? (
           // Tu foto en la pestaña de perfil, como en las redes.

@@ -7,8 +7,9 @@
  * - BubbleMenu: lista de opciones que sale pegada al botón que la abrió.
  */
 
+import { tr } from '@/i18n';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Animated, Easing, Modal, Platform, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { Animated, Easing, Modal, Platform, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Space } from '@/constants/theme';
@@ -40,28 +41,99 @@ function usePop(visible: boolean) {
   return { shown, v };
 }
 
+/**
+ * Dónde poner una burbuja junto al botón que la abrió: debajo si cabe, si no encima; alineada
+ * con el borde del botón (izquierdo o derecho, según el lado de la pantalla en que esté).
+ * Devuelve la posición y el punto desde donde crece (el botón).
+ */
+function place(a: Anchor, W: number, H: number, screen: { width: number; height: number }, top0: number, bottom0: number) {
+  const gap = 8;
+  const margin = Space.md;
+  const spaceBelow = screen.height - bottom0 - (a.y + a.height) - gap;
+  const spaceAbove = a.y - top0 - gap;
+  const below = spaceBelow >= Math.min(H, 320) || spaceBelow >= spaceAbove;
+  const room = Math.max(160, (below ? spaceBelow : spaceAbove) - margin);
+  const center = a.x + a.width / 2;
+  let left = center < screen.width / 2 ? a.x : a.x + a.width - W;
+  left = Math.min(Math.max(margin, left), screen.width - W - margin);
+  const originX = Math.min(Math.max(center - left, 16), W - 16);
+  const pos = below ? { top: a.y + a.height + gap } : { bottom: screen.height - a.y + gap };
+  return { left, pos, maxHeight: room, origin: `${Math.round(originX)}px ${below ? '0%' : '100%'}` };
+}
+
 export function Sheet({
   visible,
   onClose,
   title,
   subtitle,
+  anchor,
   children,
 }: {
   visible: boolean;
   onClose: () => void;
   title?: string;
   subtitle?: string;
+  /** Botón que la abrió: la burbuja sale pegada a él. Sin él, flota abajo en el centro. */
+  anchor?: Anchor | null;
   children: ReactNode;
 }) {
   const C = useColors();
   const insets = useSafeAreaInsets();
+  const screen = useWindowDimensions();
   const { shown, v } = usePop(visible);
+  const last = useRef<Anchor | null>(null);
+  if (anchor) last.current = anchor;
   if (!shown) return null;
+  const a = anchor === undefined ? null : last.current;
+
+  const inner = (
+    <Glass strong radius={28} style={styles.bubble}>
+      {title ? (
+        <View style={{ gap: 2 }}>
+          <T variant="heading">{title}</T>
+          {subtitle ? (
+            <T variant="small" muted>
+              {subtitle}
+            </T>
+          ) : null}
+        </View>
+      ) : null}
+      {children}
+    </Glass>
+  );
+
+  if (a) {
+    const W = Math.min(400, screen.width - Space.md * 2);
+    const p = place(a, W, 360, screen, insets.top, insets.bottom);
+    return (
+      <Modal visible transparent animationType="none" onRequestClose={onClose}>
+        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel={tr('Cerrar')}>
+          <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.14)', opacity: v }]} />
+        </Pressable>
+        <Animated.View
+          style={{
+            position: 'absolute',
+            left: p.left,
+            ...p.pos,
+            width: W,
+            maxHeight: p.maxHeight,
+            transformOrigin: p.origin,
+            opacity: v.interpolate({ inputRange: [0, 0.3, 1], outputRange: [0, 1, 1] }),
+            transform: [{ scale: v.interpolate({ inputRange: [0, 1], outputRange: [0.4, 1] }) }],
+          }}>
+          <ScrollView bounces={false} style={{ maxHeight: p.maxHeight }} contentContainerStyle={{ flexGrow: 0 }}>
+            {inner}
+          </ScrollView>
+        </Animated.View>
+      </Modal>
+    );
+  }
+
   return (
     <Modal visible transparent animationType="none" onRequestClose={onClose}>
       <View style={[styles.wrap, { paddingBottom: Math.max(insets.bottom, Space.lg), paddingTop: insets.top + Space.lg }]}>
         <Animated.View style={[StyleSheet.absoluteFill, { opacity: v }]}>
-          <Pressable style={[StyleSheet.absoluteFill, { backgroundColor: C.scrim }]} onPress={onClose} accessibilityLabel="Cerrar" />
+          <Pressable style={[StyleSheet.absoluteFill, { backgroundColor: C.scrim }]} onPress={onClose} accessibilityLabel={tr('Cerrar')} />
         </Animated.View>
         <Animated.View
           style={[
@@ -74,19 +146,7 @@ export function Sheet({
               ],
             },
           ]}>
-          <Glass strong radius={30} style={styles.bubble}>
-            {title ? (
-              <View style={{ gap: 2 }}>
-                <T variant="heading">{title}</T>
-                {subtitle ? (
-                  <T variant="small" muted>
-                    {subtitle}
-                  </T>
-                ) : null}
-              </View>
-            ) : null}
-            {children}
-          </Glass>
+          {inner}
         </Animated.View>
       </View>
     </Modal>
@@ -120,6 +180,14 @@ export function measure(node: unknown): Promise<Anchor | null> {
   });
 }
 
+/** Lo que entrega un toque: el elemento tocado, para medirlo. */
+export type PressLike = { currentTarget?: unknown; target?: unknown } | undefined;
+
+/** Mide el botón de un toque; si no se puede, usa el centro de la pantalla. */
+export async function anchorOf(e: PressLike, fallback: Anchor): Promise<Anchor> {
+  return (await measure(e?.currentTarget ?? e?.target)) ?? fallback;
+}
+
 /** Menú de opciones pegado al botón que lo abrió; crece desde ese botón. */
 export function BubbleMenu({
   anchor,
@@ -133,78 +201,72 @@ export function BubbleMenu({
   onClose: () => void;
 }) {
   const C = useColors();
-  const { width, height } = useWindowDimensions();
+  const screen = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const { shown, v } = usePop(!!anchor);
   const last = useRef<Anchor | null>(null);
   if (anchor) last.current = anchor;
   const a = last.current;
   if (!shown || !a) return null;
 
-  const W = Math.min(300, width - Space.lg * 2);
-  const rows = items.length;
-  const H = rows * 50 + (title ? 44 : 0) + 16;
-  const below = a.y + a.height + H + 16 < height;
-  const left = Math.min(Math.max(Space.lg, a.x + a.width / 2 - W / 2), width - W - Space.lg);
-  const top = below ? a.y + a.height + 8 : Math.max(Space.lg, a.y - H - 8);
-  // El punto desde donde crece: el centro del botón.
-  const ox = a.x + a.width / 2 - (left + W / 2);
-  const oy = below ? -H / 2 : H / 2;
+  const W = Math.min(290, screen.width - Space.md * 2);
+  const H = items.reduce((h, it) => h + (it === 'divider' ? 9 : 48), (title ? 40 : 0) + 16);
+  const p = place(a, W, H, screen, insets.top, insets.bottom);
 
   return (
     <Modal visible transparent animationType="none" onRequestClose={onClose}>
-      <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel="Cerrar">
+      <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel={tr('Cerrar')}>
         <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.12)', opacity: v }]} />
       </Pressable>
       <Animated.View
         style={{
           position: 'absolute',
-          left,
-          top,
+          left: p.left,
+          ...p.pos,
           width: W,
+          transformOrigin: p.origin,
           opacity: v.interpolate({ inputRange: [0, 0.3, 1], outputRange: [0, 1, 1] }),
-          transform: [
-            { translateX: v.interpolate({ inputRange: [0, 1], outputRange: [ox, 0] }) },
-            { translateY: v.interpolate({ inputRange: [0, 1], outputRange: [oy, 0] }) },
-            { scale: v.interpolate({ inputRange: [0, 1], outputRange: [0.2, 1] }) },
-          ],
+          transform: [{ scale: v.interpolate({ inputRange: [0, 1], outputRange: [0.3, 1] }) }],
         }}>
-        <Glass strong radius={26} style={{ paddingVertical: Space.sm }}>
-          {title ? (
-            <T style={{ fontSize: 13, fontWeight: '700', color: C.textMuted, paddingHorizontal: Space.lg, paddingVertical: Space.sm }}>
-              {title.toUpperCase()}
-            </T>
-          ) : null}
-          {items.map((it, i) =>
-            it === 'divider' ? (
-              <View key={i} style={{ height: 1, backgroundColor: C.border, marginVertical: 4, marginHorizontal: Space.lg }} />
-            ) : (
-              <Touchable
-                key={i}
-                haptic="select"
-                pressScale={0.97}
-                onPress={() => {
-                  onClose();
-                  it.onPress();
-                }}
-                accessibilityRole="button"
-                accessibilityState={{ selected: it.on }}
-                style={styles.item}>
-                {it.icon ? (
-                  <View>
-                    <Icon name={it.icon} size={20} color={it.danger ? C.danger : C.text} />
-                  </View>
-                ) : null}
-                <T style={{ flex: 1, fontSize: 16, fontWeight: it.on ? '700' : '500', color: it.danger ? C.danger : C.text }}>
-                  {it.label}
-                </T>
-                {it.on ? (
-                  <View>
-                    <Icon name="check" size={18} color={C.accentInk} strokeWidth={2.6} />
-                  </View>
-                ) : null}
-              </Touchable>
-            ),
-          )}
+        <Glass strong radius={24}>
+          <ScrollView bounces={false} style={{ maxHeight: p.maxHeight }} contentContainerStyle={{ paddingVertical: Space.sm }}>
+            {title ? (
+              <T style={{ fontSize: 13, fontWeight: '700', color: C.textMuted, paddingHorizontal: Space.lg, paddingVertical: Space.sm }}>
+                {title.toUpperCase()}
+              </T>
+            ) : null}
+            {items.map((it, i) =>
+              it === 'divider' ? (
+                <View key={i} style={{ height: 1, backgroundColor: C.border, marginVertical: 4, marginHorizontal: Space.lg }} />
+              ) : (
+                <Touchable
+                  key={i}
+                  haptic="select"
+                  pressScale={0.97}
+                  onPress={() => {
+                    onClose();
+                    it.onPress();
+                  }}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: it.on }}
+                  style={styles.item}>
+                  {it.icon ? (
+                    <View>
+                      <Icon name={it.icon} size={20} color={it.danger ? C.danger : C.text} />
+                    </View>
+                  ) : null}
+                  <T style={{ flex: 1, fontSize: 16, fontWeight: it.on ? '700' : '500', color: it.danger ? C.danger : C.text }}>
+                    {it.label}
+                  </T>
+                  {it.on ? (
+                    <View>
+                      <Icon name="check" size={18} color={C.accentInk} strokeWidth={2.6} />
+                    </View>
+                  ) : null}
+                </Touchable>
+              ),
+            )}
+          </ScrollView>
         </Glass>
       </Animated.View>
     </Modal>

@@ -3,6 +3,7 @@
  * carátulas. Al tocar una imagen se abre en grande, con botón para descargarla en máxima calidad.
  */
 
+import { tr } from '@/i18n';
 import { HScroll } from './hscroll';
 import { Image } from 'expo-image';
 import { useState } from 'react';
@@ -129,10 +130,10 @@ function Viewer({ image, onClose }: { image: { path: string; aspect: number } | 
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onClose}>
       <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.94)', alignItems: 'center', justifyContent: 'center' }}>
-        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel="Cerrar" />
+        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel={tr('Cerrar')} />
         <Image source={{ uri: full ?? undefined }} style={{ width: w, aspectRatio: image.aspect, borderRadius: 12 }} contentFit="contain" transition={200} />
         <View style={{ position: 'absolute', top: insets.top + Space.md, right: Space.lg }}>
-          <Touchable haptic="light" onPress={onClose} accessibilityLabel="Cerrar">
+          <Touchable haptic="light" onPress={onClose} accessibilityLabel={tr('Cerrar')}>
             <Glass radius={999}>
               <View style={{ width: 46, height: 46, alignItems: 'center', justifyContent: 'center' }}>
                 <Icon name="close" size={20} color="#fff" strokeWidth={2.4} />

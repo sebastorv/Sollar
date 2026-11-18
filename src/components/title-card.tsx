@@ -4,7 +4,11 @@ import { StyleSheet, View } from 'react-native';
 
 import { Radius, Space, type Colors } from '@/constants/theme';
 import { useColors, useStyles } from '@/store/theme';
-import { STATUS_LABEL, type MediaType, type WatchStatus } from '@/lib/types';
+import { STATUS_LABEL, STATUS_ORDER, type Availability, type MediaType, type WatchStatus } from '@/lib/types';
+import { tr } from '@/i18n';
+import { getMovie, getTv } from '@/lib/tmdb';
+import { newItemFromMovie, newItemFromTv } from '@/lib/library-item';
+import { anchorOf, BubbleMenu, type Anchor } from './sheet';
 
 import { Icon, type IconName } from './icons';
 import { Poster, T } from './ui';
@@ -27,6 +31,7 @@ export function TitleCard({
   subtitle,
   badge,
   highlight,
+  availability,
   width = 120,
   onCheck,
   checkLabel,
@@ -36,10 +41,12 @@ export function TitleCard({
   title: string;
   posterPath: string | null;
   subtitle?: string | null;
-  /** Estado en tu lista: se muestra como un ícono pequeño sobre la carátula. */
+  /** Estado en tu lista: se muestra como una píldora pequeña al pie de la carátula. */
   badge?: WatchStatus | null;
-  /** Texto destacado bajo el título, por ejemplo "En Netflix". */
+  /** Texto destacado bajo el título (por ejemplo, tu nota). */
   highlight?: string | null;
+  /** Dónde está, cuando el título no está en tu lista (búsqueda, calendario). */
+  availability?: Availability | null;
   width?: number;
   /** Botón ✓ junto al título (marcar como visto, empezar la serie). */
   onCheck?: () => void;
@@ -49,19 +56,24 @@ export function TitleCard({
   const styles = useStyles(makeStyles);
   return (
     <Link href={{ pathname: '/titulo/[tipo]/[id]', params: { tipo: mediaType, id: String(id) } }} asChild>
-      <Touchable style={{ width, gap: Space.xs }} accessibilityLabel={title}>
+      <Touchable style={{ width, gap: 14 }} accessibilityLabel={title}>
         <View>
           <Poster path={posterPath} title={title} width={width} />
-          <PosterMarks mediaType={mediaType} id={id} badge={badge} width={width} />
+          <PosterMarks mediaType={mediaType} id={id} title={title} badge={badge} width={width} availability={availability} />
         </View>
         <View style={styles.textRow}>
           <View style={styles.text}>
             <T numberOfLines={1} style={styles.title}>
               {title}
             </T>
-            <T variant="caption" muted numberOfLines={1} style={styles.line}>
-              {subtitle ?? ' '}
-            </T>
+            <View style={styles.subRow}>
+              <View accessibilityLabel={mediaType === 'tv' ? tr('Serie') : tr('Película')}>
+                <Icon name={mediaType === 'tv' ? 'tv' : 'film'} size={13} color={C.textMuted} strokeWidth={2.2} />
+              </View>
+              <T variant="caption" muted numberOfLines={1} style={[styles.line, { flex: 1 }]}>
+                {subtitle ?? ' '}
+              </T>
+            </View>
             {highlight !== undefined ? (
               <T variant="caption" numberOfLines={1} style={[styles.line, { color: C.accentInk, fontWeight: '700' }]}>
                 {highlight ?? ' '}
@@ -114,94 +126,133 @@ const STATUS_ICON: Record<WatchStatus, IconName> = {
   dropped: 'close',
 };
 
-/** Burbuja de vidrio con el ícono del estado: dice "viendo", "vista"… sin tapar la carátula. */
-export function StatusBadge({ status, size = 26 }: { status: WatchStatus; size?: number }) {
+/** Píldora oscura con el ícono de tu estado, montada sobre el borde de abajo (como Trakt). */
+export function StatusBadge({ status, size = 24 }: { status: WatchStatus; size?: number }) {
   const C = useColors();
   const done = status === 'completed';
   return (
-    <View
-      accessibilityLabel={STATUS_LABEL[status]}
-      style={{
-        position: 'absolute',
-        top: 6,
-        right: 6,
-        width: size,
-        height: size,
-        borderRadius: size / 2,
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: done ? C.accent : 'rgba(14,13,18,0.62)',
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.28)',
-      }}>
-      <Icon name={STATUS_ICON[status]} size={size * 0.55} color="#fff" filled={status === 'planned'} strokeWidth={2.6} />
+    <View pointerEvents="none" style={[markStyles.statusWrap, { bottom: -Math.round(size * 0.42) }]}>
+      <View
+        accessibilityLabel={tr(STATUS_LABEL[status])}
+        style={[markStyles.status, { height: size, minWidth: size * 1.7, borderRadius: size / 2, backgroundColor: done ? C.accent : C.mode === 'dark' ? '#3A3846' : 'rgba(22,20,28,0.92)' }]}>
+        <Icon name={done ? 'checks' : STATUS_ICON[status]} size={size * 0.6} color="#fff" filled={status === 'planned'} strokeWidth={2.6} />
+      </View>
     </View>
   );
 }
 
 /**
- * Marcas sobre la carátula, pequeñas y con vidrio para no taparla:
- * arriba a la izquierda, si es serie o película; arriba a la derecha, tu estado (viendo, vista,
- * por ver…); abajo a la izquierda, el logo del servicio donde está (primero los que pagas).
+ * Marcas sobre la carátula, como Trakt: el menú ⋮ arriba a la derecha, el logo del servicio
+ * abajo a la izquierda y tu estado en una píldora sobre el borde de abajo.
  */
 function PosterMarks({
   mediaType,
   id,
+  title,
   badge,
   width,
+  availability,
 }: {
   mediaType: MediaType;
   id: number;
+  title: string;
   badge?: WatchStatus | null;
   width: number;
+  availability?: Availability | null;
 }) {
   const lib = useLibrary();
   const { myProviders } = useSettings();
   const { list } = useProviderDirectory();
-  const item = lib.get(itemKey(mediaType, id));
+  const key = itemKey(mediaType, id);
+  const item = lib.get(key);
   const status = badge === undefined ? item?.status ?? null : badge;
-  const av = item?.availability;
+  const av = item?.availability ?? availability;
   const mine = new Set(myProviders);
   const ids = av ? [...av.flatrate, ...av.free] : [];
   const pick = ids.find((p) => mine.has(p)) ?? ids[0];
   const logo = pick != null ? list?.find((p) => p.id === pick) : null;
   const small = width < 100;
+  const [menu, setMenu] = useState<Anchor | null>(null);
+
+  async function add(st: WatchStatus) {
+    try {
+      const data = mediaType === 'tv' ? newItemFromTv(await getTv(id), st) : newItemFromMovie(await getMovie(id), st);
+      lib.save({ ...data, posterPath: data.posterPath ?? null });
+    } catch {
+      // Sin conexión: no se guarda.
+    }
+  }
+
   return (
     <>
-      <View style={[markStyles.type, small && { top: 4, left: 4 }]} accessibilityLabel={mediaType === 'tv' ? 'Serie' : 'Película'}>
-        <Icon name={mediaType === 'tv' ? 'tv' : 'film'} size={small ? 11 : 13} color="#fff" strokeWidth={2.2} />
-      </View>
-      {status ? <StatusBadge status={status} size={small ? 22 : 26} /> : null}
+      {!small ? (
+        <Touchable
+          haptic="select"
+          pressScale={0.85}
+          hitSlop={6}
+          accessibilityLabel={`${tr('Opciones')}: ${title}`}
+          onPress={async (e) => {
+            (e as unknown as { preventDefault?: () => void }).preventDefault?.();
+            e.stopPropagation?.();
+            setMenu(await anchorOf(e, { x: 0, y: 0, width: 0, height: 0 }));
+          }}
+          style={markStyles.more}>
+          <Icon name="moreV" size={16} color="#fff" />
+        </Touchable>
+      ) : null}
       {logo && !small ? (
-        <View style={markStyles.logo}>
-          <ProviderLogo name={logo.name} logoPath={logo.logoPath} size={24} />
+        <View style={markStyles.logo} pointerEvents="none">
+          <ProviderLogo name={logo.name} logoPath={logo.logoPath} size={22} />
         </View>
       ) : null}
+      {status ? <StatusBadge status={status} size={small ? 20 : 24} /> : null}
+      <BubbleMenu
+        anchor={menu}
+        title={title}
+        onClose={() => setMenu(null)}
+        items={[
+          ...STATUS_ORDER.map((st) => ({
+            label: STATUS_LABEL[st],
+            icon: STATUS_ICON[st],
+            on: item?.status === st,
+            onPress: () => (item ? lib.setStatus(key, st) : add(st)),
+          })),
+          ...(item
+            ? [
+                'divider' as const,
+                { label: item.favorite ? 'Quitar de favoritos' : 'Favorito', icon: 'heart' as IconName, on: !!item.favorite, onPress: () => lib.toggleFavorite(key) },
+                { label: 'Quitar de mi lista', icon: 'trash' as IconName, danger: true, onPress: () => lib.remove(key) },
+              ]
+            : []),
+        ]}
+      />
     </>
   );
 }
 
 const markStyles = StyleSheet.create({
-  type: {
+  more: {
     position: 'absolute',
     top: 6,
-    left: 6,
-    width: 24,
-    height: 24,
-    borderRadius: 8,
+    right: 6,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(14,13,18,0.55)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.25)',
+    backgroundColor: 'rgba(16,14,20,0.42)',
+  },
+  statusWrap: { position: 'absolute', left: 0, right: 0, alignItems: 'center' },
+  status: {
+    paddingHorizontal: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   logo: {
     position: 'absolute',
     left: 6,
     bottom: 6,
-    borderRadius: 7,
-    borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.85)',
+    borderRadius: 6,
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOpacity: 0.35,
@@ -229,5 +280,6 @@ const makeStyles = (C: Colors) =>
   /** Una línea de título con puntos suspensivos: limpio y siempre parejo. */
   title: { fontSize: 15, lineHeight: 20, fontWeight: '700', letterSpacing: -0.2, color: C.text },
   line: { minHeight: 16 },
+  subRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   check: { paddingTop: 2 },
 });

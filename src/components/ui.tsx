@@ -25,8 +25,9 @@ export function T({
   variant = 'body',
   muted,
   style,
+  raw,
   ...rest
-}: TextProps & { variant?: Variant; muted?: boolean }) {
+}: TextProps & { variant?: Variant; muted?: boolean; /** Texto de TMDB u otra fuente: no se traduce. */ raw?: boolean }) {
   const styles = useStyles(makeStyles);
   const C = useColors();
   // Una sola letra en toda la app: el grosor pedido elige el archivo de la fuente.
@@ -38,7 +39,7 @@ export function T({
   const scaled = k === 1 ? null : { fontSize: Math.round(size! * k * 2) / 2, lineHeight: flat.lineHeight ? Math.round(flat.lineHeight * k) : undefined };
   // Idioma: cada texto pasa por la traducción (inglés por defecto).
   useLang();
-  const children = translate(rest.children);
+  const children = raw ? rest.children : translate(rest.children);
   return (
     <Text
       style={[flat, scaled, { fontFamily: fontFamilyFor(flat?.fontWeight), fontWeight: undefined }]}
@@ -50,6 +51,13 @@ export function T({
 
 function translate(c: ReactNode): ReactNode {
   if (typeof c === 'string') return tr(c);
+  // Texto armado con piezas ("Temporada {n} · Episodio {e} de {total}"): se une y se traduce entero.
+  // Si así no cambia, se traduce pieza por pieza.
+  if (Array.isArray(c) && c.length > 1 && c.every((x) => typeof x === 'string' || typeof x === 'number')) {
+    const joined = c.join('');
+    const whole = tr(joined);
+    if (whole !== joined) return whole;
+  }
   if (Array.isArray(c)) return c.map((x) => (typeof x === 'string' ? tr(x) : x));
   return c;
 }
@@ -338,7 +346,7 @@ export function Section({
 const makeStyles = (C: Colors) =>
   StyleSheet.create({
     title: { color: C.text, fontSize: 34, lineHeight: 40, fontWeight: '800', letterSpacing: -1 },
-    heading: { color: C.text, fontSize: 20, lineHeight: 26, fontWeight: '700', letterSpacing: -0.4 },
+    heading: { color: C.text, fontSize: 22, lineHeight: 28, fontWeight: '800', letterSpacing: -0.5 },
     body: { color: C.text, fontSize: 16, lineHeight: 23 },
     small: { color: C.text, fontSize: 14, lineHeight: 20 },
     caption: { color: C.text, fontSize: 12, lineHeight: 16 },

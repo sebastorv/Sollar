@@ -43,8 +43,12 @@ const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 /** Reglas para textos con números, fechas y nombres. Se aplican en orden. */
 const RULES: [RegExp, string | ((...m: string[]) => string)][] = [
   [/\bT(\d+) · E(\d+)/g, 'S$1 · E$2'],
-  [/\bT(\d+)\b/g, 'S$1'],
+  [/\bT(\d+)(?= ·|$|\)|\/)/g, 'S$1'],
   [/\bTemporada (\d+)/g, 'Season $1'],
+  [/\bTEMPORADA (\d+)/g, 'SEASON $1'],
+  [/\bEPISODIO (\d+) DE (\d+)/g, 'EPISODE $1 OF $2'],
+  [/\b(\d[\d.,]*) registros? · /g, (_, n) => `${n} ${n === '1' ? 'entry' : 'entries'} · `],
+  [/ frente a la pantalla/g, ' of screen time'],
   [/\bEpisodio (\d+) de (\d+)/g, 'Episode $1 of $2'],
   [/\bEpisodio (\d+)/g, 'Episode $1'],
   [/\b(\d[\d.,]*) episodios? vistos/g, '$1 episodes watched'],
@@ -81,6 +85,8 @@ const RULES: [RegExp, string | ((...m: string[]) => string)][] = [
   [/\bmil\b/g, 'k'],
   [/\bvotos\b/g, 'votes'],
   [/Viendo desde (\S+) de (\d{4})/g, (_, m, y) => `Watching since ${MONTHS_EN[MONTHS_ES.indexOf(m.toLowerCase())] ?? m} ${y}`],
+  [/^Marcar el primer episodio de (.+)$/g, 'Mark the first episode of $1'],
+  [/^Marcar (.+?) como vist[oa]$/g, 'Mark $1 as watched'],
   [/Porque te gustó /g, 'Because you liked '],
   [/Le pusiste (\d+)\/10/g, 'You gave it $1/10'],
   [/vio y le puso/g, 'watched and rated'],
@@ -115,12 +121,19 @@ const RULES: [RegExp, string | ((...m: string[]) => string)][] = [
   [/ días\b/g, ' days'],
   [/ día\b/g, ' day'],
   [/\bHoy\b/g, 'Today'],
+  [/\bhoy\b/g, 'today'],
+  [/\bmañana\b/g, 'tomorrow'],
+  [/\ben (\d+) (?:días|days)\b/g, 'in $1 days'],
+  [/\ben (\d+) semanas\b/g, 'in $1 weeks'],
+  [/\ben (\d+) meses\b/g, 'in $1 months'],
   [/\bMañana\b/g, 'Tomorrow'],
   [/\bAyer\b/g, 'Yesterday'],
   [new RegExp(`\\b(${MONTHS_ES.join('|')})\\b`, 'gi'), (m) => MONTHS_EN[MONTHS_ES.indexOf(m.toLowerCase())]],
   [new RegExp(`\\b(${DAYS_ES.join('|')})\\b`, 'gi'), (m) => DAYS_EN[DAYS_ES.indexOf(m.toLowerCase())]],
-  [new RegExp(`(?<![\\wáéíóú])(${MON_ES.join('|')})(?![\\wáéíóú])`, 'gi'), (m) => MON_EN[MON_ES.indexOf(m.toLowerCase())]],
-  [new RegExp(`(?<![\\wáéíóú])(${DY_ES.join('|')})(?![\\wáéíóú])`, 'gi'), (m) => DY_EN[DY_ES.indexOf(m.toLowerCase())]],
+  // Meses y días abreviados solo junto a una fecha ("12 ago 2024", "lun, 12"), para no tocar
+  // palabras en inglés como "ago" en las sinopsis.
+  [new RegExp(`(?<=\\d )(${MON_ES.join('|')})(?![\\wáéíóú])`, 'gi'), (m) => MON_EN[MON_ES.indexOf(m.toLowerCase())]],
+  [new RegExp(`(?<![\\wáéíóú])(${DY_ES.join('|')})(?=,? \\d)`, 'gi'), (m) => DY_EN[DY_ES.indexOf(m.toLowerCase())]],
   [/([A-Z][a-z]+day) (\d{1,2}) de ([A-Z][a-z]+)/g, '$1, $3 $2'],
   [/(\d{1,2}) de ([A-Z][a-z]+)/g, '$2 $1'],
   [/ de (\d{4})/g, ' $1'],
@@ -186,4 +199,10 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
 
 export function useLang() {
   return useContext(LangCtx);
+}
+
+/** Texto en el idioma actual, para frases armadas con datos: L('Faltan 3', '3 left'). */
+export function useL() {
+  const { lang } = useLang();
+  return (es: string, en: string) => (lang === 'es' ? es : en);
 }

@@ -214,7 +214,7 @@ function EpisodeScreenBody() {
     <View style={{ gap: Space.xl }}>
       <View style={{ gap: Space.md }}>
         <T style={styles.crumbs} numberOfLines={2}>
-          {tv.name.toUpperCase()} <T style={styles.crumbSep}>/</T> TEMPORADA {season} <T style={styles.crumbSep}>/</T> EPISODIO {number} DE {total}
+          {tv.name.toUpperCase()} <T style={styles.crumbSep}>/</T> {`TEMPORADA ${season}`} <T style={styles.crumbSep}>/</T> {`EPISODIO ${number} DE ${total}`}
         </T>
         <T style={[styles.title, wide && { fontSize: 56, lineHeight: 62 }]}>{ep.name}</T>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: Space.sm, flexWrap: 'wrap' }}>

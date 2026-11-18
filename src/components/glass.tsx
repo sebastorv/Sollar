@@ -54,21 +54,15 @@ export function Glass({
     );
   }
   const light = C.mode === 'light';
-  // Vidrio líquido: casi transparente, con desenfoque y saturación del fondo, borde de luz
-  // arriba, un reflejo suave y un brillo en el borde de abajo, como una gota.
-  const tintBg = strong ? C.glassStrong : light ? 'rgba(255,255,255,0.22)' : 'rgba(30,29,38,0.32)';
+  // Vidrio líquido: casi transparente, con desenfoque y saturación del fondo. El borde no es una
+  // línea: es un brillo interno (arriba más fuerte), como el canto de una gota de vidrio.
+  const tintBg = strong ? C.glassStrong : light ? 'rgba(255,255,255,0.34)' : 'rgba(34,32,42,0.40)';
   const web = Platform.OS === 'web';
   return (
     <View
       style={[
-        {
-          overflow: 'hidden',
-          borderRadius: radius,
-          borderWidth: 1,
-          borderColor: light ? 'rgba(255,255,255,0.55)' : 'rgba(255,255,255,0.12)',
-          borderTopColor: light ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.28)',
-        },
-        floating(C),
+        { overflow: 'hidden', borderRadius: radius },
+        web ? ({ boxShadow: glassEdge(C, true) } as ViewStyle) : { ...floating(C), borderWidth: StyleSheet.hairlineWidth, borderColor: light ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.10)' },
         style,
       ]}>
       {web ? (
@@ -77,6 +71,8 @@ export function Glass({
           style={[
             StyleSheet.absoluteFill,
             {
+              // El mismo redondeo que la caja: dentro de otro vidrio, Chrome no recorta el desenfoque.
+              borderRadius: radius,
               backgroundColor: tintBg,
               // @ts-expect-error: propiedades de CSS que react-native-web pasa al navegador.
               backdropFilter: `blur(${strong ? 32 : 22}px) saturate(${light ? 210 : 180}%) brightness(${light ? 1.04 : 1.1})`,
@@ -104,7 +100,7 @@ export function Glass({
             : ['rgba(255,255,255,0.14)', 'rgba(255,255,255,0.02)', 'rgba(255,255,255,0)', 'rgba(255,255,255,0.08)']
         }
         locations={[0, 0.4, 0.7, 1]}
-        style={StyleSheet.absoluteFill}
+        style={[StyleSheet.absoluteFill, { borderRadius: radius }]}
       />
       {children}
     </View>
@@ -117,12 +113,40 @@ export function Glass({
  */
 export function glassFill(C: Colors) {
   const light = C.mode === 'light';
+  if (Platform.OS === 'web') {
+    return {
+      backgroundColor: light ? 'rgba(255,255,255,0.66)' : 'rgba(255,255,255,0.075)',
+      borderWidth: 0,
+      boxShadow: glassEdge(C, false),
+      backdropFilter: 'blur(20px) saturate(170%)',
+      WebkitBackdropFilter: 'blur(20px) saturate(170%)',
+    } as const;
+  }
   return {
-    backgroundColor: light ? 'rgba(255,255,255,0.45)' : 'rgba(255,255,255,0.07)',
-    borderColor: light ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.13)',
-    borderTopColor: light ? 'rgba(255,255,255,1)' : 'rgba(255,255,255,0.22)',
-    ...(Platform.OS === 'web' ? { backdropFilter: 'blur(20px) saturate(170%)', WebkitBackdropFilter: 'blur(20px) saturate(170%)' } : {}),
+    backgroundColor: light ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.075)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: light ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.08)',
+    ...shadow(C),
   } as const;
+}
+
+/**
+ * El canto del vidrio (solo web): un brillo interno arriba, un reflejo tenue abajo y una sombra
+ * suave afuera. Reemplaza al borde, que se notaba como una línea.
+ */
+export function glassEdge(C: Colors, floats: boolean) {
+  const light = C.mode === 'light';
+  const inner = light
+    ? 'inset 0 1px 1px rgba(255,255,255,0.95), inset 0 -1px 1px rgba(255,255,255,0.45), inset 0 0 0 0.5px rgba(255,255,255,0.5)'
+    : 'inset 0 1px 1px rgba(255,255,255,0.16), inset 0 -1px 1px rgba(255,255,255,0.05), inset 0 0 0 0.5px rgba(255,255,255,0.07)';
+  const outer = floats
+    ? light
+      ? '0 10px 30px rgba(30,16,50,0.14), 0 1px 3px rgba(30,16,50,0.08)'
+      : '0 10px 30px rgba(0,0,0,0.5)'
+    : light
+      ? '0 4px 16px rgba(30,16,50,0.07), 0 1px 2px rgba(30,16,50,0.05)'
+      : '0 4px 16px rgba(0,0,0,0.25)';
+  return `${inner}, ${outer}`;
 }
 
 /** Sombra de lo que flota: más amplia que la de las tarjetas. */

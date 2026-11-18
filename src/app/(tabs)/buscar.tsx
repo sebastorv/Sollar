@@ -1,3 +1,4 @@
+import { tr } from '@/i18n';
 /** Pestaña "Buscar": búsqueda en TMDB y, sin texto, Descubrir (recomendaciones, tendencias y más). */
 
 import { useEffect, useState } from 'react';
@@ -66,7 +67,7 @@ export default function SearchScreen() {
         <TextInput
         value={query}
         onChangeText={setQuery}
-        placeholder={isDemo ? 'Prueba: dark, coco, the last of us' : 'Series y películas'}
+        placeholder={tr(isDemo ? 'Prueba: dark, coco, the last of us' : 'Series y películas')}
         placeholderTextColor={C.textFaint}
         style={styles.input}
         autoCorrect={false}
@@ -94,7 +95,6 @@ export default function SearchScreen() {
             {results.map((r) => {
               const type = r.media_type as MediaType;
               const saved = get(itemKey(type, r.id));
-              const kind = type === 'tv' ? 'Serie' : 'Película';
               const year = displayYear(r);
               return (
                 <TitleCard
@@ -103,9 +103,9 @@ export default function SearchScreen() {
                   mediaType={type}
                   title={displayTitle(r)}
                   posterPath={r.poster_path}
-                  subtitle={year ? `${kind} · ${year}` : kind}
+                  subtitle={year ?? null}
                   badge={saved ? saved.status : null}
-                  highlight={availableLabel({ availability: availability[itemKey(type, r.id)] }, myProviders)}
+                  availability={availability[itemKey(type, r.id)]}
                 />
               );
             })}

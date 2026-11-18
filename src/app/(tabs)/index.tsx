@@ -360,7 +360,6 @@ function PosterShelf({
             title={i.title}
             posterPath={i.posterPath}
             subtitle={first ? formatEpisode(first.season, first.episode) : i.year}
-            highlight={availableLabel(i, myProviders)}
             width={124}
             onCheck={onCheck ? () => onCheck(i) : undefined}
             checkLabel={i.mediaType === 'tv' ? `Marcar el primer episodio de ${i.title}` : `Marcar ${i.title} como vista`}

@@ -227,7 +227,6 @@ export default function ListScreen() {
                 title={i.title}
                 posterPath={i.posterPath}
                 subtitle={subtitleFor(i, filters.sort)}
-                highlight={availableLabel(i, myProviders)}
                 badge={filters.status === 'all' ? i.status : null}
               />
             ))}
@@ -276,7 +275,7 @@ function subtitleFor(i: LibraryItem, sort: Filters['sort']): string | null {
 
 const makeStyles = (C: Colors) =>
   StyleSheet.create({
-    segment: { flexDirection: 'row', borderRadius: 16, padding: 4, borderWidth: 1, ...glassFill(C), maxWidth: 560 },
+    segment: { flexDirection: 'row', borderRadius: 16, padding: 4, ...glassFill(C), maxWidth: 560 },
     segmentBtn: { flex: 1, height: 42, borderRadius: 12, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6 },
     segmentOn: { backgroundColor: C.mode === 'dark' ? 'rgba(255,255,255,0.14)' : '#fff' },
   preset: {

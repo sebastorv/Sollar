@@ -17,6 +17,7 @@ import { useColors, useStyles } from '@/store/theme';
 
 import { Glass, card } from './glass';
 import { Icon } from './icons';
+import { Sheet, type Anchor } from './sheet';
 import { Touchable } from './touch';
 import { Button, T } from './ui';
 
@@ -263,10 +264,13 @@ export function ListNameDialog({
 export function AddToListSheet({
   visible,
   entry,
+  anchor,
   onClose,
 }: {
   visible: boolean;
   entry: ListEntry;
+  /** Botón que la abrió: la burbuja sale pegada a él. */
+  anchor?: Anchor | null;
   onClose: () => void;
 }) {
   const C = useColors();
@@ -275,42 +279,39 @@ export function AddToListSheet({
   const [creating, setCreating] = useState(false);
   const item = lib.get(entry.key);
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={[styles.scrim, { justifyContent: 'flex-end' }]}>
-        <Glass strong radius={Radius.lg} style={styles.sheet}>
-          <T variant="heading">Guardar en</T>
-          <ScrollView style={{ maxHeight: 360 }} contentContainerStyle={{ gap: Space.xs }}>
-            <ToggleRow
-              label="Favoritos"
-              icon="heart"
-              on={!!item?.favorite}
-              disabled={!item}
-              hint={item ? undefined : 'Agrégalo primero a tu lista'}
-              onPress={() => lib.toggleFavorite(entry.key)}
-            />
-            {lib.lists.map((l) => {
-              const on = l.entries.some((e) => e.key === entry.key);
-              return (
-                <ToggleRow
-                  key={l.id}
-                  label={l.name}
-                  icon="ticket"
-                  on={on}
-                  hint={`${l.entries.length} títulos`}
-                  onPress={() => (on ? lib.removeFromList(l.id, entry.key) : lib.addToList(l.id, entry))}
-                />
-              );
-            })}
-          </ScrollView>
-          <Touchable onPress={() => setCreating(true)} style={styles.newRow} accessibilityRole="button">
-            <Icon name="plus" size={20} color={C.accentInk} strokeWidth={2.4} />
-            <T variant="label" style={{ color: C.accentInk }}>
-              Nueva lista
-            </T>
-          </Touchable>
-          <Button label="Listo" onPress={onClose} />
-        </Glass>
-      </View>
+    <>
+      <Sheet visible={visible && !creating} anchor={anchor} onClose={onClose} title="Guardar en">
+        <ScrollView style={{ maxHeight: 360 }} contentContainerStyle={{ gap: Space.xs }}>
+          <ToggleRow
+            label="Favoritos"
+            icon="heart"
+            on={!!item?.favorite}
+            disabled={!item}
+            hint={item ? undefined : 'Agrégalo primero a tu lista'}
+            onPress={() => lib.toggleFavorite(entry.key)}
+          />
+          {lib.lists.map((l) => {
+            const on = l.entries.some((e) => e.key === entry.key);
+            return (
+              <ToggleRow
+                key={l.id}
+                label={l.name}
+                icon="ticket"
+                on={on}
+                hint={`${l.entries.length} títulos`}
+                onPress={() => (on ? lib.removeFromList(l.id, entry.key) : lib.addToList(l.id, entry))}
+              />
+            );
+          })}
+        </ScrollView>
+        <Touchable onPress={() => setCreating(true)} style={styles.newRow} accessibilityRole="button">
+          <Icon name="plus" size={20} color={C.accentInk} strokeWidth={2.4} />
+          <T variant="label" style={{ color: C.accentInk }}>
+            Nueva lista
+          </T>
+        </Touchable>
+        <Button label="Listo" onPress={onClose} />
+      </Sheet>
       <ListNameDialog
         visible={creating}
         title="Nueva lista"
@@ -321,7 +322,7 @@ export function AddToListSheet({
           setCreating(false);
         }}
       />
-    </Modal>
+    </>
   );
 }
 

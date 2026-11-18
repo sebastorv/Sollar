@@ -45,7 +45,12 @@ export type IconName =
   | 'camera'
   | 'history'
   | 'chart'
-  | 'users';
+  | 'users'
+  | 'moreV'
+  | 'music'
+  | 'checks'
+  | 'chevronLeft'
+  | 'info';
 
 export function Icon({
   name,
@@ -88,6 +93,30 @@ export function Icon({
       ) : null}
 
       {name === 'chevronRight' ? <Path d="M9 5l7 7-7 7" {...s} /> : null}
+      {name === 'chevronLeft' ? <Path d="M15 5l-7 7 7 7" {...s} /> : null}
+      {name === 'moreV' ? (
+        <>
+          <Circle cx="12" cy="5.5" r="1.9" fill={color} stroke="none" />
+          <Circle cx="12" cy="12" r="1.9" fill={color} stroke="none" />
+          <Circle cx="12" cy="18.5" r="1.9" fill={color} stroke="none" />
+        </>
+      ) : null}
+      {name === 'music' ? (
+        <>
+          <Path d="M9 17.5V5.8l11-2.3v11.7" {...s} />
+          <Circle cx="6.5" cy="17.5" r="2.7" {...s} fill={fill} fillOpacity={fillOpacity} />
+          <Circle cx="17.5" cy="15.2" r="2.7" {...s} fill={fill} fillOpacity={fillOpacity} />
+          <Path d="M9 9.2l11-2.3" {...s} />
+        </>
+      ) : null}
+      {name === 'checks' ? <Path d="M2.5 12.5l4.2 4.2L15 8.3M11.5 15.8l.9.9L21 8.3" {...s} /> : null}
+      {name === 'info' ? (
+        <>
+          <Circle cx="12" cy="12" r="9" {...s} fill={fill} fillOpacity={fillOpacity} />
+          <Path d="M12 11v5.5" {...s} />
+          <Circle cx="12" cy="7.8" r="1.1" fill={color} stroke="none" />
+        </>
+      ) : null}
       {name === 'flame' ? (
         <Path
           d="M12 21c-3.9 0-6.5-2.6-6.5-6.2 0-3.3 2.4-5.4 3.6-7.8.4 1.8 1.4 2.9 2.4 3.4C11.3 7.4 12.6 5 15 3c-.3 2.7.9 4.6 2.1 6.3 1 1.5 1.4 3 1.4 4.7C18.5 18.1 15.9 21 12 21Z"

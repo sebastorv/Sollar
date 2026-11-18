@@ -397,9 +397,12 @@ export function displayYear(r: { release_date?: string; first_air_date?: string 
 
 // --- Ficha completa: reparto, tráiler, recomendaciones, detalles ---
 
-export type CastMember = { id: number; name: string; character: string; profilePath: string | null };
+export type CastMember = { id: number; name: string; character: string; profilePath: string | null; episodes?: number };
+export type CrewMember = { id: number; name: string; job: string; department: string; profilePath: string | null; episodes?: number };
 export type TitleExtras = {
   cast: CastMember[];
+  /** Equipo: dirección, guion, producción, música… (una persona por puesto). */
+  crew: CrewMember[];
   /** Dirección (películas) o creadores (series). */
   makers: string[];
   trailerKey: string | null;
@@ -428,8 +431,23 @@ export type TitleExtras = {
 
 type RawVideo = { key: string; site: string; type: string; name?: string; official?: boolean; iso_639_1?: string };
 type RawCredits = {
-  cast?: { id: number; name: string; character?: string; profile_path: string | null; roles?: { character: string }[] }[];
-  crew?: { name: string; job: string }[];
+  cast?: {
+    id: number;
+    name: string;
+    character?: string;
+    profile_path: string | null;
+    roles?: { character: string; episode_count?: number }[];
+    total_episode_count?: number;
+  }[];
+  crew?: {
+    id: number;
+    name: string;
+    job?: string;
+    department?: string;
+    profile_path?: string | null;
+    jobs?: { job: string; episode_count?: number }[];
+    total_episode_count?: number;
+  }[];
 };
 type RawExtras = {
   original_title?: string;
@@ -452,6 +470,7 @@ type RawExtras = {
 
 const EMPTY_EXTRAS: TitleExtras = {
   cast: [],
+  crew: [],
   makers: [],
   trailerKey: null,
   recommendations: [],
@@ -498,12 +517,29 @@ export async function getExtras(type: MediaType, id: number): Promise<TitleExtra
   // Las recomendaciones vienen anidadas: se limpian sus carátulas aparte.
   if (raw.recommendations && !LANGUAGE.startsWith('en')) await cleanListPosters(`/${type}/${id}/recommendations`, {}, raw.recommendations);
   const credits = raw.aggregate_credits ?? raw.credits;
-  const cast = (credits?.cast ?? []).slice(0, 20).map((c) => ({
+  const cast = (credits?.cast ?? []).slice(0, 40).map((c) => ({
     id: c.id,
     name: c.name,
     character: c.character ?? c.roles?.[0]?.character ?? '',
     profilePath: c.profile_path,
+    episodes: c.total_episode_count,
   }));
+  // Equipo: una tarjeta por persona y puesto, los de más episodios primero.
+  const crew: CrewMember[] = [];
+  for (const c of credits?.crew ?? []) {
+    const jobs = c.jobs ?? (c.job ? [{ job: c.job, episode_count: undefined }] : []);
+    for (const j of jobs) {
+      crew.push({
+        id: c.id,
+        name: c.name,
+        job: j.job,
+        department: c.department ?? '',
+        profilePath: c.profile_path ?? null,
+        episodes: j.episode_count,
+      });
+    }
+  }
+  crew.sort((a, b) => (b.episodes ?? 0) - (a.episodes ?? 0));
   const makers =
     type === 'tv'
       ? (raw.created_by ?? []).map((c) => c.name)
@@ -521,6 +557,7 @@ export async function getExtras(type: MediaType, id: number): Promise<TitleExtra
           ?.certification;
   return {
     cast,
+    crew: crew.slice(0, 160),
     makers,
     trailerKey: trailer?.key ?? null,
     recommendations: (raw.recommendations?.results ?? []).slice(0, 18).map((r) => ({ ...r, media_type: type })),

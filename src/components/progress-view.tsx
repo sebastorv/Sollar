@@ -203,7 +203,7 @@ const makeStyles = (C: Colors) =>
       borderRadius: Radius.pill,
       borderWidth: 1,
     },
-    listBox: { ...glassFill(C), borderWidth: 1, borderRadius: 24, paddingHorizontal: Space.md },
+    listBox: { ...glassFill(C), borderRadius: 24, paddingHorizontal: Space.md },
     row: { flexDirection: 'row', alignItems: 'center', gap: Space.md, paddingVertical: Space.md },
     still: { aspectRatio: 16 / 9, borderRadius: 14, overflow: 'hidden', backgroundColor: C.fill },
     check: {

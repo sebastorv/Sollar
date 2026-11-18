@@ -93,7 +93,7 @@ export function LoginScreen() {
               <TextInput
                 value={password}
                 onChangeText={setPassword}
-                placeholder={mode === 'signup' ? 'Mínimo 6 caracteres' : 'Tu contraseña'}
+                placeholder={tr(mode === 'signup' ? 'Mínimo 6 caracteres' : 'Tu contraseña')}
                 placeholderTextColor={C.textFaint}
                 secureTextEntry
                 autoCapitalize="none"
