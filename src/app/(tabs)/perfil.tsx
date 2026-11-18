@@ -55,6 +55,13 @@ export default function ProfileScreen() {
 
       <Appearance />
 
+      <Section title="Tu actividad">
+        <View style={{ flexDirection: 'row', gap: Space.sm, flexWrap: 'wrap' }}>
+          <Button label="Estadísticas y tu año" onPress={() => router.push('/estadisticas')} />
+          <Button label="Historial" kind="secondary" onPress={() => router.push('/historial')} />
+        </View>
+      </Section>
+
       <Section title="Tus números">
         <View style={styles.statsGrid}>
           <Stat value={String(stats.moviesWatched)} label="películas vistas" />

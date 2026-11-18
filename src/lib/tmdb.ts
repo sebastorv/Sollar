@@ -422,3 +422,106 @@ export async function getPerson(id: number): Promise<Person> {
     credits,
   };
 }
+
+// --- Descubrir ---
+
+export type Shelf = 'trending_day' | 'popular' | 'top_rated' | 'anticipated' | 'on_air';
+
+/** Estantes de Descubrir. type 'all' mezcla series y películas. */
+export async function getShelf(shelf: Shelf, type: MediaType | 'all' = 'all'): Promise<TmdbSearchResult[]> {
+  if (isDemo) return shelf === 'trending_day' ? demoTrending() : [];
+  const tag = <T extends Omit<TmdbSearchResult, 'media_type'>>(t: MediaType, r: T[]) =>
+    r.map((x) => ({ ...x, media_type: t })) as TmdbSearchResult[];
+  const both = async (fn: (t: MediaType) => Promise<TmdbSearchResult[]>) => {
+    if (type !== 'all') return fn(type);
+    const [m, t] = await Promise.all([fn('movie'), fn('tv')]);
+    // Intercala para que no queden todas las películas primero.
+    const out: TmdbSearchResult[] = [];
+    for (let i = 0; i < Math.max(m.length, t.length); i++) {
+      if (t[i]) out.push(t[i]);
+      if (m[i]) out.push(m[i]);
+    }
+    return out;
+  };
+  const today = new Date().toISOString().slice(0, 10);
+  switch (shelf) {
+    case 'trending_day': {
+      const path = type === 'all' ? '/trending/all/day' : `/trending/${type}/day`;
+      const d = await get<{ results: TmdbSearchResult[] }>(path);
+      return d.results
+        .map((r) => ({ ...r, media_type: r.media_type ?? (type as MediaType) }))
+        .filter((r) => r.media_type === 'movie' || r.media_type === 'tv');
+    }
+    case 'popular':
+      return both(async (t) => tag(t, (await get<{ results: never[] }>(`/${t}/popular`, { region: REGION })).results));
+    case 'top_rated':
+      return both(async (t) => tag(t, (await get<{ results: never[] }>(`/${t}/top_rated`)).results));
+    case 'on_air':
+      return tag('tv', (await get<{ results: never[] }>('/tv/on_the_air')).results);
+    case 'anticipated':
+      // Lo más popular que aún no se estrena.
+      return both(async (t) =>
+        tag(
+          t,
+          (
+            await get<{ results: never[] }>(`/discover/${t}`, {
+              sort_by: 'popularity.desc',
+              [t === 'movie' ? 'primary_release_date.gte' : 'first_air_date.gte']: today,
+              include_adult: 'false',
+            })
+          ).results,
+        ),
+      );
+  }
+}
+
+export type DiscoverFilters = {
+  type: MediaType;
+  genres: number[];
+  fromYear: number | null;
+  toYear: number | null;
+  minRating: number;
+  maxRuntime: number | null;
+  providers: number[];
+  sort: 'popularity.desc' | 'vote_average.desc' | 'primary_release_date.desc';
+};
+
+export const DEFAULT_DISCOVER: DiscoverFilters = {
+  type: 'tv',
+  genres: [],
+  fromYear: null,
+  toYear: null,
+  minRating: 0,
+  maxRuntime: null,
+  providers: [],
+  sort: 'popularity.desc',
+};
+
+/** Búsqueda avanzada con filtros combinados (géneros, años, nota mínima, duración, plataformas). */
+export async function discover(f: DiscoverFilters, page = 1): Promise<{ results: TmdbSearchResult[]; totalPages: number }> {
+  if (isDemo) return { results: demoTrending().filter((r) => r.media_type === f.type), totalPages: 1 };
+  const date = f.type === 'movie' ? 'primary_release_date' : 'first_air_date';
+  const params: Record<string, string> = {
+    page: String(page),
+    include_adult: 'false',
+    sort_by: f.sort === 'primary_release_date.desc' ? `${date}.desc` : f.sort,
+    'vote_count.gte': f.sort === 'vote_average.desc' ? '200' : '20',
+  };
+  if (f.genres.length) params.with_genres = f.genres.join(',');
+  if (f.fromYear) params[`${date}.gte`] = `${f.fromYear}-01-01`;
+  if (f.toYear) params[`${date}.lte`] = `${f.toYear}-12-31`;
+  if (f.minRating) params['vote_average.gte'] = String(f.minRating);
+  if (f.maxRuntime) params['with_runtime.lte'] = String(f.maxRuntime);
+  if (f.providers.length) {
+    params.with_watch_providers = f.providers.join('|');
+    params.watch_region = REGION;
+    params.with_watch_monetization_types = 'flatrate|free|ads';
+  }
+  const d = await get<{ results: Omit<TmdbSearchResult, 'media_type'>[]; total_pages: number }>(`/discover/${f.type}`, params);
+  return { results: d.results.map((r) => ({ ...r, media_type: f.type })), totalPages: d.total_pages };
+}
+
+export async function getGenres(type: MediaType): Promise<{ id: number; name: string }[]> {
+  if (isDemo) return [];
+  return (await get<{ genres: { id: number; name: string }[] }>(`/genre/${type}/list`)).genres;
+}

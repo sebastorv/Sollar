@@ -4,7 +4,7 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, TextInput, useWindowDimensions, View } from 'react-native';
+import { Platform, ScrollView, StyleSheet, TextInput, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Backdrop, card } from '@/components/glass';
@@ -263,15 +263,14 @@ function SavedControls({ item }: { item: LibraryItem }) {
           <T variant="small" muted>
             {watchedCount(item)} de {totalEpisodes(item.seasons)} episodios
             {next ? ` · sigue ${formatEpisode(next.season, next.episode)}` : ' · al día'}
+            {item.completedRuns ? ` · terminada ${item.completedRuns} ${item.completedRuns === 1 ? 'vez' : 'veces'} antes` : ''}
           </T>
+          {item.status === 'completed' ? (
+            <Button label="Volver a verla desde el principio" kind="secondary" onPress={() => lib.restartShow(item.key)} />
+          ) : null}
         </View>
       ) : (
-        <Button
-          label={item.watchedAt ? 'Vista · tocar para desmarcar' : 'Marcar como vista'}
-          icon="check"
-          kind={item.watchedAt ? 'secondary' : 'primary'}
-          onPress={() => lib.setMovieWatched(item.key, !item.watchedAt)}
-        />
+        <MovieWatch item={item} />
       )}
 
       <T variant="label">¿Qué tal estuvo?</T>
@@ -293,6 +292,83 @@ function SavedControls({ item }: { item: LibraryItem }) {
         kind="danger"
         onPress={() => lib.remove(item.key)}
       />
+    </View>
+  );
+}
+
+/** Marcar una película como vista: hoy, en su estreno, otro día; y registrar si la viste otra vez. */
+function MovieWatch({ item }: { item: LibraryItem }) {
+  const C = useColors();
+  const lib = useLibrary();
+  const [picking, setPicking] = useState<'first' | 'again' | null>(null);
+  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const valid = /^\d{4}-\d{2}-\d{2}$/.test(date) && !Number.isNaN(Date.parse(date));
+  const times = (item.watchedAt ? 1 : 0) + (item.rewatches?.length ?? 0);
+
+  function save(at: string) {
+    if (picking === 'again') lib.addMovieRewatch(item.key, at);
+    else lib.setMovieWatchedAt(item.key, at);
+    setPicking(null);
+  }
+
+  return (
+    <View style={{ gap: Space.sm }}>
+      {item.watchedAt ? (
+        <T variant="small" muted>
+          {times === 1 ? 'La viste' : `La has visto ${times} veces; la primera`} el {new Date(item.watchedAt).toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' })}.
+        </T>
+      ) : null}
+      <View style={{ flexDirection: 'row', gap: Space.sm, flexWrap: 'wrap' }}>
+        {item.watchedAt ? (
+          <>
+            <Button label="La vi otra vez" icon="check" onPress={() => lib.addMovieRewatch(item.key, new Date().toISOString())} />
+            <Button label="Otra fecha" kind="secondary" onPress={() => setPicking('again')} />
+            <Button label="Desmarcar" kind="danger" onPress={() => lib.setMovieWatched(item.key, false)} />
+          </>
+        ) : (
+          <>
+            <Button label="La vi hoy" icon="check" onPress={() => lib.setMovieWatched(item.key, true)} />
+            <Button label="La vi otro día" kind="secondary" onPress={() => setPicking('first')} />
+          </>
+        )}
+      </View>
+      {picking ? (
+        <View style={{ gap: Space.sm }}>
+          <T variant="small" muted>
+            Fecha (año-mes-día):
+          </T>
+          <View style={{ flexDirection: 'row', gap: Space.sm, alignItems: 'center', flexWrap: 'wrap' }}>
+            {Platform.OS === 'web' ? (
+              // En el navegador se usa el calendario nativo.
+              <input
+                type="date"
+                value={date}
+                max={new Date().toISOString().slice(0, 10)}
+                onChange={(e) => setDate(e.currentTarget.value)}
+                style={{
+                  fontSize: 16,
+                  padding: 10,
+                  borderRadius: 12,
+                  border: `1px solid ${C.border}`,
+                  background: C.fill,
+                  color: C.text,
+                  fontFamily: 'inherit',
+                }}
+              />
+            ) : (
+              <TextInput
+                value={date}
+                onChangeText={setDate}
+                placeholder="2024-05-31"
+                placeholderTextColor={C.textFaint}
+                style={{ backgroundColor: C.fill, color: C.text, borderRadius: 12, padding: 10, fontSize: 16, minWidth: 140 }}
+              />
+            )}
+            <Button label="Guardar" disabled={!valid} onPress={() => save(new Date(date + 'T20:00:00').toISOString())} />
+            <Button label="Cancelar" kind="secondary" onPress={() => setPicking(null)} />
+          </View>
+        </View>
+      ) : null}
     </View>
   );
 }

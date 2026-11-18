@@ -72,6 +72,18 @@ function Navigation() {
           options={{ title: '', headerTransparent: true, headerTintColor: C.text, headerLeft: () => <BackButton /> }}
         />
         <Stack.Screen
+          name="historial"
+          options={{ title: '', headerTransparent: true, headerTintColor: C.text, headerLeft: () => <BackButton /> }}
+        />
+        <Stack.Screen
+          name="estadisticas"
+          options={{ title: '', headerTransparent: true, headerTintColor: C.text, headerLeft: () => <BackButton /> }}
+        />
+        <Stack.Screen
+          name="descubrir"
+          options={{ title: '', headerTransparent: true, headerTintColor: C.text, headerLeft: () => <BackButton /> }}
+        />
+        <Stack.Screen
           name="importar"
           options={{ title: '', headerTransparent: true, headerTintColor: C.text, headerLeft: () => <BackButton /> }}
         />

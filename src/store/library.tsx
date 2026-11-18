@@ -290,6 +290,14 @@ type LibraryApi = {
   setRating: (key: string, rating: number | null) => void;
   setNote: (key: string, note: string) => void;
   setMovieWatched: (key: string, watched: boolean) => void;
+  /** Marca la película como vista en una fecha concreta (por ejemplo, el día del estreno). */
+  setMovieWatchedAt: (key: string, at: string) => void;
+  /** Registra que la volviste a ver. */
+  addMovieRewatch: (key: string, at: string) => void;
+  /** Empieza la serie de nuevo: guarda que la terminaste y limpia los episodios. */
+  restartShow: (key: string) => void;
+  /** Marca episodios con una fecha concreta. */
+  setEpisodesAt: (key: string, episodes: { season: number; episode: number }[], at: string) => void;
   setEpisodes: (key: string, episodes: { season: number; episode: number }[], watched: boolean) => void;
   refreshSeasons: (key: string, seasons: SeasonSummary[]) => void;
   setAvailability: (key: string, availability: Availability) => void;
@@ -394,6 +402,29 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       },
       setRating: (key, rating) => dispatch({ type: 'patch', key, patch: { rating } }),
       setNote: (key, note) => dispatch({ type: 'patch', key, patch: { note } }),
+      setMovieWatchedAt: (key, at) =>
+        dispatch({ type: 'patch', key, patch: { watchedAt: at, status: 'completed' } }),
+      addMovieRewatch: (key, at) => {
+        const it = state.items[key];
+        if (it) dispatch({ type: 'patch', key, patch: { rewatches: [...(it.rewatches ?? []), at] } });
+      },
+      restartShow: (key) => {
+        const it = state.items[key];
+        if (!it) return;
+        dispatch({
+          type: 'patch',
+          key,
+          patch: { watchedEpisodes: {}, status: 'watching', completedRuns: (it.completedRuns ?? 0) + 1 },
+        });
+      },
+      setEpisodesAt: (key, episodes, at) => {
+        const it = state.items[key];
+        if (!it) return;
+        const watchedEpisodes = { ...it.watchedEpisodes } as Record<string, string>;
+        for (const e of episodes) watchedEpisodes[episodeKey(e.season, e.episode)] = at;
+        const next = { ...it, watchedEpisodes: watchedEpisodes as LibraryItem['watchedEpisodes'] };
+        dispatch({ type: 'patch', key, patch: { watchedEpisodes: next.watchedEpisodes, status: autoStatus(next) } });
+      },
       setMovieWatched: (key, watched) =>
         dispatch({
           type: 'patch',

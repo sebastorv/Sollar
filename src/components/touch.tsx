@@ -44,6 +44,15 @@ export function Touchable({
   ...rest
 }: TouchableProps) {
   const [pressed, setPressed] = useState(false);
+  // Link (asChild) a veces mezcla un estilo en forma de lista como objeto con claves 0, 1…;
+  // en web eso rompe. Se normaliza de vuelta a lista.
+  const raw = typeof style === 'function' ? undefined : style;
+  const fixed =
+    raw && !Array.isArray(raw) && typeof raw === 'object' && '0' in (raw as object)
+      ? Object.keys(raw as object)
+          .filter((k) => /^\d+$/.test(k))
+          .map((k) => (raw as Record<string, unknown>)[k] as StyleProp<ViewStyle>)
+      : raw;
   const scale = useRef(new Animated.Value(1)).current;
   const state = { pressed, hovered: false } as PressableStateCallbackType;
 
@@ -66,7 +75,7 @@ export function Touchable({
       disabled={disabled}
       onPressIn={down}
       onPressOut={up}
-      style={[typeof style === 'function' ? style(state) : style, { transform: [{ scale }] }]}>
+      style={[typeof style === 'function' ? style(state) : fixed, { transform: [{ scale }] }]}>
       {typeof children === 'function' ? children(state) : children}
     </AnimatedPressable>
   );

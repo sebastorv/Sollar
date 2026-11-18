@@ -76,6 +76,10 @@ export type LibraryItem = {
   watchedEpisodes: Record<EpisodeKey, string>;
   /** Solo películas: fecha en que se marcó como vista. */
   watchedAt: string | null;
+  /** Solo películas: cada vez que la volviste a ver (la primera está en watchedAt). */
+  rewatches?: string[];
+  /** Solo series: cuántas veces la terminaste antes de volver a empezarla. */
+  completedRuns?: number;
   /** Marcado como favorito (corazón). */
   favorite?: boolean;
   /** Dónde verlo (puede faltar en títulos guardados antes de esta función). */
@@ -106,6 +110,7 @@ export type TmdbSearchResult = {
   first_air_date?: string;
   overview: string;
   vote_average: number;
+  popularity?: number;
 };
 
 export type TmdbGenre = { id: number; name: string };

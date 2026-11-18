@@ -1,4 +1,4 @@
-/** Pestaña "Buscar": búsqueda en TMDB y, sin texto, las tendencias de la semana. */
+/** Pestaña "Buscar": búsqueda en TMDB y, sin texto, Descubrir (recomendaciones, tendencias y más). */
 
 import { useEffect, useState } from 'react';
 import { StyleSheet, TextInput, View } from 'react-native';
@@ -10,6 +10,7 @@ import { useAvailabilityFor } from '@/hooks/use-availability';
 import { availableLabel } from '@/lib/providers';
 import { TokenWarning } from '@/components/token-warning';
 import { Empty, Loading, Screen, Section, T } from '@/components/ui';
+import { DiscoverHome } from '@/components/discover';
 import { Radius, Space, type Colors } from '@/constants/theme';
 import { useColors, useStyles } from '@/store/theme';
 import { itemKey } from '@/lib/library-item';
@@ -42,6 +43,12 @@ export default function SearchScreen() {
     let cancelled = false;
     setLoading(true);
     setError(null);
+    if (!debounced && !isDemo) {
+      // Sin texto se muestra Descubrir, que carga lo suyo.
+      setResults([]);
+      setLoading(false);
+      return;
+    }
     (debounced ? searchTitles(debounced) : getTrending())
       .then((r) => !cancelled && setResults(r))
       .catch((e: Error) => !cancelled && setError(e.message))
@@ -78,6 +85,8 @@ export default function SearchScreen() {
       {!error && !loading && debounced && results.length === 0 ? (
         <Empty title="Sin resultados" message={`No encontramos nada para "${debounced}".`} />
       ) : null}
+
+      {!debounced && !isDemo ? <DiscoverHome /> : null}
 
       {results.length > 0 ? (
         <Section title={debounced ? 'Resultados' : isDemo ? 'Catálogo de ejemplo' : 'Tendencias de la semana'}>
