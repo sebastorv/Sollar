@@ -77,7 +77,7 @@ export function TitleCard({
               hitSlop={8}
               accessibilityLabel={checkLabel ?? `Marcar ${title} como visto`}
               style={styles.check}>
-              <Icon name="check" size={20} color={C.textMuted} strokeWidth={2.4} />
+              <Icon name="check" size={20} color={C.accentInk} strokeWidth={2.4} />
             </Touchable>
           ) : null}
         </View>

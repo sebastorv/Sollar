@@ -520,7 +520,16 @@ function MiniBag({ n, on, onPress, burst }: { n: number; on: boolean; onPress: (
  * Calificación de 1 a 10 con bolsas de palomitas. Tocar una bolsa pone esa nota;
  * tocar otra vez la misma la quita. La palomita grande reacciona a la nota.
  */
-export function PopcornRating({ value, onChange }: { value: number | null; onChange?: (v: number | null) => void }) {
+export function PopcornRating({
+  value,
+  onChange,
+  compact = false,
+}: {
+  value: number | null;
+  onChange?: (v: number | null) => void;
+  /** En línea: la fila de bolsas con una carita pequeña y la nota al lado. */
+  compact?: boolean;
+}) {
   const C = useColors();
   const v = value ?? 0;
   const [burst, setBurst] = useState(0);
@@ -539,6 +548,36 @@ export function PopcornRating({ value, onChange }: { value: number | null; onCha
         bounce.setValue(0),
       );
     }
+  }
+
+  const bags = (
+    <View style={[styles.row, compact && { justifyContent: 'flex-start' }]}>
+      {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
+        <View key={n}>
+          <MiniBag n={n} on={v >= n} onPress={() => choose(n)} burst={burst} />
+          {n === v ? <Burst trigger={burst} count={v >= 9 ? 9 : 3 + Math.round(v / 3)} /> : null}
+        </View>
+      ))}
+    </View>
+  );
+
+  if (compact) {
+    return (
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: Space.md, flexWrap: 'wrap' }}>
+        {bags}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: Space.sm }}>
+          <Animated.View
+            style={{
+              transform: [{ scale: bounce.interpolate({ inputRange: [0, 0.3, 0.6, 1], outputRange: [1, 1.2, 0.95, 1] }) }],
+            }}>
+            <HeroBag value={v} size={40} />
+          </Animated.View>
+          <T style={{ fontSize: 16, fontWeight: '700', color: v ? C.accentInk : C.textMuted }}>
+            {v ? `${RATING_LABELS[v]} · ${v}/10` : 'Sin calificar'}
+          </T>
+        </View>
+      </View>
+    );
   }
 
   return (

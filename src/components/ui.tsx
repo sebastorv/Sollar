@@ -4,7 +4,7 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { createContext, useContext, type ReactNode } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View, useWindowDimensions, type PressableProps, type StyleProp, type TextProps, type ViewStyle } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { MaxContentWidth, RAIL_WIDTH, Radius, Space, TabBarSpace, WIDE, type Colors } from '@/constants/theme';
 import { useColors, useStyles } from '@/store/theme';
@@ -13,6 +13,7 @@ import { sharpImage } from '@/lib/tmdb';
 import { Backdrop, card } from './glass';
 import { Icon } from './icons';
 import { Touchable } from './touch';
+import { useTabScroll } from './tab-scroll';
 
 // --- Texto ---
 
@@ -43,33 +44,45 @@ export function Screen({
   scroll?: boolean;
   padded?: boolean;
 }) {
-  // En pantallas anchas la barra de navegación flota arriba; en el celular, abajo.
   const wide = useWindowDimensions().width >= WIDE;
   const rail = useContext(RailContext);
+  const insets = useSafeAreaInsets();
+  const { onScroll } = useTabScroll();
+  const C = useColors();
   const styles = useStyles(makeStyles);
   const inner = (
     <View
       style={[
         styles.inner,
         padded && styles.padded,
+        // El contenido pasa por debajo de la barra de estado del iPhone, a pantalla completa.
+        padded && { paddingTop: insets.top + Space.lg },
         // En pantallas anchas se deja lugar a la barra lateral y se da más aire a los lados.
-        padded && wide && { paddingTop: Space.xxl, paddingLeft: rail ? RAIL_WIDTH + Space.lg * 2 + Space.md : Space.xxl, paddingRight: Space.xxl },
+        padded && wide && { paddingTop: insets.top + Space.xxl, paddingLeft: rail ? RAIL_WIDTH + Space.lg * 2 + Space.md : Space.xxl, paddingRight: Space.xxl },
       ]}>
       {children}
     </View>
   );
   return (
-    <SafeAreaView style={styles.screen} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={styles.screen} edges={['left', 'right']}>
       <Backdrop />
       {scroll ? (
         <ScrollView
           contentContainerStyle={[styles.scrollContent, wide && { paddingBottom: Space.xxl }]}
+          onScroll={onScroll}
+          scrollEventThrottle={16}
           keyboardShouldPersistTaps="handled">
           {inner}
         </ScrollView>
       ) : (
         inner
       )}
+      {/* Borde superior que se desvanece, como en iOS 26: el contenido se pierde bajo la hora. */}
+      <LinearGradient
+        pointerEvents="none"
+        colors={[C.bg, C.mode === 'dark' ? 'rgba(11,11,13,0)' : 'rgba(246,246,247,0)']}
+        style={{ position: 'absolute', top: 0, left: 0, right: 0, height: insets.top + 14 }}
+      />
     </SafeAreaView>
   );
 }

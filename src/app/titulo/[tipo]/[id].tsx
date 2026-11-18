@@ -10,9 +10,10 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Link, router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { Linking, Platform, ScrollView, Share, StyleSheet, TextInput, useWindowDimensions, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { PopcornBag, PopcornRating, RATING_LABELS } from '@/components/brand';
-import { Backdrop, card } from '@/components/glass';
+import { Backdrop, card, Glass, shadow } from '@/components/glass';
 import { Icon, type IconName } from '@/components/icons';
 import { AddToListSheet, entryFrom } from '@/components/lists';
 import { ProviderLogo } from '@/components/platforms';
@@ -44,7 +45,7 @@ import { useSettings } from '@/store/settings';
 import { useColors, useStyles } from '@/store/theme';
 
 type Details = { kind: 'movie'; data: TmdbMovie } | { kind: 'tv'; data: TmdbTv };
-type Tab = 'episodes' | 'cast' | 'details';
+type Tab = 'info' | 'episodes' | 'cast';
 
 const MONTHS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sept', 'oct', 'nov', 'dic'];
 /** "12 mar 2024". */
@@ -81,7 +82,9 @@ export default function TitleScreen() {
   const [providersLoaded, setProvidersLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [extras, setExtras] = useState<TitleExtras | null>(null);
-  const [tab, setTab] = useState<Tab>(type === 'tv' ? 'episodes' : 'cast');
+  const [tab, setTab] = useState<Tab>('info');
+  const [episodeOpen, setEpisodeOpen] = useState<{ season: number; episode: number } | null>(null);
+  const insets = useSafeAreaInsets();
   const [sheet, setSheet] = useState<null | 'status' | 'rate' | 'lists' | 'watched' | 'more'>(null);
   const [overviewOpen, setOverviewOpen] = useState(false);
 
@@ -89,7 +92,7 @@ export default function TitleScreen() {
     let cancelled = false;
     setError(null);
     setDetails(null);
-    setTab(type === 'tv' ? 'episodes' : 'cast');
+    setTab('info');
     const load =
       type === 'tv'
         ? getTv(id).then((data): Details => ({ kind: 'tv', data }))
@@ -199,36 +202,80 @@ export default function TitleScreen() {
     }
   }
 
-  const heroH = wide ? Math.min(Math.round(screenWidth * 0.34), 560) : Math.min(Math.round(screenWidth * 0.62), 340);
+  const heroH = wide ? Math.min(Math.round(screenWidth * 0.36), 600) : Math.round(Math.min(screenWidth, 520) * 0.95);
   const backdrop = sharpImage(extras?.backdrop ?? d.backdrop_path, 'backdrop', screenWidth);
-  const posterW = wide ? 240 : 118;
+  const logo = extras?.logo ? sharpImage(extras.logo, 'logo', wide ? 520 : 300) : null;
+  const posterW = wide ? 330 : Math.round(Math.min(screenWidth, 520) * 0.48);
+  const tvStatus = isTv ? STATUS_TV[details.data.status] : null;
+  const makers = extras?.makers ?? [];
+  const nextUp = isTv && item ? nextEpisode(item) : null;
 
-  const headerText = (
-    <View style={{ flex: 1, gap: 6, justifyContent: 'flex-end' }}>
-      <T style={styles.overline}>{overline.toUpperCase()}</T>
-      <T style={[styles.title, wide && { fontSize: 44, lineHeight: 50 }]}>{title}</T>
-      <T variant="small" muted>
-        {meta.filter(Boolean).join(' · ')}
-      </T>
-      {genres ? (
-        <T variant="small" style={{ color: C.textFaint }}>
+  // Título: el logo oficial cuando existe (como Bingebase); si no, texto grande.
+  const titleBlock = logo ? (
+    <Image
+      source={{ uri: logo }}
+      accessibilityLabel={title}
+      style={{ width: wide ? 520 : '86%', maxWidth: '100%', height: wide ? 150 : 110, alignSelf: wide ? 'flex-start' : 'center' }}
+      contentFit="contain"
+      contentPosition={wide ? 'left' : 'center'}
+    />
+  ) : (
+    <T style={[styles.title, wide ? { fontSize: 46, lineHeight: 52 } : { textAlign: 'center' }]}>{title}</T>
+  );
+
+  const metaRow = (
+    <View style={wide ? { flexDirection: 'row', alignItems: 'center', gap: Space.md, flexWrap: 'wrap' } : { gap: 6, alignItems: 'center' }}>
+      {!wide && genres ? (
+        <T muted style={{ fontSize: 16 }}>
           {genres}
+        </T>
+      ) : null}
+      <View style={[styles.metaLine, !wide && { justifyContent: 'center' }]}>
+        <T muted style={styles.metaText}>
+          {isTv ? meta[0] : year}
+        </T>
+        {extras?.certification ? (
+          <View style={styles.cert}>
+            <T style={{ fontSize: 12, fontWeight: '700', color: C.textMuted }}>{extras.certification}</T>
+          </View>
+        ) : null}
+        {tvStatus ? <T style={[styles.metaText, { color: C.accentInk, fontWeight: '600' }]}>{tvStatus}</T> : null}
+        {wide && extras?.networks[0] ? <T muted style={styles.metaText}>{extras.networks[0]}</T> : null}
+      </View>
+      <T muted style={[styles.metaText, !wide && { textAlign: 'center' }]}>
+        {(isTv ? meta.slice(1, 4) : meta.slice(1, 2)).filter(Boolean).join(' · ')}
+      </T>
+      {makers.length ? (
+        <T muted style={[styles.metaText, !wide && { textAlign: 'center' }]}>
+          {isTv ? 'Creada por ' : 'Dirigida por '}
+          <T style={[styles.metaText, { color: C.accentInk, fontWeight: '600' }]}>{makers.slice(0, 2).join(', ')}</T>
         </T>
       ) : null}
     </View>
   );
 
-  const scores = (
-    <ScoreRow tmdb={d.vote_average} votes={extras?.voteCount ?? 0} item={item} isTv={isTv} onRate={() => setSheet('rate')} />
+  const ratingBlock = (
+    <View style={{ gap: Space.sm }}>
+      <T style={styles.overline}>TU NOTA</T>
+      <PopcornRating
+        compact
+        value={item?.rating ?? null}
+        onChange={(v) => {
+          ensure(isTv ? 'watching' : 'completed');
+          lib.setRating(key, v);
+        }}
+      />
+    </View>
   );
 
+  const scores = <ScoreRow tmdb={d.vote_average} votes={extras?.voteCount ?? 0} item={item} isTv={isTv} />;
+
   const actions = (
-    <ActionRow
+    <ActionTiles
       item={item}
       isTv={isTv}
       inLists={lib.lists.filter((l) => l.entries.some((e) => e.key === key)).length}
-      onTrack={() => (item ? setSheet('status') : add('planned'))}
-      onWatched={() => setSheet('watched')}
+      onTrack={() => (item ? setSheet('status') : add(isTv ? 'watching' : 'planned'))}
       onFavorite={() => {
         ensure(isTv ? 'watching' : 'completed');
         lib.toggleFavorite(key);
@@ -239,9 +286,36 @@ export default function TitleScreen() {
     />
   );
 
+  // "Estoy viendo T1 · E3" o "La vi": el atajo de lo siguiente que toca marcar.
+  const watchRow = isTv ? (
+    nextUp ? (
+      <Touchable haptic="light" pressScale={0.98} onPress={() => setEpisodeOpen(nextUp)} style={styles.watchRow}>
+        <View>
+          <Icon name="clock" size={22} color={C.text} strokeWidth={2} />
+        </View>
+        <T style={{ flex: 1, fontSize: 17, fontWeight: '700' }}>Sigue con {formatEpisode(nextUp.season, nextUp.episode)}</T>
+        <View>
+          <Icon name="chevronRight" size={18} color={C.textMuted} />
+        </View>
+      </Touchable>
+    ) : null
+  ) : (
+    <Touchable haptic="light" pressScale={0.98} onPress={() => setSheet('watched')} style={styles.watchRow}>
+      <View>
+        <Icon name="check" size={22} color={item?.watchedAt ? C.accentInk : C.text} strokeWidth={2.4} />
+      </View>
+      <T style={{ flex: 1, fontSize: 17, fontWeight: '700' }}>{item?.watchedAt ? 'La vi otra vez' : 'La vi'}</T>
+      {item?.watchedAt ? (
+        <T muted variant="small">
+          {(item.rewatches?.length ?? 0) + 1}×
+        </T>
+      ) : null}
+    </Touchable>
+  );
+
   const overview = (
     <View style={{ gap: Space.sm }}>
-      {d.tagline ? (
+      {d.tagline && !wide ? (
         <T muted style={{ fontStyle: 'italic' }}>
           {d.tagline}
         </T>
@@ -251,7 +325,7 @@ export default function TitleScreen() {
           {d.overview || 'Sin sinopsis en español todavía.'}
         </T>
         {d.overview && d.overview.length > 240 ? (
-          <T variant="label" style={{ marginTop: 4 }}>
+          <T variant="label" style={{ marginTop: 4, color: C.accentInk }}>
             {overviewOpen ? 'Ver menos' : 'Ver más'}
           </T>
         ) : null}
@@ -259,20 +333,21 @@ export default function TitleScreen() {
     </View>
   );
 
+  const episodesCount = isTv ? details.data.number_of_episodes : 0;
   const tabs: [Tab, string][] = isTv
     ? [
-        ['episodes', 'Episodios'],
+        ['info', 'Info'],
+        ['episodes', episodesCount ? `Episodios ${episodesCount}` : 'Episodios'],
         ['cast', 'Reparto'],
-        ['details', 'Detalles'],
       ]
     : [
+        ['info', 'Info'],
         ['cast', 'Reparto'],
-        ['details', 'Detalles'],
       ];
 
   const body = (
     <View style={{ gap: Space.xl }}>
-      <View style={styles.tabs}>
+      <View style={styles.segment}>
         {tabs.map(([k, label]) => {
           const on = tab === k;
           return (
@@ -283,15 +358,28 @@ export default function TitleScreen() {
               onPress={() => setTab(k)}
               accessibilityRole="tab"
               accessibilityState={{ selected: on }}
-              style={[styles.tab, on && { borderBottomColor: C.text }]}>
-              <T style={{ fontSize: 15, fontWeight: on ? '700' : '500', color: on ? C.text : C.textMuted }}>{label}</T>
+              style={[styles.segmentBtn, on && { backgroundColor: C.surfaceHigh, ...shadow(C) }]}>
+              <T numberOfLines={1} style={{ fontSize: 15, fontWeight: on ? '700' : '500', color: on ? C.text : C.textMuted }}>
+                {label}
+              </T>
             </Touchable>
           );
         })}
       </View>
 
+      {tab === 'info' ? (
+        <View style={{ gap: Space.xl }}>
+          {!wide ? ratingBlock : null}
+          {!wide ? scores : null}
+          {!wide ? overview : null}
+          {!wide ? <WhereToWatch providers={providers} loaded={providersLoaded} /> : null}
+          {extras ? <DetailsBlock extras={extras} type={type} id={id} status={isTv ? details.data.status : undefined} /> : null}
+          {details.kind === 'tv' ? <SeasonQuality seasons={details.data.seasons} /> : null}
+          {item ? <NoteBox item={item} /> : null}
+        </View>
+      ) : null}
       {tab === 'episodes' && details.kind === 'tv' ? (
-        <Episodes tv={details.data} item={item} wide={wide} onNeedItem={() => ensure('watching')} />
+        <Episodes tv={details.data} item={item} wide={wide} onNeedItem={() => ensure('watching')} onOpen={setEpisodeOpen} />
       ) : null}
       {tab === 'cast' ? (
         extras ? (
@@ -303,13 +391,6 @@ export default function TitleScreen() {
         ) : (
           <Loading />
         )
-      ) : null}
-      {tab === 'details' ? (
-        <View style={{ gap: Space.xl }}>
-          {extras ? <DetailsBlock extras={extras} type={type} id={id} status={isTv ? details.data.status : undefined} /> : <Loading />}
-          {details.kind === 'tv' ? <SeasonQuality seasons={details.data.seasons} /> : null}
-          {item ? <NoteBox item={item} /> : null}
-        </View>
       ) : null}
 
       <InYourLists entryKey={key} />
@@ -325,48 +406,74 @@ export default function TitleScreen() {
           {backdrop ? (
             <>
               <Image source={{ uri: backdrop }} style={StyleSheet.absoluteFill} contentFit="cover" transition={250} />
+              {/* Tinte de la marca sobre la imagen, como el toque morado de Trakt, y fundido al fondo. */}
               <LinearGradient
-                colors={['rgba(0,0,0,0.25)', 'transparent', C.mode === 'dark' ? 'rgba(11,11,13,0.6)' : 'rgba(246,246,247,0.55)', C.bg]}
-                locations={[0, 0.3, 0.75, 1]}
+                colors={['rgba(0,0,0,0.45)', 'rgba(0,0,0,0.05)', C.tint, C.bg]}
+                locations={[0, 0.3, 0.72, 1]}
                 style={StyleSheet.absoluteFill}
               />
             </>
           ) : (
-            <View style={[StyleSheet.absoluteFill, { backgroundColor: C.fill }]} />
+            <LinearGradient colors={[C.accentSoft, C.bg]} style={StyleSheet.absoluteFill} />
           )}
         </View>
 
         <View style={[styles.content, wide && styles.contentWide]}>
           {wide ? (
-            <View style={{ flexDirection: 'row', gap: Space.xxl + Space.md }}>
-              {/* Columna izquierda: carátula y dónde ver. */}
-              <View style={{ width: posterW, gap: Space.xl, marginTop: -Math.round(posterW * 0.9) }}>
+            <View style={{ flexDirection: 'row', gap: Space.xxl + Space.lg }}>
+              <View style={{ width: posterW, gap: Space.lg, marginTop: -Math.round(heroH * 0.62) }}>
                 <Poster path={poster} title={title} width={posterW} style={styles.poster} />
-                <WhereToWatch providers={providers} loaded={providersLoaded} compact />
-              </View>
-              <View style={{ flex: 1, gap: Space.xl, minWidth: 0 }}>
-                <View style={{ marginTop: -Space.xxl * 2 }}>{headerText}</View>
-                {scores}
                 {actions}
+                {watchRow}
+                <WhereToWatch providers={providers} loaded={providersLoaded} />
+              </View>
+              <View style={{ flex: 1, gap: Space.xl, minWidth: 0, marginTop: -Math.round(heroH * 0.5) }}>
+                <View style={{ gap: Space.md }}>
+                  <T style={styles.overline}>{overline.toUpperCase()}</T>
+                  {titleBlock}
+                  {d.tagline ? <T style={{ fontSize: 22, lineHeight: 28, fontWeight: '600', color: C.text }}>{d.tagline}</T> : null}
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: Space.md, flexWrap: 'wrap' }}>
+                    {metaRow}
+                    <RoundIcon icon="share" label="Compartir" onPress={share} />
+                  </View>
+                </View>
+                {ratingBlock}
+                {scores}
                 {overview}
                 {body}
               </View>
             </View>
           ) : (
-            <View style={{ gap: Space.xl }}>
-              <View style={{ flexDirection: 'row', gap: Space.lg, alignItems: 'flex-end', marginTop: -Math.round(posterW * 0.75) }}>
+            <View style={{ gap: Space.lg }}>
+              <View style={{ alignItems: 'center', marginTop: -Math.round(heroH * 0.55) }}>
                 <Poster path={poster} title={title} width={posterW} style={styles.poster} />
-                {headerText}
               </View>
-              {scores}
+              <View style={{ gap: Space.md, alignItems: 'center', marginTop: Space.sm }}>
+                {titleBlock}
+                {metaRow}
+              </View>
               {actions}
-              {overview}
-              <WhereToWatch providers={providers} loaded={providersLoaded} />
+              {watchRow}
               {body}
             </View>
           )}
         </View>
       </ScrollView>
+
+      {/* Compartir arriba a la derecha, sobre la imagen (celular). */}
+      {!wide ? (
+        <View style={{ position: 'absolute', right: Space.lg, top: insets.top + (Platform.OS === 'web' ? 6 : 0) }}>
+          <RoundIcon icon="share" label="Compartir" onPress={share} glass />
+        </View>
+      ) : null}
+
+      <EpisodeSheet
+        tvId={id}
+        target={episodeOpen}
+        item={item}
+        onClose={() => setEpisodeOpen(null)}
+        onNeedItem={() => ensure('watching')}
+      />
 
       <Sheet visible={sheet === 'status'} onClose={() => setSheet(null)} title="Estado" subtitle={title}>
         <View style={{ gap: 2 }}>
@@ -472,85 +579,98 @@ export default function TitleScreen() {
 
 // --- Notas ---
 
-function ScoreRow({
-  tmdb,
-  votes,
-  item,
-  isTv,
-  onRate,
-}: {
-  tmdb: number;
-  votes: number;
-  item: LibraryItem | undefined;
-  isTv: boolean;
-  onRate: () => void;
-}) {
+function ScoreRow({ tmdb, votes, item, isTv }: { tmdb: number; votes: number; item: LibraryItem | undefined; isTv: boolean }) {
   const C = useColors();
   const styles = useStyles(makeStyles);
   const seen = item && isTv ? watchedCount(item) : 0;
   const total = item && isTv ? totalEpisodes(item.seasons) : 0;
-  const times = item && !isTv ? (item.watchedAt ? 1 : 0) + (item.rewatches?.length ?? 0) : 0;
+  const cells: { value: React.ReactNode; label: string; extra?: React.ReactNode }[] = [];
+  if (tmdb > 0)
+    cells.push({
+      value: (
+        <>
+          {tmdb.toFixed(1)}
+          <T style={styles.scoreOf}>/10</T>
+        </>
+      ),
+      label: `TMDB${votes ? ` · ${votes >= 1000 ? `${(votes / 1000).toFixed(votes >= 10000 ? 0 : 1)} mil` : votes} votos` : ''}`,
+    });
+  if (item?.rating)
+    cells.push({
+      value: (
+        <>
+          {item.rating}
+          <T style={styles.scoreOf}>/10</T>
+        </>
+      ),
+      label: RATING_LABELS[item.rating],
+    });
+  if (isTv && item && total)
+    cells.push({
+      value: (
+        <>
+          {Math.round((seen / total) * 100)}
+          <T style={styles.scoreOf}>%</T>
+        </>
+      ),
+      label: `${seen} de ${total} vistos`,
+      extra: (
+        <View style={{ height: 3, borderRadius: 2, backgroundColor: C.fill, overflow: 'hidden', marginTop: 4, width: 90 }}>
+          <View style={{ height: '100%', width: `${Math.round((seen / total) * 100)}%`, backgroundColor: C.accent }} />
+        </View>
+      ),
+    });
+  if (!cells.length) return null;
   return (
     <View style={styles.scores}>
-      {tmdb > 0 ? (
-        <View style={styles.score}>
-          <T style={styles.scoreValue}>
-            {tmdb.toFixed(1)}
-            <T style={styles.scoreOf}>/10</T>
+      {cells.map((c, i) => (
+        <View key={i} style={[styles.score, i > 0 && { borderLeftWidth: 1, borderLeftColor: C.border, paddingLeft: Space.lg }]}>
+          <T style={styles.scoreValue}>{c.value}</T>
+          <T variant="small" muted numberOfLines={1}>
+            {c.label}
           </T>
-          <T variant="caption" muted numberOfLines={1}>
-            TMDB{votes ? ` · ${votes >= 1000 ? `${(votes / 1000).toFixed(votes >= 10000 ? 0 : 1)} mil` : votes} votos` : ''}
-          </T>
+          {c.extra}
         </View>
-      ) : null}
-      <Touchable haptic="select" pressScale={0.97} onPress={onRate} style={styles.score} accessibilityLabel="Calificar">
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-          <PopcornBag filled={!!item?.rating} size={22} />
-          {item?.rating ? (
-            <T style={styles.scoreValue}>
-              {item.rating}
-              <T style={styles.scoreOf}>/10</T>
-            </T>
-          ) : (
-            <T style={[styles.scoreValue, { fontSize: 17 }]}>Calificar</T>
-          )}
-        </View>
-        <T variant="caption" muted numberOfLines={1}>
-          {item?.rating ? RATING_LABELS[item.rating] : 'Tu nota'}
-        </T>
-      </Touchable>
-      {item ? (
-        <View style={styles.score}>
-          {isTv ? (
-            <T style={styles.scoreValue}>
-              {seen}
-              <T style={styles.scoreOf}>/{total}</T>
-            </T>
-          ) : (
-            <T style={styles.scoreValue}>{times ? `${times}×` : '—'}</T>
-          )}
-          <T variant="caption" muted numberOfLines={1}>
-            {isTv ? 'Episodios vistos' : times ? (times === 1 ? 'La viste' : 'Veces vista') : 'Sin ver'}
-          </T>
-          {isTv && total ? (
-            <View style={{ height: 3, borderRadius: 2, backgroundColor: C.fill, overflow: 'hidden', marginTop: 4 }}>
-              <View style={{ height: '100%', width: `${Math.round((seen / total) * 100)}%`, backgroundColor: C.ink }} />
-            </View>
-          ) : null}
-        </View>
-      ) : null}
+      ))}
     </View>
+  );
+}
+
+/** Botón redondo para compartir (sobre la imagen va con vidrio). */
+function RoundIcon({ icon, label, onPress, glass }: { icon: IconName; label: string; onPress: () => void; glass?: boolean }) {
+  const C = useColors();
+  const inner = (
+    <View style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}>
+      <Icon name={icon} size={20} color={C.text} strokeWidth={2.2} />
+    </View>
+  );
+  return (
+    <Touchable haptic="light" pressScale={0.88} onPress={onPress} accessibilityLabel={label} accessibilityRole="button">
+      {glass ? (
+        <Glass radius={999}>{inner}</Glass>
+      ) : (
+        <View style={{ borderRadius: 12, borderWidth: 1, borderColor: C.border }}>{inner}</View>
+      )}
+    </Touchable>
   );
 }
 
 // --- Acciones ---
 
-function ActionRow({
+const TILE_STATUS: Record<WatchStatus, string> = {
+  planned: 'Por ver',
+  watching: 'Viendo',
+  completed: 'Vista',
+  paused: 'En pausa',
+  dropped: 'Dejada',
+};
+
+/** Cinco botones cuadrados, como Bingebase: estado (con el color de la marca), Favorito, Listas, Calificar y Más. */
+function ActionTiles({
   item,
   isTv,
   inLists,
   onTrack,
-  onWatched,
   onFavorite,
   onLists,
   onRate,
@@ -560,7 +680,6 @@ function ActionRow({
   isTv: boolean;
   inLists: number;
   onTrack: () => void;
-  onWatched: () => void;
   onFavorite: () => void;
   onLists: () => void;
   onRate: () => void;
@@ -568,71 +687,53 @@ function ActionRow({
 }) {
   const C = useColors();
   const styles = useStyles(makeStyles);
-  const watchedMovie = !isTv && !!item?.watchedAt;
+  const statusIcon: IconName = !item ? 'plus' : item.status === 'watching' ? 'play' : item.status === 'completed' ? 'check' : item.status === 'planned' ? 'clock' : 'screen';
   return (
-    <View style={{ gap: Space.md, maxWidth: 620 }}>
-      <View style={{ flexDirection: 'row', gap: Space.sm }}>
-        <Touchable
-          haptic="medium"
-          onPress={onTrack}
-          accessibilityRole="button"
-          style={[styles.track, item ? { backgroundColor: C.fill } : { backgroundColor: C.ink }]}>
-          <View>
-            <Icon name={item ? 'check' : 'plus'} size={18} color={item ? C.text : C.onInk} strokeWidth={2.6} />
+    <View style={{ flexDirection: 'row', gap: Space.sm }}>
+      <Touchable haptic="medium" pressScale={0.94} onPress={onTrack} accessibilityRole="button" style={[styles.tile, { borderWidth: 0, overflow: 'hidden' }]}>
+        <LinearGradient colors={[C.g1, C.g2]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
+        <View>
+          <Icon name={statusIcon} size={24} color="#fff" filled={!!item} strokeWidth={2.4} />
+        </View>
+        <T numberOfLines={1} style={[styles.tileLabel, { color: '#fff', fontWeight: '700' }]}>
+          {item ? TILE_STATUS[item.status] : isTv ? 'Seguir' : 'Por ver'}
+        </T>
+        {item ? (
+          <View style={styles.tileChevron}>
+            <Icon name="chevronDown" size={13} color="#fff" strokeWidth={2.6} />
           </View>
-          <T style={{ fontSize: 15, fontWeight: '700', color: item ? C.text : C.onInk }}>
-            {item ? STATUS_LABEL[item.status] : isTv ? 'Seguir' : 'Quiero verla'}
-          </T>
-          {item ? (
-            <View>
-              <Icon name="chevronDown" size={16} color={C.textMuted} strokeWidth={2.4} />
-            </View>
-          ) : null}
-        </Touchable>
-        {!isTv ? (
-          <Touchable
-            haptic="medium"
-            onPress={onWatched}
-            accessibilityRole="button"
-            style={[styles.track, { borderWidth: 1, borderColor: C.border, backgroundColor: C.surface }]}>
-            <View>
-              <Icon name={watchedMovie ? 'plus' : 'check'} size={18} color={C.text} strokeWidth={2.6} />
-            </View>
-            <T style={{ fontSize: 15, fontWeight: '700', color: C.text }}>{watchedMovie ? 'La vi otra vez' : 'La vi'}</T>
-          </Touchable>
         ) : null}
-      </View>
-      <View style={styles.actions}>
-        <Action icon="heart" label="Favorito" on={!!item?.favorite} onPress={onFavorite} />
-        <Action
-          icon="ticket"
-          label={inLists ? `${inLists} ${inLists === 1 ? 'lista' : 'listas'}` : 'Lista'}
-          on={inLists > 0}
-          onPress={onLists}
-        />
-        <Action icon="sparkle" label="Calificar" on={!!item?.rating} onPress={onRate} />
-        <Action icon="more" label="Más" onPress={onMore} />
-      </View>
+      </Touchable>
+      <Tile icon="heart" label="Favorito" on={!!item?.favorite} onPress={onFavorite} />
+      <Tile icon="ticket" label={inLists ? 'En listas' : 'Listas'} on={inLists > 0} onPress={onLists} />
+      <Tile icon="edit" label="Calificar" on={!!item?.rating} onPress={onRate} />
+      <Tile icon="more" label="Más" onPress={onMore} chevron />
     </View>
   );
 }
 
-function Action({ icon, label, on, onPress }: { icon: IconName; label: string; on?: boolean; onPress: () => void }) {
+function Tile({ icon, label, on, onPress, chevron }: { icon: IconName; label: string; on?: boolean; onPress: () => void; chevron?: boolean }) {
   const C = useColors();
+  const styles = useStyles(makeStyles);
   return (
     <Touchable
       onPress={onPress}
       haptic={icon === 'heart' ? 'medium' : 'light'}
-      pressScale={0.9}
+      pressScale={0.92}
       accessibilityLabel={label}
       accessibilityState={{ selected: on }}
-      style={{ flex: 1, alignItems: 'center', gap: 6, paddingVertical: Space.xs }}>
+      style={[styles.tile, on && { borderColor: C.accentLine, backgroundColor: C.accentSoft }]}>
       <View>
-        <Icon name={icon} size={23} color={C.text} filled={on} strokeWidth={1.9} />
+        <Icon name={icon} size={23} color={on ? C.accentInk : C.text} filled={on && icon === 'heart'} strokeWidth={2} />
       </View>
-      <T variant="caption" numberOfLines={1} style={{ color: on ? C.text : C.textMuted, fontWeight: on ? '700' : '500' }}>
+      <T numberOfLines={1} style={[styles.tileLabel, { color: on ? C.accentInk : C.textMuted }]}>
         {label}
       </T>
+      {chevron ? (
+        <View style={styles.tileChevron}>
+          <Icon name="chevronDown" size={13} color={C.textMuted} strokeWidth={2.6} />
+        </View>
+      ) : null}
     </Touchable>
   );
 }
@@ -789,11 +890,13 @@ function Episodes({
   item,
   wide,
   onNeedItem,
+  onOpen,
 }: {
   tv: TmdbTv;
   item: LibraryItem | undefined;
   wide: boolean;
   onNeedItem: () => void;
+  onOpen: (ep: { season: number; episode: number }) => void;
 }) {
   const C = useColors();
   const styles = useStyles(makeStyles);
@@ -850,7 +953,7 @@ function Episodes({
     <View style={{ gap: Space.lg }}>
       {/* Lo que sigue: "Empieza desde" o "Sigue con". */}
       {nextEp && nextEp.air_date && nextEp.air_date <= today ? (
-        <View style={styles.nextCard}>
+        <Touchable haptic="select" pressScale={0.98} onPress={() => onOpen({ season, episode: nextEp.episode_number })} style={styles.nextCard}>
           <View style={[styles.nextStill, wide && { width: 260 }]}>
             {nextStill ? <Image source={{ uri: nextStill }} style={StyleSheet.absoluteFill} contentFit="cover" /> : null}
           </View>
@@ -866,7 +969,7 @@ function Episodes({
             </T>
           </View>
           <CheckButton on={false} onPress={() => toggle(nextEp)} />
-        </View>
+        </Touchable>
       ) : null}
 
       {/* Temporadas */}
@@ -885,7 +988,7 @@ function Episodes({
               onPress={() => setSeason(s.seasonNumber)}
               accessibilityRole="tab"
               accessibilityState={{ selected: on }}
-              style={[styles.seasonCard, on && { borderColor: C.text }]}>
+              style={[styles.seasonCard, on && { borderColor: C.accent }]}>
               <T style={{ fontSize: 15, fontWeight: '700' }} numberOfLines={1}>
                 Temporada {s.seasonNumber}
               </T>
@@ -893,7 +996,7 @@ function Episodes({
                 {[`${s.episodeCount} ep.`, stub?.air_date?.slice(0, 4)].filter(Boolean).join(' · ')}
               </T>
               <View style={{ height: 3, borderRadius: 2, backgroundColor: C.fill, overflow: 'hidden', marginTop: 6 }}>
-                <View style={{ height: '100%', width: `${Math.round((count / s.episodeCount) * 100)}%`, backgroundColor: C.ink }} />
+                <View style={{ height: '100%', width: `${Math.round((count / s.episodeCount) * 100)}%`, backgroundColor: C.accent }} />
               </View>
               <T variant="caption" style={{ color: C.textFaint, marginTop: 2 }}>
                 {count === s.episodeCount && count > 0 ? 'Completa' : `${count}/${s.episodeCount} vistos`}
@@ -958,7 +1061,13 @@ function Episodes({
                   ? 'Mitad de temporada'
                   : null;
           return (
-            <View key={ep.id} style={[styles.episode, upcoming && { opacity: 0.55 }]}>
+            <Touchable
+              key={ep.id}
+              haptic="select"
+              pressScale={0.98}
+              onPress={() => onOpen({ season, episode: ep.episode_number })}
+              accessibilityRole="button"
+              style={[styles.episode, upcoming && { opacity: 0.55 }]}>
               <View style={[styles.still, wide && { width: 220 }]}>
                 {still ? <Image source={{ uri: still }} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} /> : null}
                 {isSeen ? <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.35)' }]} /> : null}
@@ -990,7 +1099,7 @@ function Episodes({
                 ) : null}
               </View>
               {!upcoming ? <CheckButton on={isSeen} onPress={() => toggle(ep)} onLongPress={() => markUpTo(ep)} /> : null}
-            </View>
+            </Touchable>
           );
         })}
         {data && list.length === 0 ? <T muted>Viste toda esta temporada.</T> : null}
@@ -1021,12 +1130,12 @@ function CheckButton({ on, onPress, onLongPress }: { on: boolean; onPress: () =>
         borderRadius: 18,
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: on ? C.ink : 'transparent',
-        borderWidth: on ? 0 : 1.5,
-        borderColor: C.textFaint,
+        backgroundColor: on ? C.accent : 'transparent',
+        borderWidth: on ? 0 : 1.8,
+        borderColor: C.accentLine,
       }}>
       <View>
-        <Icon name="check" size={18} color={on ? C.onInk : C.textMuted} strokeWidth={2.6} />
+        <Icon name="check" size={18} color={on ? '#fff' : C.accentInk} strokeWidth={2.6} />
       </View>
     </Touchable>
   );
@@ -1118,86 +1227,195 @@ function InYourLists({ entryKey }: { entryKey: string }) {
   );
 }
 
-// --- Dónde ver ---
+// --- Detalle de un episodio ---
 
-function WhereToWatch({
-  providers,
-  loaded,
-  compact,
+function EpisodeSheet({
+  tvId,
+  target,
+  item,
+  onClose,
+  onNeedItem,
 }: {
-  providers: TmdbWatchProviders | null;
-  loaded: boolean;
-  compact?: boolean;
+  tvId: number;
+  target: { season: number; episode: number } | null;
+  item: LibraryItem | undefined;
+  onClose: () => void;
+  onNeedItem: () => void;
 }) {
+  const C = useColors();
+  const lib = useLibrary();
+  const [data, setData] = useState<TmdbSeason | null>(null);
+  useEffect(() => {
+    if (!target) return;
+    let off = false;
+    getSeason(tvId, target.season)
+      .then((s) => !off && setData(s))
+      .catch(() => {});
+    return () => {
+      off = true;
+    };
+  }, [tvId, target]);
+  const ep = target && data?.season_number === target.season ? data.episodes.find((e) => e.episode_number === target.episode) : null;
+  const key = itemKey('tv', tvId);
+  const seen = target ? Boolean(item?.watchedEpisodes[episodeKey(target.season, target.episode)]) : false;
+  const aired = !!ep?.air_date && ep.air_date <= todayISO();
+  const still = ep ? sharpImage(ep.still_path, 'still', 520) : null;
+  return (
+    <Sheet visible={!!target} onClose={onClose}>
+      {!ep || !target ? (
+        <Loading />
+      ) : (
+        <View style={{ gap: Space.md }}>
+          <View style={{ aspectRatio: 16 / 9, borderRadius: Radius.md, overflow: 'hidden', backgroundColor: C.fill }}>
+            {still ? <Image source={{ uri: still }} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} /> : null}
+          </View>
+          <T variant="small" style={{ color: C.accentInk, fontWeight: '700' }}>
+            {[formatEpisode(target.season, target.episode), ep.runtime ? `${ep.runtime} min` : null, isDemo ? null : shortDate(ep.air_date)]
+              .filter(Boolean)
+              .join(' · ')}
+          </T>
+          <T variant="heading">{ep.name}</T>
+          <ScrollView style={{ maxHeight: 220 }}>
+            <T muted style={{ fontSize: 15, lineHeight: 22 }}>
+              {ep.overview || 'Sin sinopsis en español todavía.'}
+            </T>
+          </ScrollView>
+          {aired ? (
+            <View style={{ flexDirection: 'row', gap: Space.sm }}>
+              <Button
+                label={seen ? 'Desmarcar' : 'Visto'}
+                kind={seen ? 'secondary' : 'primary'}
+                icon="check"
+                style={{ flex: 1 }}
+                onPress={() => {
+                  onNeedItem();
+                  lib.setEpisodes(key, [target], !seen);
+                  onClose();
+                }}
+              />
+              {!seen && target.episode > 1 ? (
+                <Button
+                  label="Hasta aquí"
+                  kind="secondary"
+                  style={{ flex: 1 }}
+                  onPress={() => {
+                    onNeedItem();
+                    lib.setEpisodes(
+                      key,
+                      data!.episodes
+                        .filter((e) => e.episode_number <= target.episode && e.air_date && e.air_date <= todayISO())
+                        .map((e) => ({ season: target.season, episode: e.episode_number })),
+                      true,
+                    );
+                    onClose();
+                  }}
+                />
+              ) : null}
+            </View>
+          ) : (
+            <T muted>{ep.air_date ? `Se estrena el ${shortDate(ep.air_date)}.` : 'Fecha por anunciar.'}</T>
+          )}
+        </View>
+      )}
+    </Sheet>
+  );
+}
+
+// --- Dónde ver: todos los servicios, con lista desplegable ---
+
+const KIND_LABEL = { flatrate: 'Suscripción', free: 'Gratis', ads: 'Gratis con anuncios', rent: 'Alquiler', buy: 'Compra' } as const;
+
+function WhereToWatch({ providers, loaded }: { providers: TmdbWatchProviders | null; loaded: boolean }) {
   const C = useColors();
   const styles = useStyles(makeStyles);
   const { myProviders } = useSettings();
+  const [open, setOpen] = useState(false);
   const mine = new Set(myProviders);
-  const groups: [string, TmdbWatchProviders['flatrate']][] = [
-    ['Suscripción', providers?.flatrate],
-    ['Gratis', [...(providers?.free ?? []), ...(providers?.ads ?? [])]],
-    ['Alquiler', providers?.rent],
-    ['Compra', providers?.buy],
-  ];
-  const any = groups.some(([, list]) => list && list.length > 0);
-  const included = [...(providers?.flatrate ?? []), ...(providers?.free ?? []), ...(providers?.ads ?? [])];
-  const matchNames = [...new Set(included.filter((p) => mine.has(p.provider_id)).map((p) => p.provider_name))];
+
+  // Un renglón por servicio, con todas sus formas de verlo (suscripción, alquiler, compra).
+  const rows = useMemo(() => {
+    const map = new Map<number, { id: number; name: string; logo: string | null; kinds: string[]; order: number }>();
+    (['flatrate', 'free', 'ads', 'rent', 'buy'] as const).forEach((k, ki) => {
+      for (const p of providers?.[k] ?? []) {
+        const row = map.get(p.provider_id) ?? { id: p.provider_id, name: p.provider_name, logo: p.logo_path || null, kinds: [], order: ki };
+        if (!row.kinds.includes(KIND_LABEL[k])) row.kinds.push(KIND_LABEL[k]);
+        map.set(p.provider_id, row);
+      }
+    });
+    return [...map.values()].sort((a, b) => Number(mine.has(b.id)) - Number(mine.has(a.id)) || a.order - b.order);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [providers, myProviders]);
+
+  const shown = open ? rows : rows.slice(0, 3);
+  const inPlan = rows.filter((r) => mine.has(r.id) && (r.kinds.includes('Suscripción') || r.kinds[0]?.startsWith('Gratis')));
 
   return (
     <View style={{ gap: Space.md }}>
       <T variant="heading">Dónde ver</T>
       {!loaded ? (
         <Loading />
+      ) : rows.length === 0 ? (
+        <T variant="small" muted>
+          Por ahora no aparece en ningún servicio de tu país.
+        </T>
       ) : (
-        <>
-          {matchNames.length > 0 ? (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: Space.sm }}>
-              <View>
-                <Icon name="check" size={16} color={C.success} strokeWidth={2.8} />
-              </View>
-              <T variant="small" style={{ flex: 1, fontWeight: '600' }}>
-                Incluido en tu plan: {matchNames.join(', ')}
-              </T>
-            </View>
-          ) : myProviders.length === 0 ? (
-            <Touchable onPress={() => router.navigate('/perfil')}>
-              <T variant="small" muted>
-                Elige tus plataformas en Perfil para saber si está incluido en tu plan.
-              </T>
-            </Touchable>
-          ) : !any ? (
-            <T variant="small" muted>
-              Por ahora no aparece en ningún servicio de tu país.
-            </T>
-          ) : null}
-          {groups.map(([label, list]) =>
-            list && list.length > 0 ? (
-              <View key={label} style={{ gap: Space.sm }}>
-                <T variant="caption" muted style={{ fontWeight: '600', letterSpacing: 0.4 }}>
-                  {label.toUpperCase()}
-                </T>
-                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: Space.sm }}>
-                  {list.map((p) => (
-                    <View
-                      key={p.provider_id}
-                      style={[styles.provider, compact && { paddingRight: Space.xs }, mine.has(p.provider_id) && { borderColor: C.text }]}>
-                      <ProviderLogo name={p.provider_name} logoPath={p.logo_path || null} />
-                      {!compact ? (
-                        <T variant="caption" style={{ fontWeight: mine.has(p.provider_id) ? '700' : '500' }}>
-                          {p.provider_name}
-                        </T>
-                      ) : null}
-                    </View>
-                  ))}
+        <View style={styles.providers}>
+          {shown.map((r, i) => {
+            const isMine = mine.has(r.id);
+            return (
+              <Touchable
+                key={r.id}
+                haptic="light"
+                pressScale={0.98}
+                disabled={!providers?.link}
+                onPress={() => providers?.link && Linking.openURL(providers.link)}
+                style={[styles.providerRow, i > 0 && { borderTopWidth: 1, borderTopColor: C.border }]}>
+                <ProviderLogo name={r.name} logoPath={r.logo} size={40} />
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <T numberOfLines={1} style={{ fontSize: 15, fontWeight: '600' }}>
+                    {r.name}
+                  </T>
+                  <T variant="caption" muted numberOfLines={1}>
+                    {r.kinds.join(' · ')}
+                  </T>
                 </View>
+                {isMine ? (
+                  <View style={styles.planTag}>
+                    <T style={{ fontSize: 11, fontWeight: '700', color: C.accentInk }}>En tu plan</T>
+                  </View>
+                ) : null}
+              </Touchable>
+            );
+          })}
+          {rows.length > 3 ? (
+            <Touchable
+              haptic="select"
+              onPress={() => setOpen(!open)}
+              style={[styles.providerRow, { borderTopWidth: 1, borderTopColor: C.border, justifyContent: 'center' }]}>
+              <T variant="label" style={{ color: C.accentInk }}>
+                {open ? 'Ver menos' : `Ver todas las opciones (${rows.length})`}
+              </T>
+              <View>
+                <Icon name={open ? 'chevronUp' : 'chevronDown'} size={16} color={C.accentInk} strokeWidth={2.4} />
               </View>
-            ) : null,
-          )}
-          <T variant="caption" style={{ color: C.textFaint }}>
-            {isDemo ? 'Disponibilidad de ejemplo.' : 'Datos de JustWatch.'}
-          </T>
-        </>
+            </Touchable>
+          ) : null}
+        </View>
       )}
+      {loaded && myProviders.length === 0 ? (
+        <Touchable onPress={() => router.navigate('/perfil')}>
+          <T variant="caption" muted>
+            Elige tus plataformas en Perfil para ver cuáles están en tu plan.
+          </T>
+        </Touchable>
+      ) : loaded && rows.length && !inPlan.length ? (
+        <T variant="caption" muted>
+          No está incluido en tus plataformas.
+        </T>
+      ) : null}
+      <T variant="caption" style={{ color: C.textFaint }}>
+        {isDemo ? 'Disponibilidad de ejemplo.' : 'Datos de JustWatch.'}
+      </T>
     </View>
   );
 }
@@ -1218,17 +1436,41 @@ const makeStyles = (C: Colors) =>
     overline: { fontSize: 12, fontWeight: '700', letterSpacing: 1, color: C.textMuted },
     title: { fontSize: 28, lineHeight: 33, fontWeight: '800', letterSpacing: -0.8, color: C.text },
     overview: { fontSize: 16, lineHeight: 24, color: C.text },
-    scores: { flexDirection: 'row', gap: Space.sm },
-    score: {
-      ...card(C),
+    scores: { flexDirection: 'row', gap: Space.lg, flexWrap: 'wrap' },
+    score: { gap: 2 },
+    scoreValue: { fontSize: 30, lineHeight: 36, fontWeight: '800', letterSpacing: -0.8, color: C.text },
+    metaLine: { flexDirection: 'row', alignItems: 'center', gap: Space.sm, flexWrap: 'wrap' },
+    metaText: { fontSize: 16, lineHeight: 22 },
+    cert: { borderWidth: 1.5, borderColor: C.textFaint, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 1 },
+    tile: {
       flex: 1,
-      maxWidth: 200,
-      borderRadius: Radius.md,
-      paddingHorizontal: Space.md,
-      paddingVertical: Space.md - 2,
-      gap: 2,
+      height: 72,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: C.border,
+      backgroundColor: C.surface,
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 5,
     },
-    scoreValue: { fontSize: 22, lineHeight: 27, fontWeight: '800', letterSpacing: -0.5, color: C.text },
+    tileLabel: { fontSize: 11.5, fontWeight: '600' },
+    tileChevron: { position: 'absolute', top: 6, right: 6 },
+    watchRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Space.md,
+      height: 56,
+      paddingHorizontal: Space.lg,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: C.border,
+      backgroundColor: C.surface,
+    },
+    segment: { flexDirection: 'row', backgroundColor: C.fill, borderRadius: 16, padding: 4 },
+    segmentBtn: { flex: 1, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6 },
+    providers: { ...card(C), borderRadius: Radius.lg, paddingHorizontal: Space.md },
+    providerRow: { flexDirection: 'row', alignItems: 'center', gap: Space.md, paddingVertical: Space.md },
+    planTag: { backgroundColor: C.accentSoft, borderRadius: Radius.pill, paddingHorizontal: 8, paddingVertical: 3 },
     scoreOf: { fontSize: 13, fontWeight: '600', color: C.textFaint },
     track: {
       flex: 1,

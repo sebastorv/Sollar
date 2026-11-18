@@ -2,7 +2,7 @@ import { DarkTheme, DefaultTheme, router, Stack, ThemeProvider as NavThemeProvid
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useMemo, type ReactNode } from 'react';
-import { Text, View } from 'react-native';
+import { Platform, View } from 'react-native';
 
 import { Glass } from '@/components/glass';
 import { LoginScreen } from '@/components/login';
@@ -29,22 +29,33 @@ function HideSplashWhenReady({ children }: { children: ReactNode }) {
   return children;
 }
 
-function BackButton() {
+/** Botón redondo de vidrio, separado del borde, como en las apps de iOS 26. */
+export function RoundButton({
+  icon,
+  label,
+  onPress,
+}: {
+  icon: 'back' | 'share';
+  label: string;
+  onPress: () => void;
+}) {
   const C = useColors();
   return (
-    <Touchable
-      accessibilityRole="button"
-      accessibilityLabel="Volver"
-      onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
-      hitSlop={8}
-      style={({ pressed }) => ({ opacity: pressed ? 0.75 : 1 })}>
-      <Glass radius={999} style={{ paddingVertical: 7, paddingLeft: 8, paddingRight: 14 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
-          <Icon name="back" size={20} color={C.text} strokeWidth={2.2} />
-          <Text style={{ color: C.text, fontSize: 15, fontWeight: '600' }}>Atrás</Text>
+    <Touchable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} hitSlop={8} pressScale={0.88} haptic="light">
+      <Glass radius={999} style={{ width: 44, height: 44 }}>
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <Icon name={icon} size={22} color={C.text} strokeWidth={2.4} />
         </View>
       </Glass>
     </Touchable>
+  );
+}
+
+function BackButton() {
+  return (
+    <View style={{ marginLeft: Platform.OS === 'ios' ? 0 : 14, marginTop: Platform.OS === 'web' ? 6 : 0 }}>
+      <RoundButton icon="back" label="Volver" onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))} />
+    </View>
   );
 }
 

@@ -312,7 +312,7 @@ function StreakCard({ items }: { items: LibraryItem[] }) {
               width: 7,
               height: k === 6 ? 26 : 20,
               borderRadius: 4,
-              backgroundColor: on ? C.ink : C.fill,
+              backgroundColor: on ? C.accent : C.fill,
               borderWidth: k === 6 ? 1.5 : 0,
               borderColor: C.accentLine,
             }}

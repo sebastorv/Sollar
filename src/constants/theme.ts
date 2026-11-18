@@ -116,6 +116,8 @@ export type Colors = {
   glow: string;
   /** Texto sobre el degradado. */
   onAccent: string;
+  /** Tinte de la marca para las imágenes de fondo, como el morado de Trakt. */
+  tint: string;
   /** Tinta: botones y selección principales, sobrios (negro en claro, blanco en oscuro). */
   ink: string;
   onInk: string;
@@ -136,11 +138,12 @@ export function makeColors(mode: ModeName, accentName: AccentName): Colors {
     g2: a.g2,
     accent: a.solid,
     accentInk: mode === 'light' ? a.inkLight : a.inkDark,
-    // Sobrio: los fondos y bordes "destacados" son grises; el color queda para detalles pequeños.
-    accentSoft: mode === 'light' ? 'rgba(20, 18, 23, 0.05)' : 'rgba(255, 255, 255, 0.07)',
-    accentLine: mode === 'light' ? 'rgba(20, 18, 23, 0.22)' : 'rgba(255, 255, 255, 0.24)',
+    // Toques de marca: suaves, para destacar sin teñir toda la pantalla.
+    accentSoft: alpha(a.solid, mode === 'light' ? 0.1 : 0.16),
+    accentLine: alpha(a.solid, 0.45),
     glow: alpha(a.solid, mode === 'light' ? 0.07 : 0.09),
     onAccent: '#FFFFFF',
+    tint: alpha(a.g2, mode === 'light' ? 0.28 : 0.38),
     ink: mode === 'light' ? '#141217' : '#F4F2F6',
     onInk: mode === 'light' ? '#FFFFFF' : '#0E0D12',
   };
