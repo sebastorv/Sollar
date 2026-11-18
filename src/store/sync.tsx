@@ -90,8 +90,8 @@ export function SyncProvider({ children }: { children: ReactNode }) {
         m.lastPull = new Date(0).toISOString();
       }
       const remoteSettings = await pullSettings();
-      if (remoteSettings?.data.myProviders && remoteSettings.client_updated_at > setRef.current.updatedAt) {
-        setRef.current.applyRemote(remoteSettings.data.myProviders, remoteSettings.client_updated_at);
+      if (remoteSettings?.data && remoteSettings.client_updated_at > setRef.current.updatedAt) {
+        setRef.current.applyRemote(remoteSettings.data, remoteSettings.client_updated_at);
         m.settingsSynced = remoteSettings.client_updated_at;
       }
 
@@ -123,7 +123,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
 
       const s = setRef.current;
       if (s.updatedAt && s.updatedAt !== m.settingsSynced) {
-        await pushSettings(userId, { myProviders: s.myProviders }, s.updatedAt);
+        await pushSettings(userId, { myProviders: s.myProviders, profile: s.profile }, s.updatedAt);
         m.settingsSynced = s.updatedAt;
       }
 

@@ -8,7 +8,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, Platform, StyleSheet, View } from 'react-native';
-import Svg, { Circle, Defs, Ellipse, G, LinearGradient as SvgGradient, Path, Stop } from 'react-native-svg';
+import Svg, { Circle, Defs, Ellipse, G, LinearGradient as SvgGradient, Path, RadialGradient, Stop } from 'react-native-svg';
 
 import { Radius, Space } from '@/constants/theme';
 import { haptic } from '@/lib/haptics';
@@ -43,49 +43,61 @@ function useId(prefix: string) {
   return ref.current;
 }
 
+/** Rayos gorditos con punta redondeada, como pétalos de luz. */
 const RAYS = Array.from({ length: 8 }, (_, i) => {
-  const r = ((i * 45 - 90) * Math.PI) / 180;
-  return { x1: 20 + Math.cos(r) * 15.2, y1: 21 + Math.sin(r) * 15.2, x2: 20 + Math.cos(r) * 18.4, y2: 21 + Math.sin(r) * 18.4 };
+  const a = ((i * 45 - 90) * Math.PI) / 180;
+  const w = (15 * Math.PI) / 180;
+  const p = (r: number, ang: number) => `${(20 + Math.cos(ang) * r).toFixed(2)} ${(21 + Math.sin(ang) * r).toFixed(2)}`;
+  return `M${p(11.5, a - w)}L${p(18.6, a)}L${p(11.5, a + w)}Z`;
 });
 
 /**
- * El sol de Sollar: un círculo con ocho rayos redondeados. Lleno, con el degradado de la marca y
- * un brillo; vacío, solo el contorno, para que la fila se lea limpia.
+ * El sol de Sollar, con volumen: cuerpo con luz que entra desde arriba a la izquierda, sombra
+ * suave abajo, brillo de gota y rayos gorditos. Vacío, es solo un contorno fino.
  */
 export function Puff({ size = 28, filled, children }: { size?: number; filled: boolean; children?: React.ReactNode }) {
   const C = useColors();
   const id = useId('sun');
-  const empty = C.mode === 'dark' ? 'rgba(255,255,255,0.28)' : 'rgba(20,18,23,0.22)';
+  const empty = C.mode === 'dark' ? 'rgba(255,255,255,0.3)' : 'rgba(20,18,23,0.24)';
+  if (!filled) {
+    return (
+      <Svg width={size} height={size} viewBox="0 0 40 41">
+        {RAYS.map((d, i) => (
+          <Path key={i} d={d} fill="none" stroke={empty} strokeWidth={1.6} strokeLinejoin="round" />
+        ))}
+        <Circle cx={20} cy={21} r={11.4} fill={C.mode === 'dark' ? '#16151B' : '#fff'} stroke={empty} strokeWidth={1.8} />
+      </Svg>
+    );
+  }
   return (
     <Svg width={size} height={size} viewBox="0 0 40 41">
       <Defs>
-        {/* En coordenadas de la figura: así el degradado también pinta los rayos rectos. */}
-        <SvgGradient id={id} x1="6" y1="3" x2="34" y2="39" gradientUnits="userSpaceOnUse">
-          <Stop offset="0" stopColor="#FFD25A" />
-          <Stop offset="0.5" stopColor="#FF9A3D" />
-          <Stop offset="1" stopColor="#F0306A" />
-        </SvgGradient>
+        <RadialGradient id={`${id}r`} cx="20" cy="21" r="19" gradientUnits="userSpaceOnUse">
+          <Stop offset="0.45" stopColor="#FFC93E" />
+          <Stop offset="1" stopColor="#FF7A2E" />
+        </RadialGradient>
+        <RadialGradient id={`${id}b`} cx="15.5" cy="15" r="17" gradientUnits="userSpaceOnUse">
+          <Stop offset="0" stopColor="#FFF6C4" />
+          <Stop offset="0.28" stopColor="#FFD24A" />
+          <Stop offset="0.7" stopColor="#FF9B30" />
+          <Stop offset="1" stopColor="#F2593E" />
+        </RadialGradient>
+        <RadialGradient id={`${id}s`} cx="20" cy="33" r="12" gradientUnits="userSpaceOnUse">
+          <Stop offset="0" stopColor="#C2361F" stopOpacity="0.45" />
+          <Stop offset="1" stopColor="#C2361F" stopOpacity="0" />
+        </RadialGradient>
+        <RadialGradient id={`${id}h`} cx="14.5" cy="14" r="6" gradientUnits="userSpaceOnUse">
+          <Stop offset="0" stopColor="#FFFFFF" stopOpacity="0.95" />
+          <Stop offset="1" stopColor="#FFFFFF" stopOpacity="0" />
+        </RadialGradient>
       </Defs>
-      <G>
-        {RAYS.map((r, i) => (
-          <Path
-            key={i}
-            d={`M${r.x1} ${r.y1}L${r.x2} ${r.y2}`}
-            stroke={filled ? `url(#${id})` : empty}
-            strokeWidth={filled ? 3.4 : 2.2}
-            strokeLinecap="round"
-          />
-        ))}
-        <Circle
-          cx={20}
-          cy={21}
-          r={filled ? 12.6 : 11.6}
-          fill={filled ? `url(#${id})` : 'none'}
-          stroke={filled ? 'none' : empty}
-          strokeWidth={2.2}
-        />
-      </G>
-      {filled ? <Ellipse cx={15} cy={15.2} rx={4} ry={2.4} fill="#fff" opacity={0.5} transform="rotate(-30 15 15.2)" /> : null}
+      {RAYS.map((d, i) => (
+        <Path key={i} d={d} fill={`url(#${id}r)`} stroke={`url(#${id}r)`} strokeWidth={2.6} strokeLinejoin="round" />
+      ))}
+      <Circle cx={20} cy={21} r={12.4} fill={`url(#${id}b)`} />
+      <Circle cx={20} cy={21} r={12.4} fill={`url(#${id}s)`} />
+      <Ellipse cx={14.6} cy={14.6} rx={5.4} ry={3.6} fill={`url(#${id}h)`} transform="rotate(-35 14.6 14.6)" />
+      <Path d="M27.5 27.8a9.6 9.6 0 0 1-4 2.5" stroke="#FFE7A0" strokeOpacity={0.7} strokeWidth={1.1} strokeLinecap="round" fill="none" />
       {children}
     </Svg>
   );
@@ -120,7 +132,12 @@ function FaceArt({ face }: { face: Face }) {
       case 'sleepy':
         return <Path key={x} d={`M${x - 2.4} 20h4.8`} {...s} />;
       case 'angry':
-        return <Circle key={x} cx={x} cy={20.4} r={1.5} fill={ink} />;
+        return (
+          <G key={x}>
+            <Ellipse cx={x} cy={20.6} rx={1.7} ry={1.9} fill={ink} />
+            <Circle cx={x - 0.5} cy={20} r={0.6} fill="#fff" />
+          </G>
+        );
       case 'side':
         return (
           <G key={x}>
@@ -139,7 +156,12 @@ function FaceArt({ face }: { face: Face }) {
       case 'squint':
         return <Path key={x} d={x < 20 ? `M${x - 2.2} 18.4l3.6 1.8-3.6 1.8` : `M${x + 2.2} 18.4l-3.6 1.8 3.6 1.8`} {...s} />;
       default:
-        return <Circle key={x} cx={x} cy={20} r={1.6} fill={ink} />;
+        return (
+          <G key={x}>
+            <Ellipse cx={x} cy={20} rx={1.9} ry={2.4} fill={ink} />
+            <Circle cx={x - 0.6} cy={19.1} r={0.75} fill="#fff" />
+          </G>
+        );
     }
   };
   const mouth = () => {
@@ -450,32 +472,57 @@ export function Reactions({ value, onChange }: { value: string[]; onChange: (v: 
         </T>
       </View>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: Space.sm }}>
-        {REACTIONS.map((r) => {
-          const on = value.includes(r.id);
-          return (
-            <Touchable
-              key={r.id}
-              haptic={on ? 'light' : 'success'}
-              pressScale={0.92}
-              onPress={() => toggle(r.id)}
-              accessibilityRole="checkbox"
-              accessibilityState={{ checked: on }}
-              style={{
-                width: 104,
-                paddingVertical: Space.md,
-                alignItems: 'center',
-                gap: 4,
-                borderRadius: Radius.lg,
-                borderWidth: 1.5,
-                borderColor: on ? C.accent : C.border,
-                backgroundColor: on ? C.accentSoft : C.surface,
-              }}>
-              <PuffMascot size={50} face={r.face} />
-              <T style={{ fontSize: 13, fontWeight: on ? '700' : '600', color: on ? C.accentInk : C.text }}>{r.label}</T>
-            </Touchable>
-          );
-        })}
+        {REACTIONS.map((r) => (
+          <ReactionTile key={r.id} r={r} on={value.includes(r.id)} onPress={() => toggle(r.id)} />
+        ))}
       </View>
     </View>
+  );
+}
+
+function ReactionTile({ r, on, onPress }: { r: (typeof REACTIONS)[number]; on: boolean; onPress: () => void }) {
+  const C = useColors();
+  const pop = useRef(new Animated.Value(1)).current;
+  const prev = useRef(on);
+  useEffect(() => {
+    // Al elegirla, la carita salta y se ladea un poco.
+    if (on && !prev.current) {
+      pop.setValue(0.7);
+      Animated.spring(pop, { toValue: 1, friction: 3, tension: 180, useNativeDriver: Platform.OS !== 'web' }).start();
+    }
+    prev.current = on;
+  }, [on, pop]);
+  return (
+    <Touchable
+      haptic={on ? 'light' : 'success'}
+      pressScale={0.92}
+      onPress={onPress}
+      accessibilityRole="checkbox"
+      accessibilityLabel={r.label}
+      accessibilityState={{ checked: on }}
+      style={{
+        flexBasis: '30%',
+        flexGrow: 1,
+        maxWidth: 150,
+        paddingTop: Space.md,
+        paddingBottom: Space.md,
+        alignItems: 'center',
+        gap: 6,
+        borderRadius: 22,
+        borderWidth: 1.5,
+        borderColor: on ? C.accent : C.border,
+        backgroundColor: on ? C.accentSoft : C.mode === 'dark' ? 'rgba(255,255,255,0.04)' : C.surface,
+      }}>
+      <Animated.View
+        style={{
+          transform: [{ scale: pop }, { rotate: pop.interpolate({ inputRange: [0.7, 1], outputRange: ['-14deg', '0deg'] }) }],
+          opacity: on ? 1 : 0.92,
+        }}>
+        <PuffMascot size={60} face={r.face} />
+      </Animated.View>
+      {/* Sombrita bajo la carita. */}
+      <View style={{ width: 30, height: 5, borderRadius: 3, backgroundColor: 'rgba(0,0,0,0.22)', marginTop: -6 }} />
+      <T style={{ fontSize: 14, fontWeight: on ? '800' : '600', color: on ? C.accentInk : C.text }}>{r.label}</T>
+    </Touchable>
   );
 }

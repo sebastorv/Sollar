@@ -92,6 +92,10 @@ function Navigation() {
           options={{ title: '', headerTransparent: true, headerTintColor: C.text, headerLeft: () => <BackButton /> }}
         />
         <Stack.Screen
+          name="ajustes"
+          options={{ title: '', headerTransparent: true, headerTintColor: C.text, headerLeft: () => <BackButton /> }}
+        />
+        <Stack.Screen
           name="estadisticas"
           options={{ title: '', headerTransparent: true, headerTintColor: C.text, headerLeft: () => <BackButton /> }}
         />

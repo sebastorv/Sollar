@@ -13,7 +13,7 @@ import { Linking, Platform, ScrollView, Share, StyleSheet, TextInput, useWindowD
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Rating, RATING_LABELS, Reactions } from '@/components/rating';
-import { Backdrop, card, Glass, shadow } from '@/components/glass';
+import { Backdrop, card, Glass, glassFill, shadow } from '@/components/glass';
 import { Icon, type IconName } from '@/components/icons';
 import { AddToListSheet, entryFrom } from '@/components/lists';
 import { ProviderLogo } from '@/components/platforms';
@@ -1516,8 +1516,7 @@ const makeStyles = (C: Colors) =>
       height: 72,
       borderRadius: 16,
       borderWidth: 1,
-      borderColor: C.border,
-      backgroundColor: C.surface,
+      ...glassFill(C),
       alignItems: 'center',
       justifyContent: 'center',
       gap: 5,
@@ -1532,10 +1531,9 @@ const makeStyles = (C: Colors) =>
       paddingHorizontal: Space.lg,
       borderRadius: 16,
       borderWidth: 1,
-      borderColor: C.border,
-      backgroundColor: C.surface,
+      ...glassFill(C),
     },
-    segment: { flexDirection: 'row', backgroundColor: C.fill, borderRadius: 16, padding: 4 },
+    segment: { flexDirection: 'row', borderRadius: 16, padding: 4, borderWidth: 1, ...glassFill(C) },
     segmentBtn: { flex: 1, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6 },
     seasonArt: {
       width: 120,
@@ -1585,7 +1583,7 @@ const makeStyles = (C: Colors) =>
       paddingHorizontal: 9,
       paddingVertical: 4,
     },
-    providers: { ...card(C), borderRadius: Radius.lg, paddingHorizontal: Space.md },
+    providers: { borderWidth: 1, ...glassFill(C), borderRadius: Radius.lg, paddingHorizontal: Space.md },
     providerRow: { flexDirection: 'row', alignItems: 'center', gap: Space.md, paddingVertical: Space.md },
     planTag: { backgroundColor: C.accentSoft, borderRadius: Radius.pill, paddingHorizontal: 8, paddingVertical: 3 },
     scoreOf: { fontSize: 13, fontWeight: '600', color: C.textFaint },

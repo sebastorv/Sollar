@@ -1,430 +1,453 @@
-/** Pestaña "Perfil": plataformas, apariencia, estadísticas, respaldo de datos y créditos. */
+/**
+ * Perfil: tu portada, tu foto y tu nombre, tus números (tiempo viendo, racha), tus favoritos y
+ * lo último que viste. Los ajustes viven aparte, detrás del engranaje.
+ */
 
-import { useMemo, useState } from 'react';
+import { Image } from 'expo-image';
+import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
-import { Modal, Platform, Share, StyleSheet, TextInput, View } from 'react-native';
+import { Link, router } from 'expo-router';
+import { useContext, useEffect, useMemo, useState } from 'react';
+import { Platform, ScrollView, Share, StyleSheet, TextInput, useWindowDimensions, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { SollarLogo } from '@/components/brand';
-import { Glass, card } from '@/components/glass';
-import { PlatformPicker } from '@/components/platforms';
-import { Button, Chip, Screen, Section, T } from '@/components/ui';
-import { ACCENT_ORDER, ACCENTS, Radius, Space, type Colors } from '@/constants/theme';
-import { useColors, useStyles, useThemeSettings, type ModeSetting } from '@/store/theme';
-import { parseBackup } from '@/lib/library-item';
-import { computeStats, formatDuration } from '@/lib/progress';
+import { Glass } from '@/components/glass';
+import { Icon, type IconName } from '@/components/icons';
+import { Sheet } from '@/components/sheet';
+import { useTabScroll } from '@/components/tab-scroll';
+import { Touchable } from '@/components/touch';
+import { Button, Poster, RailContext, T } from '@/components/ui';
+import { RAIL_WIDTH, Radius, Space, WIDE, type Colors } from '@/constants/theme';
+import { eventsOf, streaks, totalsOf, MONTHS } from '@/lib/activity';
+import { ago, followers as countFollowers, following as listFollowing, myProfile, type Profile } from '@/lib/social';
+import { todayISO, addDays } from '@/lib/dates';
+import { formatEpisode } from '@/lib/progress';
+import { sharpImage } from '@/lib/tmdb';
 import { useAuth } from '@/store/auth';
 import { useLibrary } from '@/store/library';
-import { useSync } from '@/store/sync';
-import { Touchable } from '@/components/touch';
+import { useSettings } from '@/store/settings';
+import { DarkScope, useColors, useStyles } from '@/store/theme';
+
+/** "1 a 3 m", "4 m 12 d", "3 d 5 h": el tiempo total frente a la pantalla. */
+function bigDuration(minutes: number) {
+  const h = Math.floor(minutes / 60);
+  const d = Math.floor(h / 24);
+  const months = Math.floor(d / 30);
+  const years = Math.floor(months / 12);
+  if (years) return [`${years} a`, months % 12 ? `${months % 12} m` : null].filter(Boolean).join(' ');
+  if (months) return [`${months} m`, d % 30 ? `${d % 30} d` : null].filter(Boolean).join(' ');
+  if (d) return [`${d} d`, h % 24 ? `${h % 24} h` : null].filter(Boolean).join(' ');
+  return `${h} h`;
+}
+
+const n = (x: number) => x.toLocaleString('es-CO');
+
+/** Reduce la foto a 320 px en el navegador, para guardarla liviana. */
+async function shrink(dataUrl: string): Promise<string> {
+  if (Platform.OS !== 'web' || typeof document === 'undefined') return dataUrl;
+  const img = new window.Image();
+  img.src = dataUrl;
+  await img.decode();
+  const side = Math.min(img.width, img.height);
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = 320;
+  canvas.getContext('2d')!.drawImage(img, (img.width - side) / 2, (img.height - side) / 2, side, side, 0, 0, 320, 320);
+  return canvas.toDataURL('image/jpeg', 0.82);
+}
 
 export default function ProfileScreen() {
+  return (
+    <DarkScope>
+      <ProfileBody />
+    </DarkScope>
+  );
+}
+
+function ProfileBody() {
   const C = useColors();
   const styles = useStyles(makeStyles);
-  const { items, exportBackup, importBackup } = useLibrary();
-  const stats = useMemo(() => computeStats(items), [items]);
-  const [importOpen, setImportOpen] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
-  const [exportText, setExportText] = useState<string | null>(null);
+  const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
+  const wide = width >= WIDE;
+  const rail = useContext(RailContext);
+  const { onScroll } = useTabScroll();
+  const { items } = useLibrary();
+  const { profile, setProfile } = useSettings();
+  const { email, userId, cloud } = useAuth();
+  const [social, setSocial] = useState<{ me: Profile | null; followers: number; following: number } | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [favPick, setFavTab] = useState<'tv' | 'movie' | null>(null);
 
-  async function onExport() {
-    const json = JSON.stringify(exportBackup(), null, 2);
-    const name = `sollar-respaldo-${new Date().toISOString().slice(0, 10)}.json`;
-    if (Platform.OS === 'web') {
-      // En web se muestra el texto con botones de copiar y descargar: algunos
-      // navegadores (o la vista previa) bloquean las descargas.
-      setExportText(json);
-    } else {
-      await Share.share({ title: name, message: json });
+  useEffect(() => {
+    if (!cloud || !userId) return;
+    let off = false;
+    Promise.all([myProfile(userId), countFollowers(userId), listFollowing(userId)])
+      .then(([me, f, g]) => !off && setSocial({ me, followers: f, following: g.length }))
+      .catch(() => {});
+    return () => {
+      off = true;
+    };
+  }, [cloud, userId]);
+
+  const events = useMemo(() => eventsOf(items), [items]);
+  const totals = useMemo(() => totalsOf(events), [events]);
+  const streak = useMemo(() => streaks(events, todayISO()), [events]);
+  const since = events.length ? events[events.length - 1].day : null;
+  const favorites = items.filter((i) => i.favorite);
+  // Abre en la pestaña que tenga favoritos, si no eliges otra.
+  const favTab = favPick ?? (favorites.some((i) => i.mediaType === 'tv') || !favorites.length ? 'tv' : 'movie');
+  const favShown = favorites.filter((i) => i.mediaType === favTab);
+
+  // Portada: la imagen de fondo de tu favorito más reciente o de lo último que viste.
+  const coverItem =
+    [...favorites].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).find((i) => i.backdropPath) ??
+    items.find((i) => i.key === events[0]?.key && i.backdropPath);
+  const cover = sharpImage(coverItem?.backdropPath ?? null, 'backdrop', width);
+
+  const name = profile.name || social?.me?.display_name || (email ? email.split('@')[0] : 'Tu perfil');
+  const username = social?.me?.username;
+  const recent = events.slice(0, 8);
+
+  // Últimos siete días: cuáles tuvieron algo visto.
+  const days = new Set(events.map((e) => e.day));
+  const week = Array.from({ length: 7 }, (_, i) => days.has(addDays(todayISO(), i - 6)));
+
+  async function pickPhoto() {
+    const res = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.5,
+      base64: Platform.OS !== 'web',
+    });
+    if (res.canceled || !res.assets[0]) return;
+    const a = res.assets[0];
+    const url = Platform.OS === 'web' ? await shrink(a.uri) : `data:image/jpeg;base64,${a.base64}`;
+    setProfile({ avatar: url });
+  }
+
+  async function share() {
+    const text = `${name} en Sollar: ${n(totals.episodes)} episodios y ${n(totals.movies)} películas vistas.`;
+    try {
+      if (Platform.OS === 'web' && typeof navigator !== 'undefined' && navigator.share) await navigator.share({ text });
+      else await Share.share({ message: text });
+    } catch {
+      // Cancelado.
     }
   }
 
+  const sidePad = wide ? (rail ? RAIL_WIDTH + Space.lg * 2 + Space.md : Space.xxl) : Space.lg;
+  const heroH = wide ? 380 : 330;
+
   return (
-    <Screen>
-      <T variant="title">Perfil</T>
-
-      <Account />
-
-      <Section title="Mis plataformas">
-        <T variant="small" muted>
-          Marca los servicios que pagas. Con eso, en cada título y en tus listas verás al instante si está
-          incluido en tu plan.
-        </T>
-        <PlatformPicker />
-      </Section>
-
-      <Appearance />
-
-      <Section title="Tu actividad">
-        <View style={{ flexDirection: 'row', gap: Space.sm, flexWrap: 'wrap' }}>
-          <Button label="Estadísticas y tu año" onPress={() => router.push('/estadisticas')} />
-          <Button label="Historial" kind="secondary" onPress={() => router.push('/historial')} />
-          <Button label="Amigos" kind="secondary" onPress={() => router.push('/amigos')} />
+    <View style={{ flex: 1, backgroundColor: C.bg }}>
+      <ScrollView onScroll={onScroll} scrollEventThrottle={16} contentContainerStyle={{ paddingBottom: 140 }}>
+        {/* Portada */}
+        <View style={{ height: heroH + insets.top }}>
+          {cover ? <Image source={{ uri: cover }} style={StyleSheet.absoluteFill} contentFit="cover" transition={300} /> : null}
+          <LinearGradient
+            colors={cover ? ['rgba(0,0,0,0.35)', 'rgba(0,0,0,0.1)', C.tint, C.bg] : [C.accentSoft, C.bg]}
+            locations={cover ? [0, 0.35, 0.75, 1] : undefined}
+            style={StyleSheet.absoluteFill}
+          />
         </View>
-      </Section>
 
-      <Section title="Tus números">
-        <View style={styles.statsGrid}>
-          <Stat value={String(stats.moviesWatched)} label="películas vistas" />
-          <Stat value={String(stats.episodesWatched)} label="episodios vistos" />
-          <Stat value={String(stats.showsCompleted)} label="series terminadas" />
-          <Stat value={formatDuration(stats.minutesWatched)} label="frente a la pantalla" />
-          <Stat value={stats.averageRating != null ? `${stats.averageRating}` : '—'} label="calificación media" />
-          <Stat value={String(items.length)} label="títulos en tu lista" />
+        {/* Engranaje y compartir */}
+        <View style={[styles.topActions, { top: insets.top + Space.md, right: wide ? Space.xxl : Space.lg }]}>
+          <CircleButton icon="share" label="Compartir perfil" onPress={share} />
+          <CircleButton icon="gear" label="Ajustes" onPress={() => router.push('/ajustes')} />
         </View>
-      </Section>
 
-      {stats.topGenres.length > 0 ? (
-        <Section title="Tus géneros">
-          <View style={{ gap: Space.sm }}>
-            {stats.topGenres.map((g) => (
-              <View key={g.name} style={styles.genreRow}>
-                <T>{g.name}</T>
-                <T muted>{g.count}</T>
+        <View style={[styles.body, { marginTop: -heroH * 0.48, paddingLeft: sidePad, paddingRight: wide ? Space.xxl : Space.lg }]}>
+          {/* Foto, nombre y seguidores */}
+          <View style={{ alignItems: 'center', gap: Space.sm }}>
+            <Touchable haptic="light" pressScale={0.95} onPress={pickPhoto} accessibilityLabel="Cambiar foto de perfil">
+              <View style={styles.avatarRing}>
+                {profile.avatar ? (
+                  <Image source={{ uri: profile.avatar }} style={styles.avatar} contentFit="cover" />
+                ) : (
+                  <LinearGradient colors={[C.g1, C.g2]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.avatar, styles.center]}>
+                    <T style={{ fontSize: 48, fontWeight: '800', color: '#fff' }}>{name.charAt(0).toUpperCase()}</T>
+                  </LinearGradient>
+                )}
               </View>
+              <View style={styles.cameraBadge}>
+                <Glass radius={999}>
+                  <View style={[styles.center, { width: 36, height: 36 }]}>
+                    <Icon name="camera" size={18} color={C.text} strokeWidth={2} />
+                  </View>
+                </Glass>
+              </View>
+            </Touchable>
+
+            <Touchable haptic="light" pressScale={0.98} onPress={() => setEditing(true)} style={{ alignItems: 'center', gap: 2 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: Space.sm }}>
+                <T style={styles.name}>{name}</T>
+                <View>
+                  <Icon name="edit" size={18} color={C.textMuted} />
+                </View>
+              </View>
+              {username ? <T style={{ fontSize: 17, color: C.textMuted }}>@{username}</T> : null}
+              {profile.bio ? (
+                <T style={{ fontSize: 15, color: C.text, textAlign: 'center', marginTop: 4, maxWidth: 420 }}>{profile.bio}</T>
+              ) : null}
+              {since ? (
+                <T style={{ fontSize: 14, color: C.textFaint, marginTop: 4 }}>
+                  Viendo desde {MONTHS[Number(since.slice(5, 7)) - 1]} de {since.slice(0, 4)}
+                </T>
+              ) : null}
+            </Touchable>
+
+            {cloud ? (
+              <Touchable haptic="light" onPress={() => router.push('/amigos')} style={styles.followRow}>
+                <T style={styles.followNum}>{social?.followers ?? 0}</T>
+                <T style={styles.followLabel}>Seguidores</T>
+                <View style={{ width: Space.xl }} />
+                <T style={styles.followNum}>{social?.following ?? 0}</T>
+                <T style={styles.followLabel}>Siguiendo</T>
+              </Touchable>
+            ) : null}
+          </View>
+
+          {/* Números */}
+          <View style={styles.stats}>
+            <View style={styles.statCol}>
+              <T style={styles.statHead}>TIEMPO VIENDO</T>
+              <T style={styles.statBig}>{bigDuration(totals.minutes)}</T>
+              <T style={styles.statSub}>
+                {n(totals.episodes)} episodios · {n(totals.movies)} películas
+              </T>
+            </View>
+            <View style={[styles.statCol, styles.statDivider]}>
+              <T style={styles.statHead}>RACHA</T>
+              <T style={styles.statBig}>
+                {streak.current}
+                <T style={styles.statUnit}> {streak.current === 1 ? 'día' : 'días'}</T>
+              </T>
+              <View style={{ flexDirection: 'row', gap: 4, marginTop: 6 }}>
+                {week.map((on, i) => (
+                  <View
+                    key={i}
+                    style={{
+                      width: 12,
+                      height: 12,
+                      borderRadius: 4,
+                      backgroundColor: on ? C.accent : C.fill,
+                      borderWidth: i === 6 ? 1.5 : 0,
+                      borderColor: C.text,
+                    }}
+                  />
+                ))}
+              </View>
+            </View>
+            <Touchable haptic="light" onPress={() => router.push('/estadisticas')} style={[styles.statCol, styles.statDivider]}>
+              <T style={styles.statHead}>RÉCORD</T>
+              <T style={styles.statBig}>
+                {streak.longest}
+                <T style={styles.statUnit}> días</T>
+              </T>
+              <T style={[styles.statSub, { color: C.accentInk, fontWeight: '700' }]}>Más estadísticas ›</T>
+            </Touchable>
+          </View>
+
+          {/* Favoritos */}
+          <View style={{ gap: Space.md }}>
+            <View>
+              <T style={styles.h2}>Favoritos</T>
+              <T style={{ fontSize: 15, color: C.textMuted }}>Lo que siempre vuelves a ver</T>
+            </View>
+            <View style={styles.segment}>
+              {(
+                [
+                  ['tv', 'Series'],
+                  ['movie', 'Películas'],
+                ] as const
+              ).map(([k, label]) => {
+                const on = favTab === k;
+                const count = favorites.filter((i) => i.mediaType === k).length;
+                return (
+                  <Touchable key={k} haptic="select" onPress={() => setFavTab(k)} style={[styles.segmentBtn, on && styles.segmentOn]}>
+                    <T style={{ fontSize: 15, fontWeight: on ? '700' : '500', color: on ? C.text : C.textMuted }}>
+                      {label} {count}
+                    </T>
+                  </Touchable>
+                );
+              })}
+            </View>
+            {favShown.length ? (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: Space.md }}>
+                {favShown.map((i) => (
+                  <Link key={i.key} href={{ pathname: '/titulo/[tipo]/[id]', params: { tipo: i.mediaType, id: String(i.tmdbId) } }} asChild>
+                    <Touchable style={{ width: wide ? 160 : 128 }}>
+                      <Poster path={i.posterPath} title={i.title} width={wide ? 160 : 128} />
+                    </Touchable>
+                  </Link>
+                ))}
+              </ScrollView>
+            ) : (
+              <T style={{ color: C.textMuted }}>Toca el corazón en cualquier título para tenerlo aquí.</T>
+            )}
+          </View>
+
+          {/* Lo último */}
+          {recent.length ? (
+            <View style={{ gap: Space.md }}>
+              <Touchable haptic="light" onPress={() => router.push('/historial')} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <T style={styles.h2}>Lo último que viste</T>
+                <View>
+                  <Icon name="chevronRight" size={20} color={C.textMuted} strokeWidth={2.4} />
+                </View>
+              </Touchable>
+              <View style={styles.list}>
+                {recent.map((e, idx) => (
+                  <Link key={e.key + e.at} href={{ pathname: '/titulo/[tipo]/[id]', params: { tipo: e.mediaType, id: String(e.tmdbId) } }} asChild>
+                    <Touchable haptic="light" pressScale={0.98} style={[styles.recentRow, idx > 0 && { borderTopWidth: 1, borderTopColor: C.border }]}>
+                      <Poster path={e.posterPath} title={e.title} width={44} />
+                      <View style={{ flex: 1, minWidth: 0 }}>
+                        <T numberOfLines={1} style={{ fontSize: 16, fontWeight: '700' }}>
+                          {e.title}
+                        </T>
+                        <T numberOfLines={1} style={{ fontSize: 14, color: C.textMuted }}>
+                          {e.season != null ? formatEpisode(e.season, e.episode!) : e.rewatch ? 'Película · otra vez' : 'Película'}
+                        </T>
+                      </View>
+                      <T style={{ fontSize: 13, color: C.textFaint }}>{ago(e.at)}</T>
+                    </Touchable>
+                  </Link>
+                ))}
+              </View>
+            </View>
+          ) : null}
+
+          {/* Accesos */}
+          <View style={styles.list}>
+            {(
+              [
+                ['chart', 'Estadísticas y tu año', '/estadisticas'],
+                ['history', 'Historial', '/historial'],
+                ['users', 'Amigos', '/amigos'],
+                ['gear', 'Ajustes', '/ajustes'],
+              ] as [IconName, string, '/estadisticas' | '/historial' | '/amigos' | '/ajustes'][]
+            ).map(([icon, label, href], idx) => (
+              <Touchable
+                key={href}
+                haptic="light"
+                pressScale={0.98}
+                onPress={() => router.push(href)}
+                style={[styles.linkRow, idx > 0 && { borderTopWidth: 1, borderTopColor: C.border }]}>
+                <View>
+                  <Icon name={icon} size={22} color={C.text} />
+                </View>
+                <T style={{ flex: 1, fontSize: 16, fontWeight: '600' }}>{label}</T>
+                <View>
+                  <Icon name="chevronRight" size={18} color={C.textFaint} />
+                </View>
+              </Touchable>
             ))}
           </View>
-        </Section>
-      ) : null}
-
-      <Section title="Trae tu historial">
-        <T variant="small" muted>
-          Importa lo que ya marcaste en otras apps para no empezar de cero. Por ahora: WeTrakr. Pronto
-          Trakt, TV Time, Letterboxd e IMDb.
-        </T>
-        <View style={{ flexDirection: 'row' }}>
-          <Button label="Importar historial" onPress={() => router.push('/importar')} />
         </View>
-      </Section>
+      </ScrollView>
 
-      <Section title="Tus datos son tuyos">
-        <T variant="small" muted>
-          Exporta tu lista cuando quieras como un archivo JSON. Si cambias de teléfono, o si algún día
-          dejas Sollar, te llevas todo.
-        </T>
-        <View style={{ flexDirection: 'row', gap: Space.sm, flexWrap: 'wrap' }}>
-          <Button label="Exportar respaldo" onPress={onExport} />
-          <Button label="Importar respaldo" kind="secondary" onPress={() => setImportOpen(true)} />
-        </View>
-        {message ? <T variant="small" style={{ color: C.success }}>{message}</T> : null}
-      </Section>
-
-      <Section title="Créditos">
-        <T variant="small" muted>
-          Esta app usa la API de TMDB, pero no está respaldada ni certificada por TMDB. Los datos de dónde
-          ver cada título los aporta JustWatch.
-        </T>
-        {/* Frase exigida por TMDB, en su idioma original. */}
-        <T variant="caption" muted>
-          This product uses the TMDB API but is not endorsed or certified by TMDB.
-        </T>
-      </Section>
-
-      <ExportModal text={exportText} onClose={() => setExportText(null)} onDone={setMessage} />
-
-      <ImportModal
-        visible={importOpen}
-        onClose={() => setImportOpen(false)}
-        onImport={(text, mode) => {
-          const backup = parseBackup(text);
-          importBackup(backup, mode);
-          setMessage(`Se importaron ${backup.items.length} títulos.`);
-          setImportOpen(false);
-        }}
-      />
-    </Screen>
-  );
-}
-
-/** Cuenta y estado de la sincronización. Solo aparece si la app usa servidor. */
-function Account() {
-  const C = useColors();
-  const styles = useStyles(makeStyles);
-  const { cloud, email, signOut } = useAuth();
-  const { status, lastSync, error, syncNow } = useSync();
-  if (!cloud || !email) return null;
-  const time = lastSync ? new Date(lastSync).toLocaleTimeString('es-CO', { hour: 'numeric', minute: '2-digit' }) : null;
-  const label =
-    status === 'syncing'
-      ? 'Sincronizando…'
-      : status === 'offline'
-        ? 'Sin conexión: se sincroniza al volver'
-        : time
-          ? `Sincronizado a las ${time}`
-          : 'Sincronización activa';
-  return (
-    <Section title="Tu cuenta">
-      <View style={styles.account}>
-        <View style={{ flex: 1, gap: 2 }}>
-          <T variant="label" numberOfLines={1}>
-            {email}
-          </T>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: Space.xs }}>
-            <View
-              style={[
-                styles.statusDot,
-                { backgroundColor: status === 'offline' ? C.danger : status === 'syncing' ? C.accent : C.success },
-              ]}
-            />
-            <T variant="caption" muted>
-              {label}
-            </T>
-          </View>
-          {status === 'offline' && error ? (
-            <T variant="caption" muted numberOfLines={2}>
-              {error}
-            </T>
-          ) : null}
-        </View>
-        <Button label="Sincronizar" kind="secondary" onPress={syncNow} />
-      </View>
-      <T variant="small" muted>
-        Tu lista, tus episodios vistos, tus calificaciones y tus plataformas se guardan en tu cuenta y
-        se actualizan solos en todos los dispositivos donde entres con este correo.
-      </T>
-      <View style={{ flexDirection: 'row' }}>
-        <Button label="Cerrar sesión" kind="danger" onPress={() => signOut()} />
-      </View>
-    </Section>
-  );
-}
-
-const MODES: { key: ModeSetting; label: string }[] = [
-  { key: 'light', label: 'Claro' },
-  { key: 'dark', label: 'Oscuro' },
-  { key: 'system', label: 'Como el teléfono' },
-];
-
-/** Modo claro u oscuro y color de la marca. Se aplica al instante en toda la app. */
-function Appearance() {
-  const C = useColors();
-  const styles = useStyles(makeStyles);
-  const { mode, setMode, accent, setAccent } = useThemeSettings();
-  return (
-    <Section title="Apariencia">
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: Space.sm }}>
-        {MODES.map((m) => (
-          <Chip key={m.key} label={m.label} selected={mode === m.key} onPress={() => setMode(m.key)} />
-        ))}
-      </View>
-      <View style={styles.accents}>
-        {ACCENT_ORDER.map((key) => {
-          const a = ACCENTS[key];
-          const on = accent === key;
-          return (
-            <Touchable
-              key={key}
-              onPress={() => setAccent(key)}
-              accessibilityRole="button"
-              accessibilityState={{ selected: on }}
-              accessibilityLabel={`Color ${a.label}`}
-              style={({ pressed }) => [styles.accent, on && { borderColor: a.solid }, pressed && { opacity: 0.8 }]}>
-              <LinearGradient colors={[a.g1, a.g2]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.swatch} />
-              <T variant="label" style={{ color: on ? C.text : C.textMuted }}>
-                {a.label}
-              </T>
-            </Touchable>
-          );
-        })}
-      </View>
-      <View style={styles.preview}>
-        <SollarLogo size={44} shape="icon" />
-        <T variant="small" muted style={{ flex: 1 }}>
-          Así se ve el ícono con este color. El modo claro y Brasa vienen por defecto.
-        </T>
-      </View>
-    </Section>
-  );
-}
-
-function Stat({ value, label }: { value: string; label: string }) {
-  const C = useColors();
-  const styles = useStyles(makeStyles);
-  return (
-    <View style={styles.stat}>
-      <T variant="heading" style={{ color: C.accentInk }}>
-        {value}
-      </T>
-      <T variant="caption" muted>
-        {label}
-      </T>
+      <EditProfile visible={editing} onClose={() => setEditing(false)} initialName={name} />
     </View>
   );
 }
 
-function ExportModal({
-  text,
-  onClose,
-  onDone,
-}: {
-  text: string | null;
-  onClose: () => void;
-  onDone: (msg: string) => void;
-}) {
+function CircleButton({ icon, label, onPress }: { icon: IconName; label: string; onPress: () => void }) {
   const C = useColors();
-  const styles = useStyles(makeStyles);
-  const [note, setNote] = useState<string | null>(null);
-  const inFrame = typeof window !== 'undefined' && window.self !== window.top;
-
-  async function copy() {
-    try {
-      await navigator.clipboard.writeText(text ?? '');
-      setNote('Copiado. Pégalo en una nota o un archivo para guardarlo.');
-    } catch {
-      setNote('No se pudo copiar automáticamente: selecciona el texto y cópialo.');
-    }
-  }
-
-  function download() {
-    try {
-      const url = URL.createObjectURL(new Blob([text ?? ''], { type: 'application/json' }));
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `sollar-respaldo-${new Date().toISOString().slice(0, 10)}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
-      onDone('Respaldo descargado.');
-    } catch {
-      setNote('Este navegador no permitió la descarga: usa Copiar.');
-    }
-  }
-
   return (
-    <Modal visible={text != null} animationType="slide" transparent onRequestClose={onClose}>
-      <View style={styles.backdrop}>
-        <Glass strong radius={Radius.lg} style={styles.sheet}>
-          <T variant="heading">Tu respaldo</T>
-          <T variant="small" muted>
-            Este texto contiene toda tu lista. Guárdalo para importarlo después.
-          </T>
-          <TextInput value={text ?? ''} multiline editable={false} style={styles.textarea} />
-          {note ? <T variant="small" style={{ color: C.success }}>{note}</T> : null}
-          <View style={{ gap: Space.sm }}>
-            <Button label="Copiar" onPress={copy} />
-            {/* Dentro de un marco (como la vista previa) las descargas suelen estar bloqueadas. */}
-            {inFrame ? null : <Button label="Descargar archivo" kind="secondary" onPress={download} />}
-            <Button label="Cerrar" kind="secondary" onPress={() => { setNote(null); onClose(); }} />
-          </View>
-        </Glass>
-      </View>
-    </Modal>
+    <Touchable haptic="light" pressScale={0.88} onPress={onPress} accessibilityLabel={label} accessibilityRole="button">
+      <Glass radius={999}>
+        <View style={{ width: 46, height: 46, alignItems: 'center', justifyContent: 'center' }}>
+          <Icon name={icon} size={21} color={C.text} strokeWidth={2.1} />
+        </View>
+      </Glass>
+    </Touchable>
   );
 }
 
-function ImportModal({
-  visible,
-  onClose,
-  onImport,
-}: {
-  visible: boolean;
-  onClose: () => void;
-  onImport: (text: string, mode: 'merge' | 'replace') => void;
-}) {
+function EditProfile({ visible, onClose, initialName }: { visible: boolean; onClose: () => void; initialName: string }) {
   const C = useColors();
-  const styles = useStyles(makeStyles);
-  const [text, setText] = useState('');
-  const [error, setError] = useState<string | null>(null);
-
-  function run(mode: 'merge' | 'replace') {
-    try {
-      onImport(text, mode);
-      setText('');
-      setError(null);
-    } catch (e) {
-      setError((e as Error).message);
+  const { profile, setProfile } = useSettings();
+  const [name, setName] = useState(initialName);
+  const [bio, setBio] = useState(profile.bio);
+  useEffect(() => {
+    if (visible) {
+      setName(profile.name || initialName);
+      setBio(profile.bio);
     }
-  }
-
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible]);
+  const input = { backgroundColor: C.fill, color: C.text, borderRadius: 14, padding: 14, fontSize: 16 } as const;
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <View style={styles.backdrop}>
-        <Glass strong radius={Radius.lg} style={styles.sheet}>
-          <T variant="heading">Importar respaldo</T>
-          <T variant="small" muted>
-            Pega aquí el contenido del archivo que exportaste.
-          </T>
-          <TextInput
-            value={text}
-            onChangeText={setText}
-            multiline
-            placeholder='{"app": "sollar", ...}'
-            placeholderTextColor={C.textFaint}
-            style={styles.textarea}
-            autoCorrect={false}
-            autoCapitalize="none"
-          />
-          {error ? <T variant="small" style={{ color: C.danger }}>{error}</T> : null}
-          <View style={{ gap: Space.sm }}>
-            <Button label="Combinar con mi lista" onPress={() => run('merge')} disabled={!text} />
-            <Button label="Reemplazar toda mi lista" kind="danger" onPress={() => run('replace')} disabled={!text} />
-            <Button label="Cancelar" kind="secondary" onPress={onClose} />
-          </View>
-        </Glass>
+    <Sheet visible={visible} onClose={onClose} title="Editar perfil">
+      <View style={{ gap: Space.sm }}>
+        <T variant="label">Nombre</T>
+        <TextInput value={name} onChangeText={setName} maxLength={40} placeholder="Tu nombre" placeholderTextColor={C.textFaint} style={input} />
+        <T variant="label">Una frase sobre ti</T>
+        <TextInput
+          value={bio}
+          onChangeText={setBio}
+          maxLength={120}
+          multiline
+          placeholder="Fan de las series de misterio…"
+          placeholderTextColor={C.textFaint}
+          style={[input, { minHeight: 80, textAlignVertical: 'top' }]}
+        />
       </View>
-    </Modal>
+      <View style={{ flexDirection: 'row', gap: Space.sm }}>
+        <Button
+          label="Guardar"
+          style={{ flex: 1 }}
+          onPress={() => {
+            setProfile({ name: name.trim(), bio: bio.trim() });
+            onClose();
+          }}
+        />
+        {profile.avatar ? (
+          <Button label="Quitar foto" kind="secondary" style={{ flex: 1 }} onPress={() => setProfile({ avatar: null })} />
+        ) : null}
+      </View>
+    </Sheet>
   );
 }
 
 const makeStyles = (C: Colors) =>
   StyleSheet.create({
-  account: {
-    ...card(C),
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Space.md,
-    padding: Space.lg,
-    borderRadius: Radius.lg,
-  },
-  statusDot: { width: 8, height: 8, borderRadius: 4 },
-  accents: { flexDirection: 'row', flexWrap: 'wrap', gap: Space.sm },
-  accent: {
-    ...card(C),
-    flexGrow: 1,
-    flexBasis: 100,
-    alignItems: 'center',
-    gap: Space.sm,
-    padding: Space.md,
-    borderRadius: Radius.lg,
-    borderWidth: 2,
-  },
-  swatch: { width: 40, height: 40, borderRadius: 20 },
-  preview: { flexDirection: 'row', alignItems: 'center', gap: Space.md },
-  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Space.md },
-  stat: {
-    ...card(C),
-    flexGrow: 1,
-    flexBasis: 140,
-    padding: Space.lg,
-    gap: Space.xs,
-    borderRadius: Radius.lg,
-  },
-  genreRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: Space.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: C.border,
-  },
-  backdrop: { flex: 1, backgroundColor: C.scrim, justifyContent: 'flex-end' },
-  sheet: {
-    padding: Space.xl,
-    gap: Space.md,
-    width: '100%',
-    maxWidth: 640,
-    alignSelf: 'center',
-    borderBottomLeftRadius: 0,
-    borderBottomRightRadius: 0,
-  },
-  textarea: {
-    minHeight: 160,
-    maxHeight: 280,
-    backgroundColor: C.fill,
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: C.border,
-    color: C.text,
-    padding: Space.md,
-    fontFamily: Platform.select({ ios: 'Menlo', default: 'monospace' }),
-    textAlignVertical: 'top',
-  },
-});
+    center: { alignItems: 'center', justifyContent: 'center' },
+    topActions: { position: 'absolute', flexDirection: 'row', gap: Space.sm },
+    body: { width: '100%', maxWidth: 1100, alignSelf: 'center', gap: Space.xxl },
+    avatarRing: {
+      padding: 4,
+      borderRadius: 999,
+      backgroundColor: 'rgba(255,255,255,0.14)',
+      borderWidth: 1,
+      borderColor: 'rgba(255,255,255,0.35)',
+    },
+    avatar: { width: 128, height: 128, borderRadius: 64, overflow: 'hidden' },
+    cameraBadge: { position: 'absolute', right: 0, bottom: 4 },
+    name: { fontSize: 32, lineHeight: 38, fontWeight: '800', letterSpacing: -0.8, color: C.text, textAlign: 'center' },
+    followRow: { flexDirection: 'row', alignItems: 'baseline', gap: 6, marginTop: Space.sm },
+    followNum: { fontSize: 20, fontWeight: '800', color: C.text },
+    followLabel: { fontSize: 16, color: C.textMuted },
+    stats: {
+      flexDirection: 'row',
+      borderTopWidth: 1,
+      borderBottomWidth: 1,
+      borderColor: C.border,
+      paddingVertical: Space.lg,
+    },
+    statCol: { flex: 1, gap: 4, paddingRight: Space.sm },
+    statDivider: { borderLeftWidth: 1, borderLeftColor: C.border, paddingLeft: Space.md },
+    statHead: { fontSize: 11, fontWeight: '800', letterSpacing: 0.6, color: C.textMuted },
+    statBig: { fontSize: 28, lineHeight: 34, fontWeight: '800', letterSpacing: -0.6, color: C.text },
+    statUnit: { fontSize: 15, fontWeight: '700', color: C.textMuted },
+    statSub: { fontSize: 13, color: C.textMuted },
+    h2: { fontSize: 26, lineHeight: 32, fontWeight: '800', letterSpacing: -0.6, color: C.text },
+    segment: { flexDirection: 'row', backgroundColor: C.fill, borderRadius: 16, padding: 4, alignSelf: 'flex-start', minWidth: 280 },
+    segmentBtn: { flex: 1, height: 42, borderRadius: 12, alignItems: 'center', justifyContent: 'center', paddingHorizontal: Space.md },
+    segmentOn: { backgroundColor: C.surfaceHigh },
+    list: { backgroundColor: C.surface, borderRadius: Radius.lg, borderWidth: 1, borderColor: C.border, paddingHorizontal: Space.md },
+    recentRow: { flexDirection: 'row', alignItems: 'center', gap: Space.md, paddingVertical: Space.sm + 2 },
+    linkRow: { flexDirection: 'row', alignItems: 'center', gap: Space.md, paddingVertical: Space.md + 2 },
+  });

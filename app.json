@@ -45,6 +45,13 @@
             "image": "./assets/images/splash-icon.png"
           }
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Sollar usa una foto de tu galería para tu perfil.",
+          "cameraPermission": false
+        }
       ]
     ],
     "experiments": {

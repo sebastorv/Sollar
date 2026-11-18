@@ -9,15 +9,20 @@ import { createContext, useContext, useEffect, useMemo, useState, type ReactNode
 const KEY = 'sollar.settings.v1';
 const OLD_KEY = 'butaca.settings.v1';
 
-type Settings = { myProviders: number[]; updatedAt: string };
+/** Lo que se ve en tu perfil: nombre, foto (pequeña, en JPEG) y una frase. */
+export type MyProfile = { name: string; avatar: string | null; bio: string };
+const EMPTY_PROFILE: MyProfile = { name: '', avatar: null, bio: '' };
+
+type Settings = { myProviders: number[]; profile: MyProfile; updatedAt: string };
 
 type SettingsApi = Settings & {
   ready: boolean;
   updatedAt: string;
   toggleProvider: (id: number) => void;
   setProviders: (ids: number[]) => void;
-  /** Aplica las plataformas que llegan de otro dispositivo, si son más recientes. */
-  applyRemote: (ids: number[], at: string) => void;
+  setProfile: (patch: Partial<MyProfile>) => void;
+  /** Aplica lo que llega de otro dispositivo, si es más reciente. */
+  applyRemote: (data: { myProviders?: number[]; profile?: MyProfile }, at: string) => void;
 };
 
 const Ctx = createContext<SettingsApi | null>(null);
@@ -26,6 +31,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
   const [myProviders, setMyRaw] = useState<number[]>([]);
   const [updatedAt, setUpdatedAt] = useState('');
+  const [profile, setProfileRaw] = useState<MyProfile>(EMPTY_PROFILE);
   const setMy = (fn: number[] | ((cur: number[]) => number[])) => {
     setMyRaw(fn);
     setUpdatedAt(new Date().toISOString());
@@ -37,6 +43,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       .then((raw) => {
         const s = raw ? (JSON.parse(raw) as Partial<Settings>) : {};
         if (Array.isArray(s.myProviders)) setMyRaw(s.myProviders);
+        if (s.profile) setProfileRaw({ ...EMPTY_PROFILE, ...s.profile });
         if (s.updatedAt) setUpdatedAt(s.updatedAt);
       })
       .catch(() => {})
@@ -45,24 +52,30 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!ready) return;
-    AsyncStorage.setItem(KEY, JSON.stringify({ myProviders, updatedAt })).catch(() => {});
-  }, [ready, myProviders, updatedAt]);
+    AsyncStorage.setItem(KEY, JSON.stringify({ myProviders, profile, updatedAt })).catch(() => {});
+  }, [ready, myProviders, profile, updatedAt]);
 
   const api = useMemo<SettingsApi>(
     () => ({
       ready,
       myProviders,
+      profile,
       updatedAt,
       toggleProvider: (id) => setMy((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id])),
       setProviders: (ids) => setMy(ids),
-      applyRemote: (ids, at) => {
+      setProfile: (patch) => {
+        setProfileRaw((cur) => ({ ...cur, ...patch }));
+        setUpdatedAt(new Date().toISOString());
+      },
+      applyRemote: (data, at) => {
         if (at <= updatedAt) return;
-        setMyRaw(ids);
+        if (Array.isArray(data.myProviders)) setMyRaw(data.myProviders);
+        if (data.profile) setProfileRaw({ ...EMPTY_PROFILE, ...data.profile });
         setUpdatedAt(at);
       },
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [ready, myProviders, updatedAt],
+    [ready, myProviders, profile, updatedAt],
   );
 
   return <Ctx.Provider value={api}>{children}</Ctx.Provider>;

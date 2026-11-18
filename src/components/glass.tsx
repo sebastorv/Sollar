@@ -75,8 +75,8 @@ export function Glass({
             {
               backgroundColor: tintBg,
               // @ts-expect-error: propiedades de CSS que react-native-web pasa al navegador.
-              backdropFilter: `blur(${strong ? 30 : 18}px) saturate(${light ? 190 : 160}%)`,
-              WebkitBackdropFilter: `blur(${strong ? 30 : 18}px) saturate(${light ? 190 : 160}%)`,
+              backdropFilter: `blur(${strong ? 32 : 22}px) saturate(${light ? 210 : 180}%) brightness(${light ? 1.04 : 1.1})`,
+              WebkitBackdropFilter: `blur(${strong ? 32 : 22}px) saturate(${light ? 210 : 180}%) brightness(${light ? 1.04 : 1.1})`,
             },
           ]}
         />
@@ -105,6 +105,20 @@ export function Glass({
       {children}
     </View>
   );
+}
+
+/**
+ * Relleno de vidrio para superficies que se tocan (botones de la ficha, filas, pestañas): deja
+ * ver lo de atrás desenfocado. En la web usa el desenfoque real del navegador.
+ */
+export function glassFill(C: Colors) {
+  const light = C.mode === 'light';
+  return {
+    backgroundColor: light ? 'rgba(255,255,255,0.45)' : 'rgba(255,255,255,0.07)',
+    borderColor: light ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.13)',
+    borderTopColor: light ? 'rgba(255,255,255,1)' : 'rgba(255,255,255,0.22)',
+    ...(Platform.OS === 'web' ? { backdropFilter: 'blur(20px) saturate(170%)', WebkitBackdropFilter: 'blur(20px) saturate(170%)' } : {}),
+  } as const;
 }
 
 /** Sombra de lo que flota: más amplia que la de las tarjetas. */

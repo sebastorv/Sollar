@@ -35,7 +35,12 @@ export type IconName =
   | 'bookmark'
   | 'pause'
   | 'close'
-  | 'playSolid';
+  | 'playSolid'
+  | 'gear'
+  | 'camera'
+  | 'history'
+  | 'chart'
+  | 'users';
 
 export function Icon({
   name,
@@ -188,6 +193,31 @@ export function Icon({
       {name === 'pause' ? <Path d="M9 6v12M15 6v12" {...s} strokeWidth={strokeWidth + 0.8} /> : null}
       {name === 'close' ? <Path d="M7 7l10 10M17 7 7 17" {...s} /> : null}
       {name === 'playSolid' ? <Path d="M8.5 5.8v12.4a1 1 0 0 0 1.5.86l10-6.2a1 1 0 0 0 0-1.72l-10-6.2a1 1 0 0 0-1.5.86Z" {...s} fill={color} /> : null}
+      {name === 'gear' ? (
+        <>
+          <Path
+            d="M10.3 3.6a1.7 1.7 0 0 1 3.4 0l.2.9a1.7 1.7 0 0 0 2.4 1l.8-.4a1.7 1.7 0 0 1 2.4 2.4l-.4.8a1.7 1.7 0 0 0 1 2.4l.9.2a1.7 1.7 0 0 1 0 3.4l-.9.2a1.7 1.7 0 0 0-1 2.4l.4.8a1.7 1.7 0 0 1-2.4 2.4l-.8-.4a1.7 1.7 0 0 0-2.4 1l-.2.9a1.7 1.7 0 0 1-3.4 0l-.2-.9a1.7 1.7 0 0 0-2.4-1l-.8.4a1.7 1.7 0 0 1-2.4-2.4l.4-.8a1.7 1.7 0 0 0-1-2.4l-.9-.2a1.7 1.7 0 0 1 0-3.4l.9-.2a1.7 1.7 0 0 0 1-2.4l-.4-.8a1.7 1.7 0 0 1 2.4-2.4l.8.4a1.7 1.7 0 0 0 2.4-1Z"
+            {...s}
+            fill={fill}
+            fillOpacity={fillOpacity}
+          />
+          <Circle cx={12} cy={12} r={3} {...s} />
+        </>
+      ) : null}
+      {name === 'camera' ? (
+        <>
+          <Path d="M4 8.5A2.5 2.5 0 0 1 6.5 6h1.3l1.4-2h5.6l1.4 2h1.3A2.5 2.5 0 0 1 20 8.5v8a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 16.5Z" {...s} />
+          <Circle cx={12} cy={12.5} r={3.3} {...s} />
+        </>
+      ) : null}
+      {name === 'history' ? <Path d="M4 12a8 8 0 1 0 2.4-5.7L4 8.6M4 4v4.6h4.6M12 8v4.4l3 1.8" {...s} /> : null}
+      {name === 'chart' ? <Path d="M5 19V11M10 19V5M15 19v-6M20 19V8" {...s} strokeWidth={strokeWidth + 0.6} /> : null}
+      {name === 'users' ? (
+        <>
+          <Circle cx={9} cy={8.5} r={3.3} {...s} />
+          <Path d="M3 19c.6-3 3-4.8 6-4.8s5.4 1.8 6 4.8M15.5 5.6a3.2 3.2 0 0 1 0 5.8M17.5 14.6c1.8.6 3 2.1 3.4 4.4" {...s} />
+        </>
+      ) : null}
       {name === 'more' ? <Path d="M5.5 12h.01M12 12h.01M18.5 12h.01" {...s} strokeWidth={3.2} /> : null}
     </Svg>
   );

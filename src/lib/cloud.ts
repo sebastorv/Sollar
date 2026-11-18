@@ -61,7 +61,7 @@ export async function pullRows(userId: string, since: string | null): Promise<Re
   return out;
 }
 
-export type RemoteSettings = { data: { myProviders?: number[] }; client_updated_at: string } | null;
+export type RemoteSettings = { data: { myProviders?: number[]; profile?: import("@/store/settings").MyProfile }; client_updated_at: string } | null;
 
 export async function pullSettings(): Promise<RemoteSettings> {
   if (!supabase) return null;
@@ -70,7 +70,7 @@ export async function pullSettings(): Promise<RemoteSettings> {
   return (data as RemoteSettings) ?? null;
 }
 
-export async function pushSettings(userId: string, data: { myProviders: number[] }, at: string): Promise<void> {
+export async function pushSettings(userId: string, data: { myProviders: number[]; profile?: unknown }, at: string): Promise<void> {
   if (!supabase) return;
   const { error } = await supabase
     .from('user_settings')

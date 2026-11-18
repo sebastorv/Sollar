@@ -23,6 +23,8 @@ import { Glass } from './glass';
 import { Icon, type IconName } from './icons';
 import { TabScrollProvider, useTabScroll } from './tab-scroll';
 import { Touchable } from './touch';
+import { Image } from 'expo-image';
+import { useSettings } from '@/store/settings';
 import { RailContext } from './ui';
 
 /** Las pestañas de la píldora, en orden. Buscar va aparte. */
@@ -186,6 +188,7 @@ function TabButton({
   children: _children,
   ...props
 }: TabTriggerSlotProps & { icon: IconName; label: string; round?: boolean }) {
+  const avatar = useSettings().profile.avatar;
   const C = useColors();
   const styles = useStyles(makeStyles);
   return (
@@ -198,7 +201,15 @@ function TabButton({
       accessibilityState={{ selected: isFocused }}
       style={[round ? styles.roundBtn : styles.slot, round && isFocused && { backgroundColor: C.accentSoft }]}>
       <View>
-        <Icon name={icon} size={22} color={isFocused ? C.accentInk : C.text} filled={isFocused && icon !== 'search'} strokeWidth={2} />
+        {icon === 'person' && avatar ? (
+          // Tu foto en la pestaña de perfil, como en las redes.
+          <Image
+            source={{ uri: avatar }}
+            style={{ width: 26, height: 26, borderRadius: 13, borderWidth: isFocused ? 2 : 0, borderColor: C.accent }}
+          />
+        ) : (
+          <Icon name={icon} size={22} color={isFocused ? C.accentInk : C.text} filled={isFocused && icon !== 'search'} strokeWidth={2} />
+        )}
       </View>
     </Touchable>
   );
