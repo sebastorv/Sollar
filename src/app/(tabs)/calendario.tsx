@@ -10,7 +10,7 @@ import { HScroll } from '@/components/hscroll';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Link, router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import { card, glassFill, GlassButton } from '@/components/glass';
 import { Icon, type IconName } from '@/components/icons';
@@ -198,6 +198,7 @@ const MONTH_NAMES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'jul
 function MonthView({ episodes }: { episodes: CalendarEpisode[] }) {
   const C = useColors();
   const { lang } = useLang();
+  const wide = useWindowDimensions().width >= 900;
   const head = lang === 'es' ? WEEK_HEAD : ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
   const today = todayISO();
   const [month, setMonth] = useState(() => today.slice(0, 7));
@@ -221,21 +222,25 @@ function MonthView({ episodes }: { episodes: CalendarEpisode[] }) {
     setMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
   };
   const list = picked ? byDate.get(picked) ?? [] : [];
+  const monthName = lang === 'es' ? MONTH_NAMES[mo - 1] : new Date(y, mo - 1, 1).toLocaleString('en-US', { month: 'long' });
   return (
     <View style={{ gap: Space.lg }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-        <T variant="heading" style={{ textTransform: 'capitalize' }}>
-          {MONTH_NAMES[mo - 1]} {y}
+      {/* Encabezado limpio: mes y dos flechas finas. */}
+      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        <T raw variant="heading" style={{ flex: 1, textTransform: 'capitalize' }}>
+          {monthName} {y}
         </T>
-        <View style={{ flexDirection: 'row', gap: Space.sm }}>
-          <GlassButton icon="back" label="Mes anterior" onPress={() => shift(-1)} size={40} />
-          <GlassButton icon="chevronRight" label="Mes siguiente" onPress={() => shift(1)} size={40} />
-        </View>
+        <Touchable haptic="select" hitSlop={8} onPress={() => shift(-1)} accessibilityLabel="Mes anterior" style={{ padding: 8 }}>
+          <Icon name="chevronLeft" size={22} color={C.text} strokeWidth={1.8} />
+        </Touchable>
+        <Touchable haptic="select" hitSlop={8} onPress={() => shift(1)} accessibilityLabel="Mes siguiente" style={{ padding: 8 }}>
+          <Icon name="chevronRight" size={22} color={C.text} strokeWidth={1.8} />
+        </Touchable>
       </View>
-      <View style={{ borderRadius: 22, ...glassFill(C), padding: Space.sm }}>
-        <View style={{ flexDirection: 'row' }}>
+      <View>
+        <View style={{ flexDirection: 'row', marginBottom: 6 }}>
           {head.map((d, i) => (
-            <T key={i} style={{ flex: 1, textAlign: 'center', fontSize: 12, fontWeight: '700', color: C.textMuted, paddingVertical: 6 }}>
+            <T key={i} raw style={{ flex: 1, textAlign: 'center', fontSize: 12, fontWeight: '500', color: C.textMuted }}>
               {d}
             </T>
           ))}
@@ -245,6 +250,7 @@ function MonthView({ episodes }: { episodes: CalendarEpisode[] }) {
             const eps = d ? byDate.get(d) ?? [] : [];
             const on = d === picked;
             const isToday = d === today;
+            const past = !!d && d < today;
             return (
               <Touchable
                 key={i}
@@ -252,42 +258,49 @@ function MonthView({ episodes }: { episodes: CalendarEpisode[] }) {
                 haptic="select"
                 pressScale={0.94}
                 onPress={() => d && setPicked(d)}
-                style={{
-                  width: `${100 / 7}%`,
-                  aspectRatio: 0.72,
-                  padding: 3,
-                }}>
+                style={{ width: `${100 / 7}%`, height: wide ? 118 : 56, padding: 2 }}>
                 {d ? (
                   <View
                     style={{
                       flex: 1,
-                      borderRadius: 12,
-                      overflow: 'hidden',
-                      borderWidth: on ? 2 : 0,
-                      borderColor: C.accent,
-                      backgroundColor: eps.length ? C.fill : 'transparent',
+                      borderRadius: 14,
+                      alignItems: 'center',
+                      paddingTop: 6,
+                      gap: 4,
+                      backgroundColor: on ? C.fill : 'transparent',
                     }}>
-                    {eps[0]?.posterPath ? (
-                      <Image
-                        source={{ uri: sharpImage(eps[0].posterPath, 'poster', 60) ?? undefined }}
-                        style={StyleSheet.absoluteFill}
-                        contentFit="cover"
-                      />
-                    ) : null}
-                    {eps.length ? <LinearGradient colors={['rgba(0,0,0,0.55)', 'transparent']} style={StyleSheet.absoluteFill} /> : null}
-                    <View style={{ padding: 4, flexDirection: 'row', justifyContent: 'space-between' }}>
-                      <View
-                        style={
-                          isToday
-                            ? { backgroundColor: C.accent, borderRadius: 9, minWidth: 18, height: 18, alignItems: 'center', justifyContent: 'center' }
-                            : undefined
-                        }>
-                        <T style={{ fontSize: 12, fontWeight: '800', color: eps.length ? '#fff' : isToday ? C.onAccent : C.text, paddingHorizontal: isToday ? 3 : 0 }}>
-                          {Number(d.slice(8))}
-                        </T>
-                      </View>
-                      {eps.length > 1 ? <T style={{ fontSize: 10, fontWeight: '800', color: '#fff' }}>+{eps.length - 1}</T> : null}
+                    <View
+                      style={{
+                        width: 28,
+                        height: 28,
+                        borderRadius: 14,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        backgroundColor: isToday ? C.accent : 'transparent',
+                      }}>
+                      <T raw style={{ fontSize: 15, fontWeight: isToday || on ? '600' : '400', color: isToday ? C.onAccent : past ? C.textMuted : C.text }}>
+                        {Number(d.slice(8))}
+                      </T>
                     </View>
+                    {wide ? (
+                      // En computador, las carátulas de lo que sale ese día, pequeñas y en fila.
+                      <View style={{ flexDirection: 'row', gap: 3 }}>
+                        {eps.slice(0, 3).map((e) => (
+                          <Image
+                            key={`${e.key}:${e.episode}`}
+                            source={{ uri: sharpImage(e.posterPath, 'poster', 34) ?? undefined }}
+                            style={{ width: 30, height: 45, borderRadius: 6, backgroundColor: C.fill }}
+                            contentFit="cover"
+                          />
+                        ))}
+                      </View>
+                    ) : (
+                      <View style={{ flexDirection: 'row', gap: 3 }}>
+                        {eps.slice(0, 3).map((e) => (
+                          <View key={`${e.key}:${e.episode}`} style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: C.accent }} />
+                        ))}
+                      </View>
+                    )}
                   </View>
                 ) : null}
               </Touchable>
@@ -297,12 +310,7 @@ function MonthView({ episodes }: { episodes: CalendarEpisode[] }) {
       </View>
       {picked ? (
         <View style={{ gap: Space.sm }}>
-          <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: Space.sm }}>
-            <T variant="heading">{dayLabel(picked)}</T>
-            <T variant="small" muted>
-              {longDate(picked)}
-            </T>
-          </View>
+          <T variant="heading">{dayLabel(picked)}</T>
           {list.length ? (
             list.map((e) => <EpisodeRow key={`${e.key}:${e.season}:${e.episode}`} e={e} />)
           ) : (

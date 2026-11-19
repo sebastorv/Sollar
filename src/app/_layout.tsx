@@ -14,6 +14,7 @@ import { FixedInsets } from '@/lib/insets';
 import { LanguageProvider } from '@/i18n';
 import { useAutoUpdate } from '@/lib/updates';
 import { useArtUpgrade } from '@/hooks/use-art-upgrade';
+import { useLibraryRefresh } from '@/hooks/use-library-refresh';
 import { LoginScreen } from '@/components/login';
 import { Icon } from '@/components/icons';
 import { AuthProvider, useAuth } from '@/store/auth';
@@ -105,6 +106,7 @@ function Navigation() {
   const C = useColors();
   useAutoUpdate();
   useArtUpgrade();
+  useLibraryRefresh();
   const navTheme = useMemo(() => {
     const base = C.mode === 'dark' ? DarkTheme : DefaultTheme;
     return {

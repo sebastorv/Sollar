@@ -41,7 +41,7 @@ export function useArtUpgrade() {
         try {
           const p = await getOriginalPoster(i.mediaType, i.tmdbId);
           const cur = libRef.current.get(i.key);
-          if (p && cur && cur.posterPath !== p) libRef.current.setPoster(i.key, p);
+          if (p && cur && !cur.posterCustom && cur.posterPath !== p) libRef.current.setPoster(i.key, p);
           done.add(i.key);
         } catch {
           // Si falla, se intenta en otra sesión.

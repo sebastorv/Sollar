@@ -10,6 +10,7 @@ import { SollarLogo } from '@/components/brand';
 import { Glass, card } from '@/components/glass';
 import { PlatformPicker } from '@/components/platforms';
 import { Button, Chip, Screen, Section, T } from '@/components/ui';
+import { useSettings } from '@/store/settings';
 import { ACCENT_ORDER, ACCENTS, Radius, Space, type Colors } from '@/constants/theme';
 import { useColors, useStyles, useThemeSettings, type ModeSetting } from '@/store/theme';
 import { parseBackup } from '@/lib/library-item';
@@ -177,6 +178,7 @@ function Appearance() {
   const C = useColors();
   const styles = useStyles(makeStyles);
   const { mode, setMode, accent, setAccent } = useThemeSettings();
+  const { profile, setProfile } = useSettings();
   return (
     <Section title="Apariencia">
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: Space.sm }}>
@@ -207,9 +209,18 @@ function Appearance() {
       <View style={styles.preview}>
         <SollarLogo size={44} shape="icon" />
         <T variant="small" muted style={{ flex: 1 }}>
-          Así se ve el ícono con este color. El modo claro y Brasa vienen por defecto.
+          Así se ve el ícono con este color. El modo claro y Sol vienen por defecto.
         </T>
       </View>
+      <T variant="label">Fondo de la app</T>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: Space.sm }}>
+        <Chip label="Tu favorita" selected={profile.wallpaper === undefined} onPress={() => setProfile({ wallpaper: undefined })} />
+        {profile.wallpaper ? <Chip label="Elegido en una ficha" selected onPress={() => {}} /> : null}
+        <Chip label="Ninguno" selected={profile.wallpaper === null} onPress={() => setProfile({ wallpaper: null })} />
+      </View>
+      <T variant="caption" muted>
+        Para usar otra imagen, abre una serie o película y toca Más › Usar como fondo.
+      </T>
     </Section>
   );
 }

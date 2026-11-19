@@ -69,6 +69,7 @@ type Action =
   | { type: 'setEpisodes'; key: string; episodes: { season: number; episode: number }[]; watched: boolean }
   | { type: 'refreshSeasons'; key: string; seasons: SeasonSummary[] }
   | { type: 'availability'; key: string; availability: Availability }
+  | { type: 'quiet'; key: string; patch: Partial<LibraryItem> }
   | { type: 'import'; items: LibraryItem[]; mode: 'merge' | 'replace' };
 
 function touch(item: LibraryItem, patch: Partial<LibraryItem>): LibraryItem {
@@ -203,6 +204,13 @@ function reducer(state: State, action: Action): State {
       return { ...state, items: { ...state.items, [action.key]: { ...next, status: autoStatus(next) } } };
     }
 
+    case 'quiet': {
+      // Datos de TMDB (nombre en el idioma elegido): no cuentan como cambio del usuario.
+      const item = state.items[action.key];
+      if (!item) return state;
+      return { ...state, items: { ...state.items, [action.key]: { ...item, ...action.patch } } };
+    }
+
     case 'availability': {
       const item = state.items[action.key];
       if (!item) return state;
@@ -307,7 +315,9 @@ type LibraryApi = {
   setReactions: (key: string, scope: string, list: string[]) => void;
   setEpisodeRating: (key: string, ep: string, rating: number | null) => void;
   /** Cambia la carátula guardada por la original (sin letreros de plataforma). */
-  setPoster: (key: string, posterPath: string) => void;
+  setPoster: (key: string, posterPath: string, custom?: boolean) => void;
+  /** Nombre y géneros en el idioma de la app, sin marcarlo como cambio. */
+  setMeta: (key: string, meta: { title?: string; genres?: string[] }) => void;
   exportBackup: () => BackupFile;
   importBackup: (backup: BackupFile, mode: 'merge' | 'replace') => void;
 };
@@ -456,7 +466,9 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
         else delete episodeRatings[ep];
         dispatch({ type: 'patch', key, patch: { episodeRatings } });
       },
-      setPoster: (key, posterPath) => dispatch({ type: 'patch', key, patch: { posterPath } }),
+      setPoster: (key, posterPath, custom) =>
+        dispatch({ type: 'patch', key, patch: custom === undefined ? { posterPath } : { posterPath, posterCustom: custom } }),
+      setMeta: (key, meta) => dispatch({ type: 'quiet', key, patch: meta }),
       exportBackup: () => ({
         app: 'sollar',
         version: 1,

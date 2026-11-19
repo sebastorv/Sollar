@@ -29,7 +29,8 @@ export const RATING_LABELS = [
   '¡Imperdible!',
 ];
 
-const STAR = 'M12 2.6l2.85 5.9 6.45.86-4.7 4.5 1.17 6.42L12 17.2l-5.77 3.08 1.17-6.42-4.7-4.5 6.45-.86L12 2.6Z';
+// Estrella de puntas redondeadas: el trazo grueso con uniones redondas suaviza cada punta.
+const STAR = 'M12 4.2l2.35 4.85 5.3.72-3.86 3.7.96 5.28L12 16.2l-4.75 2.55.96-5.28-3.86-3.7 5.3-.72L12 4.2Z';
 
 let uid = 0;
 
@@ -46,11 +47,11 @@ function Star({ fill, size }: { fill: 0 | 0.5 | 1; size: number }) {
         </ClipPath>
       </Defs>
       {fill === 1 ? (
-        <Path d={STAR} fill={C.accent} stroke={C.accent} strokeWidth={1.4} strokeLinejoin="round" />
+        <Path d={STAR} fill={C.accent} stroke={C.accent} strokeWidth={3.2} strokeLinejoin="round" />
       ) : (
         <>
-          <Path d={STAR} fill="none" stroke={empty} strokeWidth={1.4} strokeLinejoin="round" />
-          {fill === 0.5 ? <Path d={STAR} fill={C.accent} stroke={C.accent} strokeWidth={1.4} strokeLinejoin="round" clipPath={`url(#${id})`} /> : null}
+          <Path d={STAR} fill="none" stroke={empty} strokeWidth={1.7} strokeLinejoin="round" />
+          {fill === 0.5 ? <Path d={STAR} fill={C.accent} stroke={C.accent} strokeWidth={3.2} strokeLinejoin="round" clipPath={`url(#${id})`} /> : null}
         </>
       )}
     </Svg>

@@ -91,7 +91,7 @@ function norm(s: string) {
     .trim();
 }
 
-const OST = /(soundtrack|original score|score from|music from|original (motion picture|series|television|tv)|banda sonora|\bost\b|songs from|the score)/i;
+const OST = /(soundtrack|original score|score from|music from|music inspired|inspired by|original (motion picture|series|television|tv)|banda sonora|\bost\b|songs from|the score|\(season \d+|season \d+ \(|\bvol\.? ?\d)/i;
 
 function art(url?: string, size = 600) {
   return url ? url.replace(/\/\d+x\d+bb\./, `/${size}x${size}bb.`) : null;
@@ -105,7 +105,8 @@ export async function findSoundtracks(titles: string[], year: string | null): Pr
   const names = [...new Set(titles.filter(Boolean))];
   const found = new Map<number, RawItem>();
   for (const t of names) {
-    for (const term of [`${t} soundtrack`, `${t} original score`]) {
+    // También las recopilaciones de canciones que sonaron (no solo la música original).
+    for (const term of [`${t} soundtrack`, `${t} original score`, `music from ${t}`, `songs from ${t}`]) {
       const res = await itunes('search', { term, media: 'music', entity: 'album', limit: '25', country: 'US' }).catch(() => []);
       for (const r of res) if (r.collectionId) found.set(r.collectionId, r);
     }
@@ -126,7 +127,7 @@ export async function findSoundtracks(titles: string[], year: string | null): Pr
   };
   return albums
     .sort((a, b) => score(b) - score(a))
-    .slice(0, 8)
+    .slice(0, 12)
     .map((r) => ({
       id: r.collectionId!,
       name: r.collectionName ?? '',

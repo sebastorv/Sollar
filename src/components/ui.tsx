@@ -99,7 +99,7 @@ export function Screen({
   );
   return (
     <SafeAreaView style={styles.screen} edges={['left', 'right']}>
-      <Backdrop />
+      <Backdrop wallpaper />
       <FadeIn>
       {scroll ? (
         <ScrollView

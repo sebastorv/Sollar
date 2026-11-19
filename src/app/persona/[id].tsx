@@ -121,7 +121,6 @@ export default function PersonScreen() {
                   title={c.title ?? c.name ?? ''}
                   posterPath={c.poster_path}
                   subtitle={c.character || null}
-                  highlight={STATUS_LABEL[it.status]}
                 />
               );
             })}

@@ -88,6 +88,8 @@ export type LibraryItem = {
   episodeRatings?: Record<string, number>;
   /** Dónde verlo (puede faltar en títulos guardados antes de esta función). */
   availability?: Availability | null;
+  /** La carátula la eligió la persona: no se reemplaza sola. */
+  posterCustom?: boolean;
   addedAt: string;
   updatedAt: string;
 };

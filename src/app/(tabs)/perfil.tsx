@@ -20,7 +20,8 @@ import { useTabScroll } from '@/components/tab-scroll';
 import { Touchable } from '@/components/touch';
 import { Button, Poster, RailContext, T } from '@/components/ui';
 import { RAIL_WIDTH, Radius, Space, WIDE, type Colors } from '@/constants/theme';
-import { eventsOf, streaks, totalsOf, MONTHS } from '@/lib/activity';
+import { eventsOf, streaks, topBy, totalsOf, MONTHS } from '@/lib/activity';
+import { useL } from '@/i18n';
 import { ago, followers as countFollowers, following as listFollowing, myProfile, type Profile } from '@/lib/social';
 import { todayISO, addDays } from '@/lib/dates';
 import { formatEpisode } from '@/lib/progress';
@@ -252,6 +253,8 @@ function ProfileBody() {
             </Touchable>
           </View>
 
+          <Tops wide={wide} />
+
           {/* Favoritos */}
           <View style={{ gap: Space.md }}>
             <View>
@@ -351,6 +354,153 @@ function ProfileBody() {
       </ScrollView>
 
       <EditProfile visible={editing} onClose={() => setEditing(false)} initialName={name} />
+    </View>
+  );
+}
+
+/**
+ * Tus tops, como el perfil de Trakt: números de este mes o de siempre y tres rankings
+ * (lo que más viste, lo que mejor calificaste y tus géneros).
+ */
+function Tops({ wide }: { wide: boolean }) {
+  const C = useColors();
+  const { items, get } = useLibrary();
+  const [period, setPeriod] = useState<'month' | 'all'>('month');
+  const all = useMemo(() => eventsOf(items), [items]);
+  const month = todayISO().slice(0, 7);
+  const events = useMemo(() => (period === 'all' ? all : all.filter((e) => e.day.startsWith(month))), [all, period, month]);
+  const t = totalsOf(events);
+  const shows = new Set(events.filter((e) => e.mediaType === 'tv').map((e) => e.key)).size;
+  const rated = items.filter((i) => i.rating && (period === 'all' || (i.updatedAt ?? '').startsWith(month))).length;
+  const most = topBy(events, (e) => e.key, 10)
+    .map((x) => ({ item: get(x.name), value: x.value }))
+    .filter((x) => x.item);
+  const best = [...items].filter((i) => i.rating).sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0)).slice(0, 10);
+  const genres = topBy(events, (e) => e.genres, 6, (e) => e.minutes);
+  const gTotal = genres.reduce((a, g) => a + g.value, 0) || 1;
+  const w = wide ? 132 : 108;
+
+  const stat = (value: string, label: string) => (
+    <View style={{ flexBasis: wide ? '18%' : '30%', flexGrow: 1, paddingVertical: 12, paddingHorizontal: 14, borderRadius: 18, backgroundColor: C.fill, gap: 2 }}>
+      <T raw style={{ fontSize: 22, fontWeight: '700', color: C.text }}>
+        {value}
+      </T>
+      <T style={{ fontSize: 13, color: C.textMuted }}>{label}</T>
+    </View>
+  );
+
+  const ranked = (list: { key: string; tipo: string; id: number; poster: string | null; title: string; badge: string }[]) => (
+    <HScroll showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: Space.md }}>
+      {list.map((x, i) => (
+        <Link key={x.key} href={{ pathname: '/titulo/[tipo]/[id]', params: { tipo: x.tipo, id: String(x.id) } }} asChild>
+          <Touchable pressScale={0.96} style={{ width: w, gap: 6 }}>
+            <View>
+              <Poster path={x.poster} title={x.title} width={w} />
+              <View style={{ position: 'absolute', left: 6, top: 6, minWidth: 26, height: 26, borderRadius: 13, paddingHorizontal: 7, alignItems: 'center', justifyContent: 'center', backgroundColor: i < 3 ? C.accent : 'rgba(0,0,0,0.6)' }}>
+                <T raw style={{ fontSize: 13, fontWeight: '700', color: i < 3 ? C.onAccent : '#fff' }}>
+                  {i + 1}
+                </T>
+              </View>
+            </View>
+            <T raw numberOfLines={1} style={{ fontSize: 14, fontWeight: '500', color: C.text }}>
+              {x.title}
+            </T>
+            <T raw numberOfLines={1} style={{ fontSize: 13, color: C.textMuted }}>
+              {x.badge}
+            </T>
+          </Touchable>
+        </Link>
+      ))}
+    </HScroll>
+  );
+
+  const L = useL();
+  return (
+    <View style={{ gap: Space.lg }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: Space.md, flexWrap: 'wrap' }}>
+        <T style={{ fontSize: 24, fontWeight: '700', color: C.text, flex: 1 }}>Tus tops</T>
+        <View style={{ flexDirection: 'row', borderRadius: 999, padding: 4, backgroundColor: C.fill }}>
+          {(
+            [
+              ['month', 'Este mes'],
+              ['all', 'Todo el tiempo'],
+            ] as const
+          ).map(([k, label]) => (
+            <Touchable
+              key={k}
+              haptic="select"
+              pressScale={0.94}
+              onPress={() => setPeriod(k)}
+              style={{ height: 34, paddingHorizontal: 14, borderRadius: 999, justifyContent: 'center', backgroundColor: period === k ? C.accentSoft : 'transparent' }}>
+              <T style={{ fontSize: 14, fontWeight: period === k ? '600' : '400', color: period === k ? C.text : C.textMuted }}>{label}</T>
+            </Touchable>
+          ))}
+        </View>
+      </View>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: Space.sm }}>
+        {stat(n(t.episodes), 'Episodios')}
+        {stat(n(shows), 'Series')}
+        {stat(n(t.movies), 'Películas')}
+        {stat(n(Math.round(t.minutes / 60)), 'Horas')}
+        {stat(n(rated), 'Calificaciones')}
+      </View>
+      {most.length ? (
+        <View style={{ gap: Space.sm }}>
+          <T style={{ fontSize: 18, fontWeight: '600', color: C.text }}>Las más vistas</T>
+          {ranked(
+            most.map(({ item, value }) => ({
+              key: item!.key,
+              tipo: item!.mediaType,
+              id: item!.tmdbId,
+              poster: item!.posterPath,
+              title: item!.title,
+              badge: item!.mediaType === 'tv' ? L(`${value} episodios`, `${value} episodes`) : L(value > 1 ? `${value} veces` : 'Película', value > 1 ? `${value} times` : 'Movie'),
+            })),
+          )}
+        </View>
+      ) : (
+        <T muted>{period === 'month' ? 'Aún no has visto nada este mes.' : 'Marca episodios y películas para ver tus tops.'}</T>
+      )}
+      {best.length ? (
+        <View style={{ gap: Space.sm }}>
+          <T style={{ fontSize: 18, fontWeight: '600', color: C.text }}>Tus mejor calificadas</T>
+          {ranked(
+            best.map((i) => ({
+              key: i.key,
+              tipo: i.mediaType,
+              id: i.tmdbId,
+              poster: i.posterPath,
+              title: i.title,
+              badge: `★ ${((i.rating ?? 0) / 2).toFixed((i.rating ?? 0) % 2 ? 1 : 0)}`,
+            })),
+          )}
+        </View>
+      ) : null}
+      {genres.length ? (
+        <View style={{ gap: Space.sm }}>
+          <T style={{ fontSize: 18, fontWeight: '600', color: C.text }}>Géneros favoritos</T>
+          <View style={{ gap: 10 }}>
+            {genres.map((g, i) => {
+              const pct = Math.round((g.value / gTotal) * 100);
+              return (
+                <View key={g.name} style={{ gap: 4 }}>
+                  <View style={{ flexDirection: 'row' }}>
+                    <T raw style={{ flex: 1, fontSize: 14, color: C.text }}>
+                      {i + 1}. {g.name}
+                    </T>
+                    <T raw style={{ fontSize: 14, color: C.textMuted }}>
+                      {pct}%
+                    </T>
+                  </View>
+                  <View style={{ height: 6, borderRadius: 3, backgroundColor: C.fill, overflow: 'hidden' }}>
+                    <View style={{ width: `${Math.max(pct, 3)}%`, height: 6, borderRadius: 3, backgroundColor: C.accent }} />
+                  </View>
+                </View>
+              );
+            })}
+          </View>
+        </View>
+      ) : null}
     </View>
   );
 }

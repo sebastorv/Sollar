@@ -6,11 +6,21 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 
+import { setRegion } from '@/lib/tmdb';
+
 const KEY = 'sollar.settings.v1';
 const OLD_KEY = 'butaca.settings.v1';
 
 /** Lo que se ve en tu perfil: nombre, foto (pequeña, en JPEG) y una frase. */
-export type MyProfile = { name: string; avatar: string | null; bio: string };
+export type MyProfile = {
+  name: string;
+  avatar: string | null;
+  bio: string;
+  /** País para "Dónde ver" (código de dos letras). */
+  region?: string;
+  /** Fondo de la app: imagen de fondo (TMDB) de un título; null para ninguno; sin valor, tu favorita. */
+  wallpaper?: string | null;
+};
 const EMPTY_PROFILE: MyProfile = { name: '', avatar: null, bio: '' };
 
 type Settings = { myProviders: number[]; profile: MyProfile; updatedAt: string };
@@ -49,6 +59,11 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       .catch(() => {})
       .finally(() => setReady(true));
   }, []);
+
+  // El país elegido rige para todo lo que se pide a TMDB.
+  useEffect(() => {
+    setRegion(profile.region ?? 'CO');
+  }, [profile.region]);
 
   useEffect(() => {
     if (!ready) return;

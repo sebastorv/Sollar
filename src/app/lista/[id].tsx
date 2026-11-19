@@ -186,7 +186,6 @@ export default function ListScreen() {
                   title={e.title}
                   posterPath={it?.posterPath ?? e.posterPath}
                   subtitle={it?.rating ? `Tu nota: ${it.rating}/10` : e.year}
-                  highlight={it ? STATUS_LABEL[it.status] : null}
                 />
               );
             })}

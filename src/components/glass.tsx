@@ -14,7 +14,10 @@ import { LinearGradient } from 'expo-linear-gradient';
 import type { ReactNode } from 'react';
 import { Platform, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
-import { Radius, type Colors } from '@/constants/theme';
+import { Radius, withAlpha, type Colors } from '@/constants/theme';
+import { Image } from 'expo-image';
+import { useLibrary } from '@/store/library';
+import { useSettings } from '@/store/settings';
 import { useColors } from '@/store/theme';
 
 import { Icon, type IconName } from './icons';
@@ -22,10 +25,35 @@ import { Touchable } from './touch';
 
 const nativeLiquidGlass = Platform.OS === 'ios' && isLiquidGlassAvailable();
 
-export function Backdrop() {
+/**
+ * El fondo de cada pantalla. Con wallpaper, como en Trakt: la imagen de fondo de tu serie
+ * favorita (o la que elijas desde una ficha), quieta detrás de todo y muy atenuada.
+ */
+export function Backdrop({ wallpaper = false }: { wallpaper?: boolean }) {
   const C = useColors();
+  const { profile } = useSettings();
+  const { items } = useLibrary();
+  let path: string | null = null;
+  if (wallpaper && profile.wallpaper !== null) {
+    path = profile.wallpaper ?? items.find((i) => i.favorite && i.backdropPath)?.backdropPath ?? null;
+  }
+  const uri = path ? `https://image.tmdb.org/t/p/w1280${path}` : null;
   return (
     <View style={[StyleSheet.absoluteFill, { backgroundColor: C.bg }]} pointerEvents="none">
+      {uri ? (
+        <>
+          <Image source={{ uri }} style={StyleSheet.absoluteFill} contentFit="cover" transition={400} cachePolicy="memory-disk" />
+          <LinearGradient
+            colors={
+              C.mode === 'dark'
+                ? [withAlpha(C.bg, 0.78), withAlpha(C.bg, 0.86), withAlpha(C.bg, 0.94)]
+                : [withAlpha(C.bg, 0.82), withAlpha(C.bg, 0.9), withAlpha(C.bg, 0.96)]
+            }
+            locations={[0, 0.5, 1]}
+            style={StyleSheet.absoluteFill}
+          />
+        </>
+      ) : null}
     </View>
   );
 }
@@ -56,7 +84,8 @@ export function Glass({
   const light = C.mode === 'light';
   // Vidrio líquido: casi transparente, con desenfoque y saturación del fondo. El borde no es una
   // línea: es un brillo interno (arriba más fuerte), como el canto de una gota de vidrio.
-  const tintBg = strong ? C.glassStrong : light ? 'rgba(255,255,255,0.24)' : 'rgba(30,29,36,0.30)';
+  // Vidrio de cristal, como el de iOS 26: casi transparente en el centro, con brillo en los cantos.
+  const tintBg = strong ? C.glassStrong : light ? 'rgba(255,255,255,0.16)' : 'rgba(255,255,255,0.07)';
   const web = Platform.OS === 'web';
   return (
     <View
@@ -75,8 +104,8 @@ export function Glass({
               borderRadius: radius,
               backgroundColor: tintBg,
               // @ts-expect-error: propiedades de CSS que react-native-web pasa al navegador.
-              backdropFilter: `blur(${strong ? 40 : 16}px) saturate(${strong ? 200 : 180}%)`,
-              WebkitBackdropFilter: `blur(${strong ? 40 : 16}px) saturate(${strong ? 200 : 180}%)`,
+              backdropFilter: `blur(${strong ? 30 : 12}px) saturate(${strong ? 190 : 200}%) brightness(${light ? 1.04 : 1.12})`,
+              WebkitBackdropFilter: `blur(${strong ? 30 : 12}px) saturate(${strong ? 190 : 200}%) brightness(${light ? 1.04 : 1.12})`,
             },
           ]}
         />
@@ -96,8 +125,8 @@ export function Glass({
         pointerEvents="none"
         colors={
           light
-            ? ['rgba(255,255,255,0.22)', 'rgba(255,255,255,0)', 'rgba(255,255,255,0)', 'rgba(255,255,255,0)']
-            : ['rgba(255,255,255,0.05)', 'rgba(255,255,255,0)', 'rgba(255,255,255,0)', 'rgba(255,255,255,0)']
+            ? ['rgba(255,255,255,0.32)', 'rgba(255,255,255,0.04)', 'rgba(255,255,255,0)', 'rgba(255,255,255,0.12)']
+            : ['rgba(255,255,255,0.10)', 'rgba(255,255,255,0.01)', 'rgba(255,255,255,0)', 'rgba(255,255,255,0.05)']
         }
         locations={[0, 0.4, 0.7, 1]}
         style={[StyleSheet.absoluteFill, { borderRadius: radius }]}
@@ -137,12 +166,12 @@ export function glassFill(C: Colors) {
 export function glassEdge(C: Colors, floats: boolean) {
   const light = C.mode === 'light';
   const inner = light
-    ? 'inset 0 1px 0.5px rgba(255,255,255,0.75)'
-    : 'inset 0 1px 0.5px rgba(255,255,255,0.09)';
+    ? 'inset 1.5px 1.5px 1px -1px rgba(255,255,255,0.95), inset -1.5px -1.5px 1px -1px rgba(255,255,255,0.6), inset 0 0 8px rgba(255,255,255,0.18)'
+    : 'inset 1.5px 1.5px 1px -1px rgba(255,255,255,0.4), inset -1.5px -1.5px 1px -1px rgba(255,255,255,0.18), inset 0 0 8px rgba(255,255,255,0.05)';
   const outer = floats
     ? light
-      ? '0 10px 30px rgba(30,16,50,0.14), 0 1px 3px rgba(30,16,50,0.08)'
-      : '0 10px 30px rgba(0,0,0,0.5)'
+      ? '0 8px 28px rgba(30,16,50,0.12), 0 1px 2px rgba(30,16,50,0.06)'
+      : '0 8px 28px rgba(0,0,0,0.45)'
     : light
       ? '0 4px 16px rgba(30,16,50,0.07), 0 1px 2px rgba(30,16,50,0.05)'
       : '0 4px 16px rgba(0,0,0,0.25)';

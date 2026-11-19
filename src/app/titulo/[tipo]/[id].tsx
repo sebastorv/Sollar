@@ -18,7 +18,7 @@ import { Rating, Reactions } from '@/components/rating';
 import { Backdrop, card, GlassButton, glassFill } from '@/components/glass';
 import { Icon, type IconName } from '@/components/icons';
 import { AddToListSheet, entryFrom } from '@/components/lists';
-import { ProviderWordmark } from '@/components/platforms';
+import { ProviderLogo } from '@/components/platforms';
 import { Gallery } from '@/components/gallery';
 import { anchorOf, BubbleMenu, Sheet, type Anchor, type PressLike } from '@/components/sheet';
 import { EpisodePanel, ProgressSummary, SeasonsBlock, UpNext } from '@/components/episodes';
@@ -127,7 +127,7 @@ function TitleScreenBody() {
   }
   const [episodeOpen, setEpisodeOpen] = useState<{ season: number; episode: number } | null>(null);
   const insets = useSafeAreaInsets();
-  const [sheet, setSheet] = useState<null | 'status' | 'rate' | 'lists' | 'watched' | 'more'>(null);
+  const [sheet, setSheet] = useState<null | 'status' | 'rate' | 'lists' | 'watched' | 'more' | 'poster'>(null);
   const [overviewOpen, setOverviewOpen] = useState(false);
 
   useEffect(() => {
@@ -144,6 +144,16 @@ function TitleScreenBody() {
     getExtras(type, id)
       .then((x) => !cancelled && setExtras(x))
       .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [type, id]);
+
+  // Dónde ver: se vuelve a pedir si cambias de país.
+  const settings = useSettings();
+  const region = settings.profile.region ?? 'CO';
+  useEffect(() => {
+    let cancelled = false;
     setProvidersLoaded(false);
     getWatchProviders(type, id)
       .then((p) => {
@@ -151,11 +161,11 @@ function TitleScreenBody() {
         setProviders(p);
         setProvidersLoaded(true);
       })
-      .catch(() => {});
+      .catch(() => !cancelled && setProvidersLoaded(true));
     return () => {
       cancelled = true;
     };
-  }, [type, id]);
+  }, [type, id, region]);
 
   // Si la serie ya está guardada, actualiza sus temporadas (por si salió una nueva).
   const savedSeasonsJson = item ? JSON.stringify(item.seasons) : null;
@@ -175,7 +185,7 @@ function TitleScreenBody() {
   // Cambia la carátula guardada por la original, sin letreros de la plataforma.
   const cleanPoster = extras?.poster;
   useEffect(() => {
-    if (saved && cleanPoster && item?.posterPath !== cleanPoster) lib.setPoster(key, cleanPoster);
+    if (saved && cleanPoster && !item?.posterCustom && item?.posterPath !== cleanPoster) lib.setPoster(key, cleanPoster);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [saved, cleanPoster, key]);
 
@@ -199,7 +209,8 @@ function TitleScreenBody() {
   const title = isTv ? details.data.name : details.data.title;
   const date = isTv ? details.data.first_air_date : details.data.release_date;
   const year = date?.slice(0, 4);
-  const poster = extras?.poster ?? d.poster_path;
+  // Tu carátula elegida manda; si no, la original.
+  const poster = item?.posterCustom ? item.posterPath : extras?.poster ?? d.poster_path;
 
   // "2019–2024 · 4 temporadas · 36 episodios · 1 d 4 h" o "2023 · 2 h 10 min · +13".
   let meta: (string | null | undefined)[];
@@ -260,13 +271,20 @@ function TitleScreenBody() {
   const renderHero = (C: Colors, styles: ReturnType<typeof makeStyles>) => {
   // Título: el logo oficial cuando existe (como Bingebase); si no, texto grande.
   const titleBlock = logo ? (
-    <Image
-      source={{ uri: logo }}
-      accessibilityLabel={title}
-      style={{ width: logoW, height: logoW / logoAspect, maxWidth: '100%', alignSelf: wide ? 'flex-start' : 'center' }}
-      contentFit="contain"
-      contentPosition={wide ? 'left' : 'center'}
-    />
+    // En modo claro, los logos blancos se perderían: una sombra suave los recorta del fondo.
+    <View
+      style={[
+        { alignSelf: wide ? 'flex-start' : 'center', maxWidth: '100%' },
+        C.mode === 'light' ? ({ filter: 'drop-shadow(0px 1px 1px rgba(0,0,0,0.55)) drop-shadow(0px 2px 10px rgba(0,0,0,0.35))' } as object) : null,
+      ]}>
+      <Image
+        source={{ uri: logo }}
+        accessibilityLabel={title}
+        style={{ width: logoW, height: logoW / logoAspect, maxWidth: '100%' }}
+        contentFit="contain"
+        contentPosition={wide ? 'left' : 'center'}
+      />
+    </View>
   ) : (
     <T style={[styles.title, wide ? { fontSize: 46, lineHeight: 52 } : { textAlign: 'center' }]}>{title}</T>
   );
@@ -455,7 +473,7 @@ function TitleScreenBody() {
       <View style={{ backgroundColor: C.bg }}>
         {scrim}
         {/* Compartir arriba a la derecha, sobre la imagen; se va con ella al bajar. */}
-        <View style={{ position: 'absolute', right: Gutter, top: insets.top + Space.sm, zIndex: 2 }}>
+        <View style={{ position: 'absolute', right: Gutter, top: insets.top + 16, zIndex: 2 }}>
           <RoundIcon icon="share" label="Compartir" onPress={share} />
         </View>
         <View style={[styles.content, { paddingTop: insets.top + 64, paddingBottom: Space.xl, gap: Space.lg }]}>
@@ -642,12 +660,48 @@ function TitleScreenBody() {
             ? [{ label: 'Ver tráiler', icon: 'film' as IconName, onPress: () => Linking.openURL(`https://www.youtube.com/watch?v=${extras.trailerKey}`) }]
             : []),
           { label: 'Ver en TMDB', icon: 'screen' as IconName, onPress: () => Linking.openURL(`https://www.themoviedb.org/${type}/${id}`) },
+          ...(extras && extras.posters.length > 1
+            ? [{ label: 'Cambiar carátula', icon: 'grid' as IconName, onPress: () => setSheet('poster') }]
+            : []),
+          ...(extras?.backdrops.length
+            ? [
+                {
+                  label: settings.profile.wallpaper === extras.backdrops[0].path ? 'Quitar como fondo' : 'Usar como fondo',
+                  icon: 'camera' as IconName,
+                  onPress: () =>
+                    settings.setProfile({ wallpaper: settings.profile.wallpaper === extras.backdrops[0].path ? undefined : extras.backdrops[0].path }),
+                },
+              ]
+            : []),
           ...(extras?.imdbId
             ? [{ label: 'Ver en IMDb', icon: 'screen' as IconName, onPress: () => Linking.openURL(`https://www.imdb.com/title/${extras.imdbId}/`) }]
             : []),
           ...(item ? ['divider' as const, { label: 'Quitar de mi lista', icon: 'trash' as IconName, danger: true, onPress: () => lib.remove(key) }] : []),
         ]}
       />
+
+      {/* Elegir otra carátula entre las de TMDB. */}
+      <Sheet visible={sheet === 'poster'} onClose={() => setSheet(null)} title="Cambiar carátula">
+        <ScrollView style={{ maxHeight: 460 }} contentContainerStyle={{ flexDirection: 'row', flexWrap: 'wrap', gap: Space.sm }}>
+          {(extras?.posters ?? []).map((p) => {
+            const on = poster === p;
+            return (
+              <Touchable
+                key={p}
+                haptic="select"
+                pressScale={0.95}
+                onPress={() => {
+                  ensure(isTv ? 'watching' : 'planned');
+                  lib.setPoster(key, p, true);
+                  setSheet(null);
+                }}
+                style={{ borderRadius: Radius.md, overflow: 'hidden', boxShadow: on ? `0 0 0 3px ${C.accent}` : undefined }}>
+                <Poster path={p} title={title} width={96} />
+              </Touchable>
+            );
+          })}
+        </ScrollView>
+      </Sheet>
 
       <AddToListSheet visible={sheet === 'lists'} anchor={sheetAnchor} entry={entry} onClose={() => setSheet(null)} />
     </View>
@@ -1053,22 +1107,58 @@ const KIND_LABEL = { flatrate: 'Streaming', free: 'Gratis', ads: 'Con anuncios',
  * Dónde ver, como JustWatch: una cuadrícula de mosaicos con el logo grande de cada servicio y,
  * debajo, cómo se ve ahí (suscripción, alquiler, compra). Los que pagas van primero, marcados.
  */
+const COUNTRIES: [string, string][] = [
+  ['CO', 'Colombia'],
+  ['MX', 'México'],
+  ['US', 'Estados Unidos'],
+  ['ES', 'España'],
+  ['AR', 'Argentina'],
+  ['CL', 'Chile'],
+  ['PE', 'Perú'],
+  ['EC', 'Ecuador'],
+  ['VE', 'Venezuela'],
+  ['BR', 'Brasil'],
+  ['CA', 'Canadá'],
+  ['GB', 'Reino Unido'],
+];
+
+/** Nombre base de un servicio: "Netflix Standard with Ads" y "Netflix" son el mismo. */
+function baseName(n: string) {
+  return n
+    .replace(/\s+(Standard with Ads|with Ads|Basic with Ads|Basic|Premium|Kids|Amazon Channel|Apple TV Channel|Roku Premium Channel)$/i, '')
+    .replace(/^Amazon\s+/i, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '');
+}
+
+/**
+ * Dónde ver, como JustWatch: un mosaico por servicio con su logo oficial y cómo se ve ahí
+ * (streaming, alquiler, compra). Los que pagas van primero, marcados con un ✓. Sin repetidos:
+ * las variantes de un mismo servicio (con anuncios, canales) se juntan en uno.
+ */
 function WhereToWatch({ providers, loaded }: { providers: TmdbWatchProviders | null; loaded: boolean }) {
   const C = useColors();
   const styles = useStyles(makeStyles);
-  const { myProviders } = useSettings();
+  const { myProviders, profile, setProfile } = useSettings();
   const [open, setOpen] = useState(false);
+  const [menu, setMenu] = useState<Anchor | null>(null);
   const mine = new Set(myProviders);
+  const region = profile.region ?? 'CO';
 
-  // Un mosaico por servicio, con la mejor forma de verlo (suscripción antes que alquiler).
   const rows = useMemo(() => {
-    const map = new Map<number, { id: number; name: string; logo: string | null; kind: string; order: number }>();
+    const map = new Map<string, { id: number; name: string; logo: string | null; kind: string; order: number; mine: boolean }>();
     (['flatrate', 'free', 'ads', 'rent', 'buy'] as const).forEach((k, ki) => {
       for (const p of providers?.[k] ?? []) {
-        if (!map.has(p.provider_id)) map.set(p.provider_id, { id: p.provider_id, name: p.provider_name, logo: p.logo_path || null, kind: KIND_LABEL[k], order: ki });
+        const b = baseName(p.provider_name);
+        const cur = map.get(b);
+        if (cur) {
+          if (mine.has(p.provider_id)) cur.mine = true;
+          continue;
+        }
+        map.set(b, { id: p.provider_id, name: p.provider_name, logo: p.logo_path || null, kind: KIND_LABEL[k], order: ki, mine: mine.has(p.provider_id) });
       }
     });
-    return [...map.values()].sort((a, b) => Number(mine.has(b.id)) - Number(mine.has(a.id)) || a.order - b.order);
+    return [...map.values()].sort((a, b) => Number(b.mine) - Number(a.mine) || a.order - b.order);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [providers, myProviders]);
 
@@ -1079,59 +1169,62 @@ function WhereToWatch({ providers, loaded }: { providers: TmdbWatchProviders | n
     <View style={{ gap: Space.md }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: Space.sm }}>
         <T variant="heading">Dónde ver</T>
-        <View style={{ marginLeft: 'auto', flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-          <Icon name="play" size={13} color="#F5C518" filled />
-          <T style={{ fontSize: 13, fontWeight: '700', color: C.mode === 'light' ? '#9A7A00' : '#F5C518' }}>JustWatch</T>
-        </View>
+        <Touchable
+          haptic="select"
+          onPress={async (e) => setMenu(await anchorOf(e, { x: 0, y: 0, width: 0, height: 0 }))}
+          accessibilityRole="button"
+          style={{ marginLeft: 'auto', flexDirection: 'row', alignItems: 'center', gap: 4, height: 32, paddingHorizontal: 10, borderRadius: 999 }}>
+          <Icon name="globe" size={15} color={C.textMuted} strokeWidth={1.8} />
+          <T style={{ fontSize: 14, fontWeight: '500', color: C.textMuted }}>{COUNTRIES.find((c) => c[0] === region)?.[1] ?? region}</T>
+          <Icon name="chevronDown" size={14} color={C.textMuted} strokeWidth={2} />
+        </Touchable>
       </View>
       {!loaded ? (
         <Loading />
       ) : rows.length === 0 ? (
         <T variant="small" muted>
-          Por ahora no aparece en ningún servicio de tu país.
+          Por ahora no aparece en ningún servicio de este país.
         </T>
       ) : (
         <View style={styles.wtwGrid}>
-          {shown.map((r) => {
-            const isMine = mine.has(r.id);
-            return (
-              <Touchable
-                key={r.id}
-                haptic="light"
-                pressScale={0.95}
-                disabled={!link}
-                onPress={() => link && Linking.openURL(link)}
-                accessibilityLabel={`${r.name}, ${tr(r.kind)}`}
-                style={styles.wtwTile}>
-                <View style={{ height: 42, width: 84, alignItems: 'center', justifyContent: 'center' }}>
-                  <ProviderWordmark id={r.id} name={r.name} logoPath={r.logo} />
+          {shown.map((r) => (
+            <Touchable
+              key={r.id}
+              haptic="light"
+              pressScale={0.95}
+              disabled={!link}
+              onPress={() => link && Linking.openURL(link)}
+              accessibilityLabel={`${r.name}, ${tr(r.kind)}`}
+              style={styles.wtwTile}>
+              <ProviderLogo name={r.name} logoPath={r.logo} size={50} />
+              <T numberOfLines={1} style={{ fontSize: 13, fontWeight: '500', color: C.text }}>
+                {r.kind}
+              </T>
+              {r.mine ? (
+                <View style={styles.wtwMine} accessibilityLabel={tr('En tu plan')}>
+                  <Icon name="check" size={16} color={C.accent} strokeWidth={2.6} />
                 </View>
-                <T numberOfLines={1} style={{ fontSize: 14, fontWeight: '500', color: C.text }}>
-                  {r.kind}
-                </T>
-                {isMine ? (
-                  <View style={styles.wtwMine} accessibilityLabel={tr('En tu plan')}>
-                    <Icon name="check" size={9} color={C.onAccent} strokeWidth={3.4} />
-                  </View>
-                ) : null}
-              </Touchable>
-            );
-          })}
+              ) : null}
+            </Touchable>
+          ))}
           {rows.length > 8 ? (
             <Touchable haptic="select" pressScale={0.95} onPress={() => setOpen(!open)} style={[styles.wtwTile, { justifyContent: 'center' }]}>
               <Icon name={open ? 'chevronUp' : 'plus'} size={22} color={C.text} strokeWidth={1.8} />
-              <T style={{ fontSize: 13, fontWeight: '600', color: C.textMuted }}>{open ? 'Ver menos' : `+${rows.length - 8}`}</T>
+              <T style={{ fontSize: 13, fontWeight: '500', color: C.textMuted }}>{open ? 'Ver menos' : `+${rows.length - 8}`}</T>
             </Touchable>
           ) : null}
         </View>
       )}
-      {loaded && myProviders.length === 0 ? (
-        <Touchable onPress={() => router.navigate('/perfil')}>
-          <T variant="caption" muted>
-            Elige tus plataformas en Perfil para ver cuáles están en tu plan.
-          </T>
-        </Touchable>
-      ) : null}
+      <T variant="caption" muted>
+        {isDemo ? 'Disponibilidad de ejemplo.' : 'Datos de JustWatch.'}
+        {loaded && myProviders.length === 0 ? ' Elige tus plataformas en Perfil para ver cuáles están en tu plan.' : ''}
+      </T>
+      <BubbleMenu
+        anchor={menu}
+        title="País"
+        onClose={() => setMenu(null)}
+        items={COUNTRIES.map(([code, name]) => ({ label: name, on: code === region, onPress: () => setProfile({ region: code }) }))}
+      />
     </View>
   );
 }
@@ -1242,17 +1335,7 @@ const makeStyles = (C: Colors) =>
       backgroundColor: C.mode === 'light' ? '#FFFFFF' : '#16161B',
       boxShadow: C.mode === 'light' ? '0 2px 10px rgba(30,16,50,0.06)' : 'none',
     },
-    wtwMine: {
-      position: 'absolute',
-      top: 8,
-      right: 8,
-      width: 14,
-      height: 14,
-      borderRadius: 7,
-      backgroundColor: C.accent,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
+    wtwMine: { position: 'absolute', top: 6, right: 7 },
     providerRow: { flexDirection: 'row', alignItems: 'center', gap: Space.md, paddingVertical: Space.md },
     planTag: { backgroundColor: C.accentSoft, borderRadius: Radius.pill, paddingHorizontal: 8, paddingVertical: 3 },
     scoreOf: { fontSize: 13, fontWeight: '600', color: C.textFaint },

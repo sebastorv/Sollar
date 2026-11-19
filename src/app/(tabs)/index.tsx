@@ -21,6 +21,7 @@ import { FlatList, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { SollarLogo } from '@/components/brand';
 import { TypeFilter, type TypeValue } from '@/components/type-filter';
 import { eventsOf, type WatchEvent } from '@/lib/activity';
+import { useRemaining } from '@/components/episodes';
 import { card } from '@/components/glass';
 import { Icon } from '@/components/icons';
 import { TitleCard } from '@/components/title-card';
@@ -30,7 +31,7 @@ import { Button, Empty, Poster, Screen, Section, T } from '@/components/ui';
 import { Gutter, Radius, Space, type Colors } from '@/constants/theme';
 import { useCalendar, type CalendarEpisode } from '@/hooks/use-calendar';
 import { addDays, dayLabel, daysFromToday, toISO, todayISO } from '@/lib/dates';
-import { formatEpisode, nextEpisode, totalEpisodes, watchedCount } from '@/lib/progress';
+import { formatDuration, formatEpisode, nextEpisode, totalEpisodes, watchedCount } from '@/lib/progress';
 import { availableLabel, myMatches } from '@/lib/providers';
 import { getSeason, isDemo, sharpImage } from '@/lib/tmdb';
 import type { LibraryItem, TmdbEpisode } from '@/lib/types';
@@ -242,6 +243,8 @@ function UpNextCard({ item, upcoming }: { item: LibraryItem; upcoming?: Calendar
   const next = unaired ? null : nextRaw;
   const target = next ?? (unaired && upcoming ? { season: upcoming.season, episode: upcoming.episode } : null);
   const ep = useEpisode(item.tmdbId, target?.season, target?.episode);
+  // Tiempo exacto que falta: la suma de la duración real de cada episodio pendiente.
+  const exact = useRemaining(item, item.runtime ?? 0);
   // Como Trakt: caben casi dos tarjetas a lo ancho del celular.
   const width = Math.min(Math.max(screen * 0.6, 220), 300);
   const still = sharpImage(ep?.still_path, 'still', width) ?? sharpImage(item.backdropPath, 'backdrop', width);
@@ -254,7 +257,14 @@ function UpNextCard({ item, upcoming }: { item: LibraryItem; upcoming?: Calendar
 
   return (
     <View style={{ width, gap: Space.sm }}>
-      <Link href={{ pathname: '/titulo/[tipo]/[id]', params: { tipo: 'tv', id: String(item.tmdbId) } }} asChild>
+      {/* Al tocarla se abre el episodio que sigue (no la serie). */}
+      <Link
+        href={
+          target
+            ? { pathname: '/episodio/[id]/[temporada]/[episodio]', params: { id: String(item.tmdbId), temporada: String(target.season), episodio: String(target.episode) } }
+            : { pathname: '/titulo/[tipo]/[id]', params: { tipo: 'tv', id: String(item.tmdbId) } }
+        }
+        asChild>
         <Touchable pressScale={0.97} accessibilityLabel={`${item.title}, ${code}`} style={styles.still}>
           {still ? (
             <Image source={{ uri: still }} style={StyleSheet.absoluteFill} contentFit="cover" transition={250} />
@@ -270,7 +280,7 @@ function UpNextCard({ item, upcoming }: { item: LibraryItem; upcoming?: Calendar
                 ? `Sale ${dayLabel(upcoming.airDate).toLowerCase()}`
                 : isNew
                   ? '• Nuevo'
-                  : `${left} ${left === 1 ? 'falta' : 'faltan'} · ${since(lastWatched(item))}`}
+                  : `${left} ${left === 1 ? 'falta' : 'faltan'}${exact && exact.minutes > 0 ? ` · ${formatDuration(exact.minutes)}` : ''}`}
             </T>
           </View>
         </Touchable>

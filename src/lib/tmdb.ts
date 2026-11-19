@@ -41,7 +41,11 @@ export let LANGUAGE = process.env.EXPO_PUBLIC_LANGUAGE ?? 'en-US';
 export function setTmdbLanguage(lang: string) {
   LANGUAGE = lang;
 }
-export const REGION = process.env.EXPO_PUBLIC_REGION ?? 'CO';
+export let REGION = process.env.EXPO_PUBLIC_REGION ?? 'CO';
+/** País para "Dónde ver" (Colombia por defecto; se cambia en la ficha o en Ajustes). */
+export function setRegion(code: string) {
+  REGION = code || 'CO';
+}
 
 export const hasToken = TOKEN.length > 0;
 

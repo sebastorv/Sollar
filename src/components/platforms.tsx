@@ -7,7 +7,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { Radius, Space, type Colors } from '@/constants/theme';
 import { useColors, useStyles } from '@/store/theme';
-import { findWordmark, getNetworkLogo, getProviderDirectory, type Wordmark } from '@/lib/tmdb';
+import { findWordmark, getNetworkLogo, getProviderDirectory, REGION, type Wordmark } from '@/lib/tmdb';
 import type { ProviderInfo } from '@/lib/types';
 import { useSettings } from '@/store/settings';
 
@@ -19,6 +19,7 @@ import { Touchable } from './touch';
 let directoryCache: ProviderInfo[] | null = null;
 let loading: Promise<ProviderInfo[]> | null = null;
 const DIR_KEY = 'sollar.providers.v1';
+let dirRegion = '';
 
 /** Un solo tamaño para todos los logos: así se descargan una vez y aparecen al instante. */
 export function logoUri(path: string | null) {
@@ -26,10 +27,16 @@ export function logoUri(path: string | null) {
 }
 
 function loadDirectory(): Promise<ProviderInfo[]> {
+  if (dirRegion !== REGION) {
+    // Otro país: otra lista de plataformas.
+    dirRegion = REGION;
+    loading = null;
+    directoryCache = null;
+  }
   if (loading) return loading;
   loading = (async () => {
     // Primero la copia guardada (instantánea); luego la de TMDB, que la actualiza.
-    const saved = await AsyncStorage.getItem(DIR_KEY).catch(() => null);
+    const saved = await AsyncStorage.getItem(`${DIR_KEY}.${REGION}`).catch(() => null);
     if (saved && !directoryCache) {
       try {
         directoryCache = JSON.parse(saved) as ProviderInfo[];
@@ -40,7 +47,7 @@ function loadDirectory(): Promise<ProviderInfo[]> {
     const fresh = getProviderDirectory()
       .then((l) => {
         directoryCache = l;
-        AsyncStorage.setItem(DIR_KEY, JSON.stringify(l)).catch(() => {});
+        AsyncStorage.setItem(`${DIR_KEY}.${REGION}`, JSON.stringify(l)).catch(() => {});
         Image.prefetch(l.map((p) => logoUri(p.logoPath)).filter((u): u is string => !!u), 'memory-disk').catch(() => {});
         return l;
       });
@@ -61,7 +68,7 @@ export function useProviderDirectory() {
   const [list, setList] = useState<ProviderInfo[] | null>(directoryCache);
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
-    if (directoryCache) return;
+    if (directoryCache && dirRegion === REGION) return;
     loadDirectory()
       .then(setList)
       .catch((e: Error) => setError(e.message));
