@@ -282,8 +282,6 @@ const makeStyles = (C: Colors) =>
     paddingVertical: Space.sm,
     paddingHorizontal: Space.md + 2,
     borderRadius: Radius.pill,
-    borderWidth: 1,
-    borderColor: C.accentLine,
     backgroundColor: C.accentSoft,
   },
   filterBtn: {

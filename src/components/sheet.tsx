@@ -61,20 +61,21 @@ function place(a: Anchor, W: number, H: number, screen: { width: number; height:
   return { left, pos, maxHeight: room, origin: `${Math.round(originX)}px ${below ? '0%' : '100%'}` };
 }
 
-export function Sheet({
+/**
+ * Contenedor de burbuja: aparece con un rebote suave, pegado al botón que la abrió (anchor) o,
+ * si no se sabe cuál, flotando abajo en el centro. Lo usan Sheet, los filtros y los diálogos.
+ */
+export function BubbleModal({
   visible,
   onClose,
-  title,
-  subtitle,
   anchor,
+  maxWidth = 480,
   children,
 }: {
   visible: boolean;
   onClose: () => void;
-  title?: string;
-  subtitle?: string;
-  /** Botón que la abrió: la burbuja sale pegada a él. Sin él, flota abajo en el centro. */
   anchor?: Anchor | null;
+  maxWidth?: number;
   children: ReactNode;
 }) {
   const C = useColors();
@@ -86,24 +87,8 @@ export function Sheet({
   if (!shown) return null;
   const a = anchor === undefined ? null : last.current;
 
-  const inner = (
-    <Glass strong radius={28} style={styles.bubble}>
-      {title ? (
-        <View style={{ gap: 2 }}>
-          <T variant="heading">{title}</T>
-          {subtitle ? (
-            <T variant="small" muted>
-              {subtitle}
-            </T>
-          ) : null}
-        </View>
-      ) : null}
-      {children}
-    </Glass>
-  );
-
   if (a) {
-    const W = Math.min(400, screen.width - Space.md * 2);
+    const W = Math.min(maxWidth, screen.width - Space.md * 2);
     const p = place(a, W, 360, screen, insets.top, insets.bottom);
     return (
       <Modal visible transparent animationType="none" onRequestClose={onClose}>
@@ -122,7 +107,7 @@ export function Sheet({
             transform: [{ scale: v.interpolate({ inputRange: [0, 1], outputRange: [0.4, 1] }) }],
           }}>
           <ScrollView bounces={false} style={{ maxHeight: p.maxHeight }} contentContainerStyle={{ flexGrow: 0 }}>
-            {inner}
+            {children}
           </ScrollView>
         </Animated.View>
       </Modal>
@@ -139,6 +124,8 @@ export function Sheet({
           style={[
             styles.bubbleBox,
             {
+              maxWidth,
+              maxHeight: '100%',
               opacity: v.interpolate({ inputRange: [0, 0.4, 1], outputRange: [0, 1, 1] }),
               transform: [
                 { translateY: v.interpolate({ inputRange: [0, 1], outputRange: [40, 0] }) },
@@ -146,10 +133,45 @@ export function Sheet({
               ],
             },
           ]}>
-          {inner}
+          {children}
         </Animated.View>
       </View>
     </Modal>
+  );
+}
+
+export function Sheet({
+  visible,
+  onClose,
+  title,
+  subtitle,
+  anchor,
+  children,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  title?: string;
+  subtitle?: string;
+  /** Botón que la abrió: la burbuja sale pegada a él. Sin él, flota abajo en el centro. */
+  anchor?: Anchor | null;
+  children: ReactNode;
+}) {
+  return (
+    <BubbleModal visible={visible} onClose={onClose} anchor={anchor} maxWidth={anchor ? 400 : 480}>
+      <Glass strong radius={28} style={styles.bubble}>
+        {title ? (
+          <View style={{ gap: 2 }}>
+            <T variant="heading">{title}</T>
+            {subtitle ? (
+              <T variant="small" muted>
+                {subtitle}
+              </T>
+            ) : null}
+          </View>
+        ) : null}
+        {children}
+      </Glass>
+    </BubbleModal>
   );
 }
 

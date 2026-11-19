@@ -109,7 +109,7 @@ export default function NewsScreen() {
                     />
                     {x.newDate >= weekAgo ? (
                       <View style={[styles.newTag, { backgroundColor: C.accent }]}>
-                        <T style={{ fontSize: 10, fontWeight: '800', color: '#fff' }}>NUEVO</T>
+                        <T style={{ fontSize: 10, fontWeight: '800', color: C.onAccent }}>NUEVO</T>
                       </View>
                     ) : null}
                   </View>

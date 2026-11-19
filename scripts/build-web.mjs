@@ -41,7 +41,7 @@ const manifest = {
 writeFileSync('dist/manifest.json', JSON.stringify(manifest, null, 2));
 // Un manifiesto por color de la marca: la app usa el del color elegido, así el ícono instalado
 // también cambia de color.
-for (const accent of ['brasa', 'atardecer', 'cereza']) {
+for (const accent of ['sol', 'brasa', 'atardecer', 'cereza']) {
   const icons = [
     { src: `${base}/icons/${accent}-logo192.png`, sizes: '192x192', type: 'image/png', purpose: 'any' },
     { src: `${base}/icons/${accent}-logo512.png`, sizes: '512x512', type: 'image/png', purpose: 'any' },

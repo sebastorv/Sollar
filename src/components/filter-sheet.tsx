@@ -1,5 +1,6 @@
 /** Panel de filtros de "Mi lista". */
 
+import { BubbleModal } from './sheet';
 import type { ReactNode } from 'react';
 import { Modal, ScrollView, StyleSheet, View } from 'react-native';
 
@@ -47,8 +48,7 @@ export function FilterSheet({
   const isProvider = (id: number) => typeof av === 'object' && av.provider === id;
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <View style={styles.backdrop}>
+    <BubbleModal visible={visible} onClose={onClose} maxWidth={560}>
         <Glass strong radius={Radius.lg} style={styles.sheet}>
           <View style={styles.head}>
             <T variant="heading">Filtros</T>
@@ -150,8 +150,7 @@ export function FilterSheet({
             onPress={onClose}
           />
         </Glass>
-      </View>
-    </Modal>
+    </BubbleModal>
   );
 }
 

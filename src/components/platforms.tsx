@@ -1,12 +1,13 @@
 /** Selector de "Mis plataformas" y logo pequeño de una plataforma. */
 
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Image } from 'expo-image';
 import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { Radius, Space, type Colors } from '@/constants/theme';
 import { useColors, useStyles } from '@/store/theme';
-import { getProviderDirectory, sharpImage } from '@/lib/tmdb';
+import { getProviderDirectory } from '@/lib/tmdb';
 import type { ProviderInfo } from '@/lib/types';
 import { useSettings } from '@/store/settings';
 
@@ -16,17 +17,53 @@ import { Loading, T } from './ui';
 import { Touchable } from './touch';
 
 let directoryCache: ProviderInfo[] | null = null;
+let loading: Promise<ProviderInfo[]> | null = null;
+const DIR_KEY = 'sollar.providers.v1';
+
+/** Un solo tamaño para todos los logos: así se descargan una vez y aparecen al instante. */
+export function logoUri(path: string | null) {
+  return path ? `https://image.tmdb.org/t/p/w185${path}` : null;
+}
+
+function loadDirectory(): Promise<ProviderInfo[]> {
+  if (loading) return loading;
+  loading = (async () => {
+    // Primero la copia guardada (instantánea); luego la de TMDB, que la actualiza.
+    const saved = await AsyncStorage.getItem(DIR_KEY).catch(() => null);
+    if (saved && !directoryCache) {
+      try {
+        directoryCache = JSON.parse(saved) as ProviderInfo[];
+      } catch {
+        // Copia dañada: se ignora.
+      }
+    }
+    const fresh = getProviderDirectory()
+      .then((l) => {
+        directoryCache = l;
+        AsyncStorage.setItem(DIR_KEY, JSON.stringify(l)).catch(() => {});
+        Image.prefetch(l.map((p) => logoUri(p.logoPath)).filter((u): u is string => !!u), 'memory-disk').catch(() => {});
+        return l;
+      });
+    if (directoryCache) {
+      Image.prefetch(directoryCache.map((p) => logoUri(p.logoPath)).filter((u): u is string => !!u), 'memory-disk').catch(() => {});
+      fresh.catch(() => {});
+      return directoryCache;
+    }
+    return fresh;
+  })();
+  loading.catch(() => {
+    loading = null;
+  });
+  return loading;
+}
 
 export function useProviderDirectory() {
   const [list, setList] = useState<ProviderInfo[] | null>(directoryCache);
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
     if (directoryCache) return;
-    getProviderDirectory()
-      .then((l) => {
-        directoryCache = l;
-        setList(l);
-      })
+    loadDirectory()
+      .then(setList)
       .catch((e: Error) => setError(e.message));
   }, []);
   return { list, error };
@@ -36,9 +73,9 @@ export function useProviderDirectory() {
 export function ProviderLogo({ name, logoPath, size = 28 }: { name: string; logoPath: string | null; size?: number }) {
   const C = useColors();
   const styles = useStyles(makeStyles);
-  const uri = sharpImage(logoPath || null, 'logo', size);
+  const uri = logoUri(logoPath || null);
   const box = { width: size, height: size, borderRadius: size / 4 };
-  if (uri) return <Image source={{ uri }} style={box} />;
+  if (uri) return <Image source={{ uri }} style={box} cachePolicy="memory-disk" transition={0} priority="high" />;
   const initials = name
     .replace(/\+/g, ' Plus')
     .split(/\s+/)

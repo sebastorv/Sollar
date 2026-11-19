@@ -559,4 +559,5 @@ export const EN: Record<string, string> = {
   vie: 'Fri',
   'sáb': 'Sat',
   hoy: 'Today',
+  'Con anuncios': 'With ads',
 };

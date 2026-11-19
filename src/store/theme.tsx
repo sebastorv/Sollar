@@ -7,7 +7,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Platform, useColorScheme } from 'react-native';
 
-import { makeColors, type AccentName, type Colors } from '@/constants/theme';
+import { ACCENTS, makeColors, type AccentName, type Colors } from '@/constants/theme';
 
 export type ModeSetting = 'light' | 'dark' | 'system';
 
@@ -19,22 +19,28 @@ type ThemeState = {
   colors: Colors;
 };
 
-const KEY = 'sollar.theme.v1';
+// v2: el amarillo sol pasó a ser el color principal; de la versión anterior solo se toma el modo.
+const KEY = 'sollar.theme.v2';
+const OLD_KEY = 'sollar.theme.v1';
 const Ctx = createContext<ThemeState | null>(null);
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const system = useColorScheme();
   const [mode, setMode] = useState<ModeSetting>('light');
-  const [accent, setAccent] = useState<AccentName>('brasa');
+  const [accent, setAccent] = useState<AccentName>('sol');
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    AsyncStorage.getItem(KEY)
-      .then((raw) => {
-        if (!raw) return;
+    Promise.all([AsyncStorage.getItem(KEY), AsyncStorage.getItem(OLD_KEY)])
+      .then(([raw, old]) => {
+        if (!raw) {
+          const prev = old ? (JSON.parse(old) as Partial<{ mode: ModeSetting }>) : null;
+          if (prev?.mode) setMode(prev.mode);
+          return;
+        }
         const saved = JSON.parse(raw) as Partial<{ mode: ModeSetting; accent: AccentName }>;
         if (saved.mode) setMode(saved.mode);
-        if (saved.accent) setAccent(saved.accent);
+        if (saved.accent && saved.accent in ACCENTS) setAccent(saved.accent);
       })
       .catch(() => {})
       .finally(() => setLoaded(true));
@@ -79,7 +85,7 @@ function applyChrome() {
   document.head.appendChild(meta);
   // La barra de la hora del iPhone se lee al abrir la app: queda lista para la próxima vez.
   const dark = parseInt(color.slice(1, 3), 16) < 0x50;
-  document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]')?.setAttribute('content', dark ? 'black' : 'default');
+  document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]')?.setAttribute('content', dark ? 'black-translucent' : 'default');
 }
 export function useWebChrome(color: string) {
   useEffect(() => {

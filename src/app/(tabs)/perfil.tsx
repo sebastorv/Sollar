@@ -148,7 +148,7 @@ function ProfileBody() {
         <View style={{ height: heroH + insets.top }}>
           {cover ? <Image source={{ uri: cover }} style={StyleSheet.absoluteFill} contentFit="cover" transition={300} /> : null}
           <LinearGradient
-            colors={cover ? ['rgba(0,0,0,0.35)', 'rgba(0,0,0,0.1)', C.tint, C.bg] : [C.accentSoft, C.bg]}
+            colors={cover ? ['rgba(0,0,0,0)', 'rgba(0,0,0,0.05)', C.tint, C.bg] : [C.accentSoft, C.bg]}
             locations={cover ? [0, 0.35, 0.75, 1] : undefined}
             style={StyleSheet.absoluteFill}
           />
@@ -169,7 +169,7 @@ function ProfileBody() {
                   <Image source={{ uri: profile.avatar }} style={styles.avatar} contentFit="cover" />
                 ) : (
                   <LinearGradient colors={[C.g1, C.g2]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.avatar, styles.center]}>
-                    <T style={{ fontSize: 48, fontWeight: '800', color: '#fff' }}>{name.charAt(0).toUpperCase()}</T>
+                    <T style={{ fontSize: 48, fontWeight: '800', color: C.onAccent }}>{name.charAt(0).toUpperCase()}</T>
                   </LinearGradient>
                 )}
               </View>
@@ -440,7 +440,7 @@ const makeStyles = (C: Colors) =>
     segment: { flexDirection: 'row', backgroundColor: C.fill, borderRadius: 16, padding: 4, alignSelf: 'flex-start', minWidth: 280 },
     segmentBtn: { flex: 1, height: 42, borderRadius: 12, alignItems: 'center', justifyContent: 'center', paddingHorizontal: Space.md },
     segmentOn: { backgroundColor: C.surfaceHigh },
-    list: { backgroundColor: C.surface, borderRadius: Radius.lg, borderWidth: 1, borderColor: C.border, paddingHorizontal: Space.md },
+    list: { backgroundColor: C.surface, borderRadius: Radius.lg, paddingHorizontal: Space.md },
     recentRow: { flexDirection: 'row', alignItems: 'center', gap: Space.md, paddingVertical: Space.sm + 2 },
     linkRow: { flexDirection: 'row', alignItems: 'center', gap: Space.md, paddingVertical: Space.md + 2 },
   });

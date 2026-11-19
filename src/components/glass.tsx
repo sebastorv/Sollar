@@ -56,7 +56,7 @@ export function Glass({
   const light = C.mode === 'light';
   // Vidrio líquido: casi transparente, con desenfoque y saturación del fondo. El borde no es una
   // línea: es un brillo interno (arriba más fuerte), como el canto de una gota de vidrio.
-  const tintBg = strong ? C.glassStrong : light ? 'rgba(255,255,255,0.34)' : 'rgba(34,32,42,0.40)';
+  const tintBg = strong ? C.glassStrong : light ? 'rgba(255,255,255,0.24)' : 'rgba(30,29,36,0.30)';
   const web = Platform.OS === 'web';
   return (
     <View
@@ -75,8 +75,8 @@ export function Glass({
               borderRadius: radius,
               backgroundColor: tintBg,
               // @ts-expect-error: propiedades de CSS que react-native-web pasa al navegador.
-              backdropFilter: `blur(${strong ? 32 : 22}px) saturate(${light ? 210 : 180}%) brightness(${light ? 1.04 : 1.1})`,
-              WebkitBackdropFilter: `blur(${strong ? 32 : 22}px) saturate(${light ? 210 : 180}%) brightness(${light ? 1.04 : 1.1})`,
+              backdropFilter: `blur(${strong ? 28 : 16}px) saturate(180%)`,
+              WebkitBackdropFilter: `blur(${strong ? 28 : 16}px) saturate(180%)`,
             },
           ]}
         />
@@ -96,8 +96,8 @@ export function Glass({
         pointerEvents="none"
         colors={
           light
-            ? ['rgba(255,255,255,0.55)', 'rgba(255,255,255,0.05)', 'rgba(255,255,255,0)', 'rgba(255,255,255,0.35)']
-            : ['rgba(255,255,255,0.14)', 'rgba(255,255,255,0.02)', 'rgba(255,255,255,0)', 'rgba(255,255,255,0.08)']
+            ? ['rgba(255,255,255,0.22)', 'rgba(255,255,255,0)', 'rgba(255,255,255,0)', 'rgba(255,255,255,0)']
+            : ['rgba(255,255,255,0.05)', 'rgba(255,255,255,0)', 'rgba(255,255,255,0)', 'rgba(255,255,255,0)']
         }
         locations={[0, 0.4, 0.7, 1]}
         style={[StyleSheet.absoluteFill, { borderRadius: radius }]}
@@ -137,8 +137,8 @@ export function glassFill(C: Colors) {
 export function glassEdge(C: Colors, floats: boolean) {
   const light = C.mode === 'light';
   const inner = light
-    ? 'inset 0 1px 1px rgba(255,255,255,0.95), inset 0 -1px 1px rgba(255,255,255,0.45), inset 0 0 0 0.5px rgba(255,255,255,0.5)'
-    : 'inset 0 1px 1px rgba(255,255,255,0.16), inset 0 -1px 1px rgba(255,255,255,0.05), inset 0 0 0 0.5px rgba(255,255,255,0.07)';
+    ? 'inset 0 1px 0.5px rgba(255,255,255,0.75)'
+    : 'inset 0 1px 0.5px rgba(255,255,255,0.09)';
   const outer = floats
     ? light
       ? '0 10px 30px rgba(30,16,50,0.14), 0 1px 3px rgba(30,16,50,0.08)'
@@ -193,8 +193,9 @@ export function shadow(C: Colors) {
 export function card(C: Colors) {
   return {
     backgroundColor: C.surface,
+    // Sin línea de borde: la tarjeta se separa del fondo por su tono y una sombra suave.
     borderWidth: 1,
-    borderColor: C.border,
+    borderColor: 'transparent',
     ...shadow(C),
   } as const;
 }

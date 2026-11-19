@@ -5,6 +5,7 @@
  */
 
 import { useEffect, useId, useRef, useState } from 'react';
+import { Image } from 'expo-image';
 import { Animated, Easing, StyleSheet, View } from 'react-native';
 import Svg, { Circle, ClipPath, Defs, Ellipse, G, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
 
@@ -70,23 +71,28 @@ function LogoPopcorn() {
  * Logo de Sollar. "circle": sobre un círculo con el degradado (barra, encabezados).
  * "icon": con la forma de ícono de iOS. "bare": la palomita sola.
  */
+const MARKS = {
+  sol: require('../../assets/brand/sol-mark.png'),
+  brasa: require('../../assets/brand/brasa-mark.png'),
+  atardecer: require('../../assets/brand/atardecer-mark.png'),
+  cereza: require('../../assets/brand/cereza-mark.png'),
+} as const;
+
+/**
+ * Logo de Sollar: un sol suave y luminoso, sin rostro ni bordes (imagen, no dibujo vectorial),
+ * del color elegido. "icon" lo recorta como el ícono de la app; "circle", en círculo.
+ */
 export function SollarLogo({ size = 32, shape = 'circle' }: { size?: number; shape?: 'circle' | 'icon' | 'bare' }) {
   const C = useColors();
-  const id = useSvgId('logo');
+  const radius = shape === 'circle' ? size / 2 : shape === 'icon' ? size * 0.23 : 0;
   return (
-    <Svg width={size} height={size} viewBox="0 0 100 100" accessibilityLabel="Sollar">
-      <Defs>
-        <LinearGradient id={id} x1="0" y1="0" x2="0.8" y2="1">
-          <Stop offset="0" stopColor={C.g1} />
-          <Stop offset="1" stopColor={C.g2} />
-        </LinearGradient>
-      </Defs>
-      {shape === 'circle' ? <Circle cx={50} cy={50} r={50} fill={`url(#${id})`} /> : null}
-      {shape === 'icon' ? <Path d={SQUIRCLE} fill={`url(#${id})`} /> : null}
-      <G transform={shape === 'bare' ? undefined : 'translate(7 7) scale(0.86)'}>
-        <LogoPopcorn />
-      </G>
-    </Svg>
+    <Image
+      source={MARKS[C.accentName]}
+      accessibilityLabel="Sollar"
+      style={{ width: size, height: size, borderRadius: radius }}
+      contentFit="cover"
+      transition={0}
+    />
   );
 }
 

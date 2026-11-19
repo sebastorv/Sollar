@@ -164,6 +164,7 @@ export function UpNext({
   onOpen: (t: { season: number; episode: number }) => void;
   onNeedItem: () => void;
 }) {
+  const C = useColors();
   const L = useL();
   const date = useDate();
   const lib = useLibrary();
@@ -253,7 +254,7 @@ export function UpNext({
         {/* Rótulo, título del episodio y datos. */}
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <Icon name="sparkle" size={14} color="#FFB061" filled />
-          <T raw style={[label, { color: '#FFB061' }]}>
+          <T raw style={[label, { color: C.g1 }]}>
             {next ? L('LO QUE SIGUE', 'UP NEXT') : L('AL DÍA', 'ALL CAUGHT UP')}
           </T>
           {next ? (
@@ -349,11 +350,11 @@ export function UpNext({
                         height: 17,
                         borderRadius: 5,
                         overflow: 'hidden',
-                        backgroundColor: full ? '#3DD68C' : 'rgba(255,255,255,0.12)',
+                        backgroundColor: full ? C.accent : 'rgba(255,255,255,0.12)',
                         borderWidth: isCur ? 2 : 0,
-                        borderColor: '#FFB061',
+                        borderColor: C.g1,
                       }}>
-                      {isCur ? <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${Math.round((n / s.episodeCount) * 100)}%`, backgroundColor: '#FF8A3D' }} /> : null}
+                      {isCur ? <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${Math.round((n / s.episodeCount) * 100)}%`, backgroundColor: C.accent }} /> : null}
                     </View>
                   );
                 })}
@@ -557,7 +558,7 @@ export function SeasonsBlock({
                   {art ? <Image source={{ uri: art }} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} /> : null}
                   {done ? (
                     <View style={styles.doneBadge}>
-                      <Icon name="check" size={13} color="#fff" strokeWidth={3} />
+                      <Icon name="check" size={13} color={C.onAccent} strokeWidth={3} />
                     </View>
                   ) : null}
                   {count > 0 && !done ? (
@@ -637,7 +638,7 @@ export function SeasonsBlock({
                   accessibilityLabel={L('Opciones del episodio', 'Episode options')}
                   onPress={async (e) => setEpMenu({ anchor: await anchorOf(e, { x: 0, y: 0, width: 0, height: 0 }), ep })}
                   style={styles.epMore}>
-                  <Icon name="moreV" size={16} color="#fff" />
+                  <Icon name="moreV" size={18} color="#fff" />
                 </Touchable>
                 {/* ✓ sobre el borde de abajo; los que no han salido muestran la fecha. */}
                 <View style={S.checkWrap} pointerEvents="box-none">
@@ -657,7 +658,7 @@ export function SeasonsBlock({
                       accessibilityState={{ checked: isSeen }}
                       accessibilityLabel={isSeen ? L('Desmarcar', 'Unmark') : L('Marcar como visto', 'Mark as watched')}
                       style={[S.checkPill, { backgroundColor: isSeen ? C.accent : C.mode === 'dark' ? '#3A3846' : 'rgba(22,20,28,0.92)' }]}>
-                      <Icon name={isSeen ? 'checks' : 'check'} size={17} color="#fff" strokeWidth={2.6} />
+                      <Icon name={isSeen ? 'checks' : 'check'} size={17} color={isSeen ? C.onAccent : '#fff'} strokeWidth={2.6} />
                     </Touchable>
                   )}
                 </View>
@@ -832,8 +833,8 @@ export function EpisodePanel({
                 {seen ? (
                   <View style={S.checkWrap}>
                     <View style={[S.checkPill, { backgroundColor: C.accent, width: undefined, paddingHorizontal: 12, flexDirection: 'row', gap: 6 }]}>
-                      <Icon name="checks" size={15} color="#fff" strokeWidth={2.6} />
-                      <T raw style={{ color: '#fff', fontSize: 12, fontWeight: '800', letterSpacing: 0.6 }}>
+                      <Icon name="checks" size={15} color={C.onAccent} strokeWidth={2.6} />
+                      <T raw style={{ color: C.onAccent, fontSize: 12, fontWeight: '800', letterSpacing: 0.6 }}>
                         {L('VISTO', 'WATCHED')}
                       </T>
                     </View>
@@ -878,8 +879,8 @@ export function EpisodePanel({
                       lib.setEpisodes(key, [shown], !seen);
                     }}
                     style={[S.bigCheck, seen ? { backgroundColor: C.accent } : { ...glassFill(C) }]}>
-                    <Icon name={seen ? 'checks' : 'check'} size={22} color={seen ? '#fff' : C.text} strokeWidth={2.6} />
-                    <T raw style={{ fontSize: 16, fontWeight: '700', color: seen ? '#fff' : C.text }}>
+                    <Icon name={seen ? 'checks' : 'check'} size={22} color={seen ? C.onAccent : C.text} strokeWidth={2.6} />
+                    <T raw style={{ fontSize: 16, fontWeight: '700', color: seen ? C.onAccent : C.text }}>
                       {seen ? L('Visto', 'Watched') : L('Marcar como visto', 'Mark as watched')}
                     </T>
                   </Touchable>
@@ -1002,10 +1003,9 @@ const makeStyles = (C: Colors) =>
       top: 8,
       right: 8,
       width: 28,
-      height: 28,
-      borderRadius: 14,
+      height: 30,
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: 'rgba(14,13,18,0.5)',
+      filter: 'drop-shadow(0px 1px 2px rgba(0,0,0,0.75))',
     },
   });

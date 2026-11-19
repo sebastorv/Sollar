@@ -146,7 +146,7 @@ function EpisodeScreenBody() {
         </View>
         {watchedAt ? (
           <View style={styles.seenDot}>
-            <Icon name="check" size={18} color="#fff" strokeWidth={3} />
+            <Icon name="check" size={18} color={C.onAccent} strokeWidth={3} />
           </View>
         ) : null}
       </View>
@@ -281,7 +281,7 @@ function EpisodeScreenBody() {
               />
             ) : null}
             <LinearGradient
-              colors={[withAlpha(C.bg, 0.6), withAlpha(C.bg, 0.45), withAlpha(C.bg, 0.75), C.bg]}
+              colors={[withAlpha(C.bg, 0.15), withAlpha(C.bg, 0.45), withAlpha(C.bg, 0.75), C.bg]}
               locations={[0, 0.35, 0.75, 1]}
               style={wide ? StyleSheet.absoluteFill : { position: 'absolute', top: 0, left: 0, right: 0, height: Math.round(width * 0.9) }}
             />
@@ -386,13 +386,13 @@ function BigButton({
         gap: 4,
         overflow: 'hidden',
         borderWidth: primary ? 0 : 1,
-        borderColor: C.border,
+        borderColor: 'transparent',
         backgroundColor: primary ? undefined : C.surface,
       }}>
       {primary ? <LinearGradient colors={[C.g1, C.g2]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} /> : null}
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: Space.sm }}>
-        <Icon name={icon} size={20} color={primary ? '#fff' : C.text} strokeWidth={2.4} />
-        <T style={{ fontSize: 17, fontWeight: '700', color: primary ? '#fff' : C.text }}>{title}</T>
+        <Icon name={icon} size={20} color={primary ? C.onAccent : C.text} strokeWidth={2.4} />
+        <T style={{ fontSize: 17, fontWeight: '700', color: primary ? C.onAccent : C.text }}>{title}</T>
       </View>
       <T variant="small" style={{ color: primary ? 'rgba(255,255,255,0.85)' : C.textMuted }}>
         {subtitle}
@@ -433,8 +433,8 @@ function NavButton({
         paddingHorizontal: Space.md,
         borderRadius: 12,
         borderWidth: 1,
-        borderColor: C.border,
-        backgroundColor: 'rgba(255,255,255,0.04)',
+        borderColor: 'transparent',
+        backgroundColor: C.fill,
         opacity: disabled ? 0.35 : 1,
       }}>
       {!iconRight ? ic : null}

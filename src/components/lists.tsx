@@ -3,10 +3,11 @@
  * agregar un título a varias listas a la vez.
  */
 
+import { BubbleModal } from './sheet';
 import { tr } from '@/i18n';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Modal, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
 import { Radius, Space, type Colors } from '@/constants/theme';
@@ -225,12 +226,15 @@ export function ListNameDialog({
   const styles = useStyles(makeStyles);
   const [name, setName] = useState(initialName);
   const [description, setDescription] = useState(initialDescription);
-  return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose} onShow={() => {
+  useEffect(() => {
+    if (visible) {
       setName(initialName);
       setDescription(initialDescription);
-    }}>
-      <View style={styles.scrim}>
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible]);
+  return (
+    <BubbleModal visible={visible} onClose={onClose}>
         <Glass strong radius={Radius.lg} style={styles.dialog}>
           <T variant="heading">{title}</T>
           <TextInput
@@ -255,8 +259,7 @@ export function ListNameDialog({
             <Button label="Guardar" disabled={!name.trim()} onPress={() => onSave(name.trim(), description.trim())} />
           </View>
         </Glass>
-      </View>
-    </Modal>
+    </BubbleModal>
   );
 }
 

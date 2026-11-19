@@ -276,7 +276,7 @@ function MonthView({ episodes }: { episodes: CalendarEpisode[] }) {
                             ? { backgroundColor: C.accent, borderRadius: 9, minWidth: 18, height: 18, alignItems: 'center', justifyContent: 'center' }
                             : undefined
                         }>
-                        <T style={{ fontSize: 12, fontWeight: '800', color: eps.length || isToday ? '#fff' : C.text, paddingHorizontal: isToday ? 3 : 0 }}>
+                        <T style={{ fontSize: 12, fontWeight: '800', color: eps.length ? '#fff' : isToday ? C.onAccent : C.text, paddingHorizontal: isToday ? 3 : 0 }}>
                           {Number(d.slice(8))}
                         </T>
                       </View>
@@ -328,12 +328,15 @@ function PosterView({ episodes }: { episodes: CalendarEpisode[] }) {
                   left: 6,
                   bottom: 6,
                   paddingHorizontal: 8,
-                  height: 24,
-                  borderRadius: 12,
-                  justifyContent: 'center',
-                  backgroundColor: e.airDate === todayISO() ? C.accent : 'rgba(0,0,0,0.62)',
+                  height: 22,
+                  borderRadius: 11,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 5,
+                  backgroundColor: 'rgba(12,11,15,0.6)',
                 }}>
-                <T style={{ fontSize: 11, fontWeight: '800', color: '#fff' }}>{dayLabel(e.airDate)}</T>
+                {e.airDate === todayISO() ? <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: C.accent }} /> : null}
+                <T style={{ fontSize: 11, lineHeight: 14, fontWeight: '700', color: '#fff' }}>{dayLabel(e.airDate)}</T>
               </View>
             </View>
             <T numberOfLines={1} style={{ fontSize: 14, fontWeight: '700' }}>

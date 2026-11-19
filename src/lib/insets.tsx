@@ -8,6 +8,12 @@ import type { ReactNode } from 'react';
 import { Platform } from 'react-native';
 import { SafeAreaInsetsContext, useSafeAreaInsets } from 'react-native-safe-area-context';
 
+// La barra que iOS tomó al abrir la app (cambiarla después no tiene efecto hasta reabrirla).
+const launchStyle =
+  Platform.OS === 'web' && typeof document !== 'undefined'
+    ? document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]')?.getAttribute('content')
+    : null;
+
 function iosHomeScreenApp() {
   if (Platform.OS !== 'web' || typeof window === 'undefined') return false;
   const standalone =
@@ -15,8 +21,7 @@ function iosHomeScreenApp() {
     window.matchMedia?.('(display-mode: standalone)').matches;
   const ios = /iPhone|iPad|iPod/.test(navigator.userAgent);
   // Solo hace falta cuando el contenido pasa por debajo de la hora (barra translúcida).
-  const translucent =
-    document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]')?.getAttribute('content') === 'black-translucent';
+  const translucent = launchStyle === 'black-translucent';
   return standalone && ios && translucent;
 }
 

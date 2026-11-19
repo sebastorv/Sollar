@@ -82,9 +82,9 @@ export function ProgressView() {
               style={[styles.chip, on ? { overflow: 'hidden', borderColor: 'transparent' } : glassFill(C)]}>
               {on ? <LinearGradient colors={[C.g1, C.g2]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} /> : null}
               <View>
-                <Icon name={g.icon} size={16} color={on ? '#fff' : C.accentInk} strokeWidth={2.4} />
+                <Icon name={g.icon} size={16} color={on ? C.onAccent : C.accentInk} strokeWidth={2.4} />
               </View>
-              <T style={{ fontSize: 16, fontWeight: '700', color: on ? '#fff' : C.text }}>{g.label}</T>
+              <T style={{ fontSize: 16, fontWeight: '700', color: on ? C.onAccent : C.text }}>{g.label}</T>
               <T style={{ fontSize: 15, fontWeight: '600', color: on ? 'rgba(255,255,255,0.8)' : C.textMuted }}>
                 {byGroup[g.k].length}
               </T>
@@ -185,7 +185,7 @@ function ProgressRow({ item, first }: { item: LibraryItem; first: boolean }) {
           onPress={() => lib.setEpisodes(item.key, [next], true)}
           accessibilityLabel={`Marcar ${formatEpisode(next.season, next.episode)} como visto`}
           style={styles.check}>
-          <Icon name="check" size={20} color={C.accentInk} strokeWidth={2.6} />
+          <Icon name="check" size={20} color={C.onAccent} strokeWidth={2.4} />
         </Touchable>
       ) : null}
     </Touchable>
@@ -210,8 +210,7 @@ const makeStyles = (C: Colors) =>
       width: 44,
       height: 44,
       borderRadius: 22,
-      borderWidth: 2,
-      borderColor: C.accentLine,
+      backgroundColor: C.accent,
       alignItems: 'center',
       justifyContent: 'center',
     },

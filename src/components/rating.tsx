@@ -644,9 +644,8 @@ function ReactionTile({ r, on, onPress }: { r: (typeof REACTIONS)[number]; on: b
         alignItems: 'center',
         gap: 6,
         borderRadius: 22,
-        borderWidth: 1.5,
-        borderColor: on ? C.accent : C.border,
-        backgroundColor: on ? C.accentSoft : C.mode === 'dark' ? 'rgba(255,255,255,0.04)' : C.surface,
+        backgroundColor: on ? C.accentSoft : C.mode === 'dark' ? 'rgba(255,255,255,0.05)' : C.surface,
+        boxShadow: on ? `inset 0 0 0 2px ${C.accent}` : C.mode === 'dark' ? 'none' : '0 2px 10px rgba(30,16,50,0.06)',
       }}>
       <Animated.View
         style={{

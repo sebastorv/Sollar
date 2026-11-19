@@ -13,7 +13,7 @@ import '@/global.css';
 
 import { Platform } from 'react-native';
 
-export type AccentName = 'brasa' | 'atardecer' | 'cereza';
+export type AccentName = 'sol' | 'brasa' | 'atardecer' | 'cereza';
 export type ModeName = 'light' | 'dark';
 
 type Accent = {
@@ -26,15 +26,19 @@ type Accent = {
   /** Texto con el color de la marca, legible sobre el fondo de cada modo. */
   inkLight: string;
   inkDark: string;
+  /** Texto e íconos sobre el color de la marca. */
+  on: string;
 };
 
 export const ACCENTS: Record<AccentName, Accent> = {
-  brasa: { label: 'Brasa', g1: '#FF8A3D', g2: '#F0306A', solid: '#F5534F', inkLight: '#D0234F', inkDark: '#FF7A66' },
-  atardecer: { label: 'Atardecer', g1: '#FFBE45', g2: '#FF5A5F', solid: '#FF7F50', inkLight: '#C2410C', inkDark: '#FFB061' },
-  cereza: { label: 'Cereza', g1: '#FF4D4D', g2: '#E3197F', solid: '#F0306A', inkLight: '#C8136E', inkDark: '#FF6B9A' },
+  // Amarillo sol, el color principal: dorado cálido, sin llegar a chillón. Sobre él va texto oscuro.
+  sol: { label: 'Sol', g1: '#FFD95A', g2: '#FFB21E', solid: '#FFC531', inkLight: '#8F5B00', inkDark: '#FFD15C', on: '#1E1604' },
+  brasa: { label: 'Brasa', g1: '#FF8A3D', g2: '#F0306A', solid: '#F5534F', inkLight: '#D0234F', inkDark: '#FF7A66', on: '#FFFFFF' },
+  atardecer: { label: 'Atardecer', g1: '#FFBE45', g2: '#FF5A5F', solid: '#FF7F50', inkLight: '#C2410C', inkDark: '#FFB061', on: '#FFFFFF' },
+  cereza: { label: 'Cereza', g1: '#FF4D4D', g2: '#E3197F', solid: '#F0306A', inkLight: '#C8136E', inkDark: '#FF6B9A', on: '#FFFFFF' },
 };
 
-export const ACCENT_ORDER: AccentName[] = ['brasa', 'atardecer', 'cereza'];
+export const ACCENT_ORDER: AccentName[] = ['sol', 'brasa', 'atardecer', 'cereza'];
 
 const BASE = {
   light: {
@@ -147,7 +151,7 @@ export function makeColors(mode: ModeName, accentName: AccentName): Colors {
     accentSoft: alpha(a.solid, mode === 'light' ? 0.1 : 0.16),
     accentLine: alpha(a.solid, 0.45),
     glow: alpha(a.solid, mode === 'light' ? 0.07 : 0.09),
-    onAccent: '#FFFFFF',
+    onAccent: a.on,
     tint: alpha(a.g2, mode === 'light' ? 0.28 : 0.38),
     ink: mode === 'light' ? '#141217' : '#F4F2F6',
     onInk: mode === 'light' ? '#FFFFFF' : '#0E0D12',

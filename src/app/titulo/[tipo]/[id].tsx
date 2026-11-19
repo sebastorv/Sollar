@@ -26,7 +26,7 @@ import { Credits } from '@/components/credits';
 import { Soundtrack } from '@/components/soundtrack';
 import { DetailsBlock, Recommendations, SeasonQuality } from '@/components/title-extras';
 import { Touchable } from '@/components/touch';
-import { Button, Empty, Loading, Poster, T } from '@/components/ui';
+import { Button, Empty, FadeIn, Loading, Poster, T } from '@/components/ui';
 import { Radius, Space, type Colors } from '@/constants/theme';
 import { withAlpha } from '@/constants/theme';
 import { addDays, fromISO, todayISO } from '@/lib/dates';
@@ -409,7 +409,7 @@ function TitleScreenBody() {
         ) : null}
         <LinearGradient
           pointerEvents="none"
-          colors={[withAlpha(C.bg, C.mode === 'light' ? 0.5 : 0.6), withAlpha(C.bg, 0.2), withAlpha(C.bg, C.mode === 'light' ? 0.86 : 0.78), C.bg]}
+          colors={[withAlpha(C.bg, 0), withAlpha(C.bg, 0.1), withAlpha(C.bg, C.mode === 'light' ? 0.86 : 0.78), C.bg]}
           locations={[0, 0.28, 0.6, 0.84]}
           style={imageBox}
         />
@@ -428,7 +428,7 @@ function TitleScreenBody() {
 
     if (wide) {
       return (
-        <View style={{ backgroundColor: C.bg, minHeight: Math.min(Math.round(screenWidth * 0.5625), 980) }}>
+        <View style={{ backgroundColor: C.bg }}>
           {scrim}
           <View style={[styles.content, styles.contentWide, { paddingTop: insets.top + 110, paddingBottom: Space.xxl }]}>
             <View style={{ flexDirection: 'row', gap: Space.xxl + Space.lg, alignItems: 'flex-end' }}>
@@ -567,6 +567,7 @@ function TitleScreenBody() {
   return (
     <View style={styles.page}>
       <Backdrop />
+      <FadeIn>
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 96 }}>
         <DarkScope>
           <WithTheme>{renderHero}</WithTheme>
@@ -575,6 +576,7 @@ function TitleScreenBody() {
         <LinearGradient colors={[C.bg, C.bg]} style={{ height: 56 }} />
         <View style={[styles.content, wide && styles.contentWide]}>{body}</View>
       </ScrollView>
+      </FadeIn>
 
       {/* Compartir arriba a la derecha, sobre la imagen (celular). */}
       {!wide ? (
@@ -809,19 +811,17 @@ function ActionTiles({
   const statusIcon: IconName = !item ? 'plus' : item.status === 'watching' ? 'play' : item.status === 'completed' ? 'check' : item.status === 'planned' ? 'clock' : 'screen';
   return (
     <View style={{ flexDirection: 'row', gap: Space.sm }}>
-      <Touchable haptic="medium" pressScale={0.94} onPress={onTrack} accessibilityRole="button" style={[styles.tile, { borderWidth: 0, overflow: 'hidden' }]}>
+      <Touchable
+        haptic="medium"
+        pressScale={0.92}
+        onPress={onTrack}
+        accessibilityRole="button"
+        accessibilityLabel={item ? TILE_STATUS[item.status] : isTv ? 'Seguir' : 'Por ver'}
+        style={[styles.tile, { borderWidth: 0, overflow: 'hidden', boxShadow: 'none' }]}>
         <LinearGradient colors={[C.g1, C.g2]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
         <View>
-          <Icon name={statusIcon} size={24} color="#fff" filled={!!item} strokeWidth={2.4} />
+          <Icon name={statusIcon} size={24} color={C.onAccent} filled={!!item} strokeWidth={1.9} />
         </View>
-        <T numberOfLines={1} style={[styles.tileLabel, { color: '#fff', fontWeight: '700' }]}>
-          {item ? TILE_STATUS[item.status] : isTv ? 'Seguir' : 'Por ver'}
-        </T>
-        {item ? (
-          <View style={styles.tileChevron}>
-            <Icon name="chevronDown" size={13} color="#fff" strokeWidth={2.6} />
-          </View>
-        ) : null}
       </Touchable>
       <Tile icon="heart" label="Favorito" on={!!item?.favorite} onPress={onFavorite} />
       <Tile icon="ticket" label={inLists ? 'En listas' : 'Listas'} on={inLists > 0} onPress={onLists} />
@@ -841,18 +841,8 @@ function Tile({ icon, label, on, onPress, chevron }: { icon: IconName; label: st
       pressScale={0.92}
       accessibilityLabel={label}
       accessibilityState={{ selected: on }}
-      style={[styles.tile, on && { borderColor: C.accentLine, backgroundColor: C.accentSoft }]}>
-      <View>
-        <Icon name={icon} size={23} color={on ? C.accentInk : C.text} filled={on && icon === 'heart'} strokeWidth={2} />
-      </View>
-      <T numberOfLines={1} style={[styles.tileLabel, { color: on ? C.accentInk : C.textMuted }]}>
-        {label}
-      </T>
-      {chevron ? (
-        <View style={styles.tileChevron}>
-          <Icon name="chevronDown" size={13} color={C.textMuted} strokeWidth={2.6} />
-        </View>
-      ) : null}
+      style={[styles.tile, on && { backgroundColor: C.accentSoft }]}>
+      <Icon name={icon} size={23} color={on ? C.accentInk : C.text} filled={on} strokeWidth={1.8} />
     </Touchable>
   );
 }
@@ -1065,8 +1055,12 @@ function InYourLists({ entryKey }: { entryKey: string }) {
 
 // --- Dónde ver: todos los servicios, con lista desplegable ---
 
-const KIND_LABEL = { flatrate: 'Suscripción', free: 'Gratis', ads: 'Gratis con anuncios', rent: 'Alquiler', buy: 'Compra' } as const;
+const KIND_LABEL = { flatrate: 'Suscripción', free: 'Gratis', ads: 'Con anuncios', rent: 'Alquiler', buy: 'Compra' } as const;
 
+/**
+ * Dónde ver, como JustWatch: una cuadrícula de mosaicos con el logo grande de cada servicio y,
+ * debajo, cómo se ve ahí (suscripción, alquiler, compra). Los que pagas van primero, marcados.
+ */
 function WhereToWatch({ providers, loaded }: { providers: TmdbWatchProviders | null; loaded: boolean }) {
   const C = useColors();
   const styles = useStyles(makeStyles);
@@ -1074,26 +1068,30 @@ function WhereToWatch({ providers, loaded }: { providers: TmdbWatchProviders | n
   const [open, setOpen] = useState(false);
   const mine = new Set(myProviders);
 
-  // Un renglón por servicio, con todas sus formas de verlo (suscripción, alquiler, compra).
+  // Un mosaico por servicio, con la mejor forma de verlo (suscripción antes que alquiler).
   const rows = useMemo(() => {
-    const map = new Map<number, { id: number; name: string; logo: string | null; kinds: string[]; order: number }>();
+    const map = new Map<number, { id: number; name: string; logo: string | null; kind: string; order: number }>();
     (['flatrate', 'free', 'ads', 'rent', 'buy'] as const).forEach((k, ki) => {
       for (const p of providers?.[k] ?? []) {
-        const row = map.get(p.provider_id) ?? { id: p.provider_id, name: p.provider_name, logo: p.logo_path || null, kinds: [], order: ki };
-        if (!row.kinds.includes(KIND_LABEL[k])) row.kinds.push(KIND_LABEL[k]);
-        map.set(p.provider_id, row);
+        if (!map.has(p.provider_id)) map.set(p.provider_id, { id: p.provider_id, name: p.provider_name, logo: p.logo_path || null, kind: KIND_LABEL[k], order: ki });
       }
     });
     return [...map.values()].sort((a, b) => Number(mine.has(b.id)) - Number(mine.has(a.id)) || a.order - b.order);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [providers, myProviders]);
 
-  const shown = open ? rows : rows.slice(0, 3);
-  const inPlan = rows.filter((r) => mine.has(r.id) && (r.kinds.includes('Suscripción') || r.kinds[0]?.startsWith('Gratis')));
+  const shown = open ? rows : rows.slice(0, 8);
+  const link = providers?.link;
 
   return (
     <View style={{ gap: Space.md }}>
-      <T variant="heading">Dónde ver</T>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: Space.sm }}>
+        <T variant="heading">Dónde ver</T>
+        <View style={{ marginLeft: 'auto', flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+          <Icon name="play" size={13} color="#F5C518" filled />
+          <T style={{ fontSize: 13, fontWeight: '700', color: C.mode === 'light' ? '#9A7A00' : '#F5C518' }}>JustWatch</T>
+        </View>
+      </View>
       {!loaded ? (
         <Loading />
       ) : rows.length === 0 ? (
@@ -1101,45 +1099,34 @@ function WhereToWatch({ providers, loaded }: { providers: TmdbWatchProviders | n
           Por ahora no aparece en ningún servicio de tu país.
         </T>
       ) : (
-        <View style={styles.providers}>
-          {shown.map((r, i) => {
+        <View style={styles.wtwGrid}>
+          {shown.map((r) => {
             const isMine = mine.has(r.id);
             return (
               <Touchable
                 key={r.id}
                 haptic="light"
-                pressScale={0.98}
-                disabled={!providers?.link}
-                onPress={() => providers?.link && Linking.openURL(providers.link)}
-                style={[styles.providerRow, i > 0 && { borderTopWidth: 1, borderTopColor: C.border }]}>
-                <ProviderLogo name={r.name} logoPath={r.logo} size={40} />
-                <View style={{ flex: 1, minWidth: 0 }}>
-                  <T numberOfLines={1} style={{ fontSize: 15, fontWeight: '600' }}>
-                    {r.name}
-                  </T>
-                  <T variant="caption" muted numberOfLines={1}>
-                    {r.kinds.join(' · ')}
-                  </T>
-                </View>
+                pressScale={0.95}
+                disabled={!link}
+                onPress={() => link && Linking.openURL(link)}
+                accessibilityLabel={`${r.name}, ${tr(r.kind)}`}
+                style={styles.wtwTile}>
+                <ProviderLogo name={r.name} logoPath={r.logo} size={52} />
+                <T numberOfLines={1} style={{ fontSize: 13, fontWeight: '600', color: C.textMuted }}>
+                  {r.kind}
+                </T>
                 {isMine ? (
-                  <View style={styles.planTag}>
-                    <T style={{ fontSize: 11, fontWeight: '700', color: C.accentInk }}>En tu plan</T>
+                  <View style={styles.wtwMine} accessibilityLabel={tr('En tu plan')}>
+                    <Icon name="check" size={11} color={C.onAccent} strokeWidth={3} />
                   </View>
                 ) : null}
               </Touchable>
             );
           })}
-          {rows.length > 3 ? (
-            <Touchable
-              haptic="select"
-              onPress={() => setOpen(!open)}
-              style={[styles.providerRow, { borderTopWidth: 1, borderTopColor: C.border, justifyContent: 'center' }]}>
-              <T variant="label" style={{ color: C.accentInk }}>
-                {open ? 'Ver menos' : `Ver todas las opciones (${rows.length})`}
-              </T>
-              <View>
-                <Icon name={open ? 'chevronUp' : 'chevronDown'} size={16} color={C.accentInk} strokeWidth={2.4} />
-              </View>
+          {rows.length > 8 ? (
+            <Touchable haptic="select" pressScale={0.95} onPress={() => setOpen(!open)} style={[styles.wtwTile, { justifyContent: 'center' }]}>
+              <Icon name={open ? 'chevronUp' : 'plus'} size={22} color={C.text} strokeWidth={1.8} />
+              <T style={{ fontSize: 13, fontWeight: '600', color: C.textMuted }}>{open ? 'Ver menos' : `+${rows.length - 8}`}</T>
             </Touchable>
           ) : null}
         </View>
@@ -1150,14 +1137,7 @@ function WhereToWatch({ providers, loaded }: { providers: TmdbWatchProviders | n
             Elige tus plataformas en Perfil para ver cuáles están en tu plan.
           </T>
         </Touchable>
-      ) : loaded && rows.length && !inPlan.length ? (
-        <T variant="caption" muted>
-          No está incluido en tus plataformas.
-        </T>
       ) : null}
-      <T variant="caption" style={{ color: C.textFaint }}>
-        {isDemo ? 'Disponibilidad de ejemplo.' : 'Datos de JustWatch.'}
-      </T>
     </View>
   );
 }
@@ -1173,7 +1153,7 @@ const makeStyles = (C: Colors) =>
       shadowRadius: 24,
       shadowOffset: { width: 0, height: 12 },
       borderWidth: 1,
-      borderColor: C.border,
+      borderColor: 'transparent',
     },
     overline: { fontSize: 12, fontWeight: '700', letterSpacing: 1, color: C.textMuted },
     title: { fontSize: 28, lineHeight: 33, fontWeight: '800', letterSpacing: -0.8, color: C.text },
@@ -1187,8 +1167,8 @@ const makeStyles = (C: Colors) =>
     cert: { borderWidth: 1.5, borderColor: C.textFaint, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 1 },
     tile: {
       flex: 1,
-      height: 72,
-      borderRadius: 16,
+      height: 54,
+      borderRadius: 18,
       ...glassFill(C),
       alignItems: 'center',
       justifyContent: 'center',
@@ -1257,6 +1237,28 @@ const makeStyles = (C: Colors) =>
       paddingVertical: 4,
     },
     providers: { ...glassFill(C), borderRadius: Radius.lg, paddingHorizontal: Space.md },
+    wtwGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Space.sm },
+    wtwTile: {
+      width: 96,
+      height: 104,
+      borderRadius: 20,
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      backgroundColor: C.mode === 'light' ? '#FFFFFF' : 'rgba(255,255,255,0.06)',
+      boxShadow: C.mode === 'light' ? '0 2px 10px rgba(30,16,50,0.06)' : 'none',
+    },
+    wtwMine: {
+      position: 'absolute',
+      top: 7,
+      right: 7,
+      width: 18,
+      height: 18,
+      borderRadius: 9,
+      backgroundColor: C.accent,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
     providerRow: { flexDirection: 'row', alignItems: 'center', gap: Space.md, paddingVertical: Space.md },
     planTag: { backgroundColor: C.accentSoft, borderRadius: Radius.pill, paddingHorizontal: 8, paddingVertical: 3 },
     scoreOf: { fontSize: 13, fontWeight: '600', color: C.textFaint },

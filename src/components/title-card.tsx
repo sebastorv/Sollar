@@ -135,7 +135,7 @@ export function StatusBadge({ status, size = 24 }: { status: WatchStatus; size?:
       <View
         accessibilityLabel={tr(STATUS_LABEL[status])}
         style={[markStyles.status, { height: size, minWidth: size * 1.7, borderRadius: size / 2, backgroundColor: done ? C.accent : C.mode === 'dark' ? '#3A3846' : 'rgba(22,20,28,0.92)' }]}>
-        <Icon name={done ? 'checks' : STATUS_ICON[status]} size={size * 0.6} color="#fff" filled={status === 'planned'} strokeWidth={2.6} />
+        <Icon name={done ? 'checks' : STATUS_ICON[status]} size={size * 0.6} color={done ? C.onAccent : '#fff'} filled={status === 'planned'} strokeWidth={2.6} />
       </View>
     </View>
   );
@@ -197,7 +197,7 @@ function PosterMarks({
             setMenu(await anchorOf(e, { x: 0, y: 0, width: 0, height: 0 }));
           }}
           style={markStyles.more}>
-          <Icon name="moreV" size={16} color="#fff" />
+          <Icon name="moreV" size={18} color="#fff" />
         </Touchable>
       ) : null}
       {logo && !small ? (
@@ -236,11 +236,11 @@ const markStyles = StyleSheet.create({
     top: 6,
     right: 6,
     width: 26,
-    height: 26,
-    borderRadius: 13,
+    height: 30,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(16,14,20,0.42)',
+    // Solo los tres puntos, sin círculo; una sombra suave los separa de carátulas claras.
+    filter: 'drop-shadow(0px 1px 2px rgba(0,0,0,0.75))',
   },
   statusWrap: { position: 'absolute', left: 0, right: 0, alignItems: 'center' },
   status: {

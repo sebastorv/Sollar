@@ -23,14 +23,16 @@
       // encima del contenido ni se mezclan los modos.
       (function () {
         try {
-          var saved = JSON.parse(localStorage.getItem('sollar.theme.v1') || '{}');
+          var saved = JSON.parse(localStorage.getItem('sollar.theme.v2') || 'null');
+          var old = JSON.parse(localStorage.getItem('sollar.theme.v1') || '{}');
+          if (!saved) saved = { mode: old.mode };
           var mode = saved.mode || 'light';
           if (mode === 'system') mode = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-          document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]').content = mode === 'dark' ? 'black' : 'default';
+          document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]').content = mode === 'dark' ? 'black-translucent' : 'default';
           document.documentElement.style.background = mode === 'dark' ? '#0b0b0d' : '#f6f6f7';
           // Ícono de la app con el color elegido (se usa al agregarla a la pantalla de inicio).
-          var accent = saved.accent || 'brasa';
-          if (['brasa', 'atardecer', 'cereza'].indexOf(accent) >= 0) {
+          var accent = saved.accent || 'sol';
+          if (['sol', 'brasa', 'atardecer', 'cereza'].indexOf(accent) >= 0) {
             document.querySelector('link[rel="apple-touch-icon"]').href = '__BASE__/icons/' + accent + '-apple-touch-icon.png';
             document.querySelector('link[rel="manifest"]').href = '__BASE__/manifest-' + accent + '.json';
           }

@@ -21,10 +21,11 @@ import { useColors, useStyles } from '@/store/theme';
 
 import { SollarLogo } from './brand';
 import { Glass } from './glass';
-import { Icon, type IconName } from './icons';
+import { type IconName } from './icons';
 import { TabScrollProvider, useTabScroll } from './tab-scroll';
 import { Touchable } from './touch';
 import { Image } from 'expo-image';
+import Svg, { Circle, Path, Rect } from 'react-native-svg';
 import { useSettings } from '@/store/settings';
 import { RailContext } from './ui';
 
@@ -215,7 +216,7 @@ function TabButton({
             style={{ width: 26, height: 26, borderRadius: 13, borderWidth: isFocused ? 2 : 0, borderColor: C.accent }}
           />
         ) : (
-          <Icon name={icon} size={22} color={isFocused ? C.accentInk : C.text} filled={isFocused && icon !== 'search'} strokeWidth={2} />
+          <TabGlyph name={icon} on={!!isFocused} size={24} color={C.text} fill={C.accent} detail={C.onAccent} />
         )}
       </View>
     </Touchable>
@@ -238,3 +239,53 @@ const makeStyles = (C: Colors) =>
     circle: { width: SLOT + PAD * 2, height: SLOT + PAD * 2 },
     roundBtn: { flex: 1, alignItems: 'center', justifyContent: 'center', borderRadius: Radius.pill },
   });
+
+/**
+ * Íconos de la barra: finos y suaves cuando no están elegidos; al elegirlos se rellenan con el
+ * color de la marca y sus detalles quedan en contraste (en vez de pintar solo el borde).
+ */
+function TabGlyph({ name, on, size, color, fill, detail }: { name: IconName; on: boolean; size: number; color: string; fill: string; detail: string }) {
+  const line = { stroke: on ? fill : color, strokeWidth: 1.6, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
+  const body = on ? { fill, stroke: fill, strokeWidth: 1.6, strokeLinejoin: 'round' as const } : { ...line, fill: 'none' };
+  const cut = { stroke: detail, strokeWidth: 1.6, strokeLinecap: 'round' as const, fill: 'none' };
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      {name === 'play' ? (
+        <>
+          <Rect x="3" y="4.5" width="18" height="13" rx="3.8" {...body} />
+          <Path d="M10.4 8.8v4.4a.5.5 0 0 0 .8.4l3.4-2.2a.5.5 0 0 0 0-.8l-3.4-2.2a.5.5 0 0 0-.8.4Z" fill={on ? detail : color} />
+          <Path d="M9 20.5h6" {...line} />
+        </>
+      ) : null}
+      {name === 'calendar' ? (
+        <>
+          <Rect x="3.5" y="5" width="17" height="15.5" rx="3.8" {...body} />
+          <Path d="M3.5 10h17" {...(on ? cut : line)} />
+          <Path d="M8 3v4M16 3v4" {...line} />
+          <Circle cx="15.5" cy="15" r="1.6" fill={on ? detail : color} />
+        </>
+      ) : null}
+      {name === 'ticket' ? (
+        <>
+          <Path
+            d="M4 7.5A1.5 1.5 0 0 1 5.5 6h13A1.5 1.5 0 0 1 20 7.5v2a2.5 2.5 0 0 0 0 5v2a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 16.5v-2a2.5 2.5 0 0 0 0-5Z"
+            {...body}
+          />
+          <Path d="M14.5 7v1.2M14.5 11.3v1.4M14.5 15.8V17" {...(on ? cut : line)} />
+        </>
+      ) : null}
+      {name === 'person' ? (
+        <>
+          <Circle cx="12" cy="8.3" r="3.6" {...body} />
+          <Path d={on ? 'M4.8 19.6c1-3.4 3.9-5.3 7.2-5.3s6.2 1.9 7.2 5.3c.1.4-.2.9-.7.9H5.5c-.5 0-.8-.5-.7-.9Z' : 'M5 19.5c1.2-3.3 3.9-5 7-5s5.8 1.7 7 5'} {...body} />
+        </>
+      ) : null}
+      {name === 'search' ? (
+        <>
+          <Circle cx="10.5" cy="10.5" r="6.2" {...body} />
+          <Path d="M15.2 15.2l4.8 4.8" {...line} strokeWidth={on ? 2.2 : 1.6} />
+        </>
+      ) : null}
+    </Svg>
+  );
+}

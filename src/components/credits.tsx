@@ -78,7 +78,7 @@ export function Credits({ cast, crew, isTv, wide }: { cast: CastMember[]; crew: 
                   justifyContent: 'center',
                   backgroundColor: on ? C.accent : C.fill,
                 }}>
-                <T raw style={{ fontSize: 15, fontWeight: '700', color: on ? '#fff' : C.text }}>
+                <T raw style={{ fontSize: 15, fontWeight: '700', color: on ? C.onAccent : C.text }}>
                   {t.label}
                 </T>
               </Touchable>

@@ -3,8 +3,8 @@
 import { tr, useLang } from '@/i18n';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { createContext, useContext, type ReactNode } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View, useWindowDimensions, type PressableProps, type StyleProp, type TextProps, type TextStyle, type ViewStyle } from 'react-native';
+import { createContext, useContext, useEffect, useRef, type ReactNode } from 'react';
+import { ActivityIndicator, Animated, Easing, Platform, ScrollView, StyleSheet, Text, View, useWindowDimensions, type PressableProps, type StyleProp, type TextProps, type TextStyle, type ViewStyle } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { MaxContentWidth, RAIL_WIDTH, Radius, Space, TabBarSpace, WIDE, type Colors } from '@/constants/theme';
@@ -98,6 +98,7 @@ export function Screen({
   return (
     <SafeAreaView style={styles.screen} edges={['left', 'right']}>
       <Backdrop />
+      <FadeIn>
       {scroll ? (
         <ScrollView
           contentContainerStyle={[styles.scrollContent, wide && { paddingBottom: Space.xxl }]}
@@ -109,7 +110,28 @@ export function Screen({
       ) : (
         inner
       )}
+      </FadeIn>
     </SafeAreaView>
+  );
+}
+
+/**
+ * Entrada suave de cada pantalla: aparece y sube unos pocos píxeles. Corta, para que no pese.
+ */
+export function FadeIn({ children }: { children: ReactNode }) {
+  const v = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(v, { toValue: 1, duration: 240, easing: Easing.out(Easing.cubic), useNativeDriver: Platform.OS !== 'web' }).start();
+  }, [v]);
+  return (
+    <Animated.View
+      style={{
+        flex: 1,
+        opacity: v,
+        transform: [{ translateY: v.interpolate({ inputRange: [0, 1], outputRange: [8, 0] }) }],
+      }}>
+      {children}
+    </Animated.View>
   );
 }
 

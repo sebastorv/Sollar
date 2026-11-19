@@ -21,7 +21,10 @@ type ScrollViewInstance = React.ComponentRef<typeof ScrollView>;
 
 import { Space, WIDE } from '@/constants/theme';
 
-import { GlassButton } from './glass';
+import { useColors } from '@/store/theme';
+
+import { Icon } from './icons';
+import { Touchable } from './touch';
 
 function useArrows() {
   const wide = useWindowDimensions().width >= WIDE;
@@ -43,26 +46,58 @@ function useArrows() {
 function Arrows({
   a,
   go,
+  hover,
 }: {
   a: ReturnType<typeof useArrows>;
   go: (to: number) => void;
+  hover: boolean;
 }) {
   if (!a.wide) return null;
   const page = Math.max(200, a.view * 0.85);
+  // Discretas: solo aparecen al pasar el puntero por la fila.
   return (
     <>
       {a.canLeft ? (
-        <View pointerEvents="box-none" style={[styles.side, { left: -Space.sm }]}>
-          <GlassButton icon="back" label="Anterior" onPress={() => go(Math.max(0, a.x - page))} />
+        <View pointerEvents="box-none" style={[styles.side, { left: 6, opacity: hover ? 1 : 0 }]}>
+          <Arrow icon="chevronLeft" label="Anterior" onPress={() => go(Math.max(0, a.x - page))} />
         </View>
       ) : null}
       {a.canRight ? (
-        <View pointerEvents="box-none" style={[styles.side, { right: -Space.sm }]}>
-          <GlassButton icon="chevronRight" label="Siguiente" onPress={() => go(a.x + page)} />
+        <View pointerEvents="box-none" style={[styles.side, { right: 6, opacity: hover ? 1 : 0 }]}>
+          <Arrow icon="chevronRight" label="Siguiente" onPress={() => go(a.x + page)} />
         </View>
       ) : null}
     </>
   );
+}
+
+function Arrow({ icon, label, onPress }: { icon: 'chevronLeft' | 'chevronRight'; label: string; onPress: () => void }) {
+  const C = useColors();
+  return (
+    <Touchable
+      haptic="light"
+      pressScale={0.9}
+      onPress={onPress}
+      accessibilityLabel={label}
+      accessibilityRole="button"
+      style={{
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: C.mode === 'light' ? 'rgba(255,255,255,0.88)' : 'rgba(40,38,48,0.88)',
+        boxShadow: C.mode === 'light' ? '0 4px 14px rgba(30,16,50,0.16)' : '0 4px 14px rgba(0,0,0,0.5)',
+      }}>
+      <Icon name={icon} size={18} color={C.text} strokeWidth={2} />
+    </Touchable>
+  );
+}
+
+/** Si el puntero está encima de la fila (solo computador). */
+function useHover() {
+  const [hover, setHover] = useState(false);
+  return { hover, bind: { onPointerEnter: () => setHover(true), onPointerLeave: () => setHover(false) } };
 }
 
 export function HScroll({
@@ -74,8 +109,9 @@ export function HScroll({
   const own = useRef<ScrollViewInstance>(null);
   const ref = innerRef ?? own;
   const a = useArrows();
+  const h = useHover();
   return (
-    <View>
+    <View {...h.bind}>
       <ScrollView
         {...props}
         ref={ref}
@@ -90,7 +126,7 @@ export function HScroll({
         onContentSizeChange={a.onContentSizeChange}>
         {children}
       </ScrollView>
-      <Arrows a={a} go={(to) => ref.current?.scrollTo({ x: to, animated: true })} />
+      <Arrows a={a} hover={h.hover} go={(to) => ref.current?.scrollTo({ x: to, animated: true })} />
     </View>
   );
 }
@@ -98,8 +134,9 @@ export function HScroll({
 export function HList<T>({ onScroll, ...props }: FlatListProps<T>) {
   const ref = useRef<FlatList<T>>(null);
   const a = useArrows();
+  const h = useHover();
   return (
-    <View>
+    <View {...h.bind}>
       <FlatList
         {...props}
         ref={ref}
@@ -113,7 +150,7 @@ export function HList<T>({ onScroll, ...props }: FlatListProps<T>) {
         onLayout={a.onLayout}
         onContentSizeChange={a.onContentSizeChange}
       />
-      <Arrows a={a} go={(to) => ref.current?.scrollToOffset({ offset: to, animated: true })} />
+      <Arrows a={a} hover={h.hover} go={(to) => ref.current?.scrollToOffset({ offset: to, animated: true })} />
     </View>
   );
 }

@@ -159,7 +159,7 @@ export function Soundtrack({ titles, year, wide }: { titles: string[]; year: str
                   style={[styles.row, { borderTopWidth: 1, borderTopColor: C.border }, on && { backgroundColor: C.accentSoft }]}>
                   <View style={[styles.play, { backgroundColor: on ? C.accent : C.fill }]}>
                     {canPlay && t.preview ? (
-                      <Icon name={on ? 'pause' : 'playSolid'} size={16} color={on ? '#fff' : C.text} filled strokeWidth={2.4} />
+                      <Icon name={on ? 'pause' : 'playSolid'} size={16} color={on ? C.onAccent : C.text} filled strokeWidth={2.4} />
                     ) : (
                       <T raw style={{ fontSize: 13, fontWeight: '700', color: C.textMuted }}>
                         {i + 1}

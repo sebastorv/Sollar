@@ -268,7 +268,7 @@ function UpNextCard({ item, upcoming }: { item: LibraryItem; upcoming?: Calendar
             accessibilityLabel={`Marcar ${code} como visto`}
             onPress={() => setEpisodes(item.key, [next], true)}
             style={styles.checkBtn}>
-            <Icon name="check" size={22} color={C.accentInk} strokeWidth={2.6} />
+            <Icon name="check" size={20} color={C.onAccent} strokeWidth={2.4} />
           </Touchable>
         ) : null}
       </View>
@@ -384,13 +384,14 @@ function WeekCard({ e }: { e: CalendarEpisode }) {
           {img ? <Image source={{ uri: img }} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} /> : null}
           <LinearGradient colors={['transparent', 'rgba(0,0,0,0.55)']} style={StyleSheet.absoluteFill} />
           <View style={styles.weekTags}>
-            <View style={[styles.weekTag, today && { backgroundColor: C.accent }]}>
-              <T style={{ fontSize: 12, fontWeight: '800', color: '#fff' }}>{dayLabel(e.airDate)}</T>
+            <View style={styles.weekTag}>
+              {today ? <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: C.accent }} /> : null}
+              <T style={styles.weekTagText}>{dayLabel(e.airDate)}</T>
             </View>
             {e.kind !== 'standard' ? (
               <View style={styles.weekTag}>
-                <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: e.kind === 'premiere' ? '#5AB4FF' : '#FFB23F' }} />
-                <T style={{ fontSize: 12, fontWeight: '800', color: '#fff' }}>{e.kind === 'premiere' ? 'Estreno' : 'Final'}</T>
+                <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: e.kind === 'premiere' ? '#5AB4FF' : '#FFB23F' }} />
+                <T style={styles.weekTagText}>{e.kind === 'premiere' ? 'Estreno' : 'Final'}</T>
               </View>
             ) : null}
           </View>
@@ -419,8 +420,6 @@ const makeStyles = (C: Colors) =>
       padding: Space.md,
       borderRadius: Radius.lg,
       backgroundColor: C.accentSoft,
-      borderWidth: 1,
-      borderColor: C.accentLine,
     },
     freshDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: C.accent },
     weekStill: { width: 260, aspectRatio: 16 / 9, borderRadius: 16, overflow: 'hidden', backgroundColor: C.fill },
@@ -429,11 +428,12 @@ const makeStyles = (C: Colors) =>
       flexDirection: 'row',
       alignItems: 'center',
       gap: 5,
-      paddingHorizontal: 9,
-      height: 26,
-      borderRadius: 13,
-      backgroundColor: 'rgba(0,0,0,0.55)',
+      paddingHorizontal: 8,
+      height: 22,
+      borderRadius: 11,
+      backgroundColor: 'rgba(12,11,15,0.6)',
     },
+    weekTagText: { fontSize: 11, lineHeight: 14, fontWeight: '700', color: '#fff' },
     // Los estantes llegan al borde de la pantalla, como en las apps de streaming.
     bleed: { marginHorizontal: -Space.lg, paddingHorizontal: Space.lg, flexGrow: 0 },
     still: {
@@ -453,8 +453,6 @@ const makeStyles = (C: Colors) =>
       paddingVertical: 5,
       borderRadius: Radius.pill,
       backgroundColor: 'rgba(20,16,28,0.55)',
-      borderWidth: 1,
-      borderColor: 'rgba(255,255,255,0.18)',
       overflow: 'hidden',
     },
     pillFill: { position: 'absolute', left: 0, top: 0, bottom: 0, backgroundColor: 'rgba(255,255,255,0.16)' },
@@ -464,9 +462,7 @@ const makeStyles = (C: Colors) =>
       width: 38,
       height: 38,
       borderRadius: 19,
-      borderWidth: 1.5,
-      borderColor: C.accentLine,
-      backgroundColor: C.accentSoft,
+      backgroundColor: C.accent,
       alignItems: 'center',
       justifyContent: 'center',
     },

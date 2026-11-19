@@ -1,5 +1,6 @@
 /** Ajustes: cuenta, plataformas, apariencia, importar, respaldo y créditos. Se abre desde el engranaje del perfil. */
 
+import { BubbleModal } from '@/components/sheet';
 import { useMemo, useState } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
@@ -310,8 +311,7 @@ function ExportModal({
   }
 
   return (
-    <Modal visible={text != null} animationType="slide" transparent onRequestClose={onClose}>
-      <View style={styles.backdrop}>
+    <BubbleModal visible={text != null} onClose={onClose}>
         <Glass strong radius={Radius.lg} style={styles.sheet}>
           <T variant="heading">Tu respaldo</T>
           <T variant="small" muted>
@@ -326,8 +326,7 @@ function ExportModal({
             <Button label="Cerrar" kind="secondary" onPress={() => { setNote(null); onClose(); }} />
           </View>
         </Glass>
-      </View>
-    </Modal>
+    </BubbleModal>
   );
 }
 
@@ -356,8 +355,7 @@ function ImportModal({
   }
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <View style={styles.backdrop}>
+    <BubbleModal visible={visible} onClose={onClose}>
         <Glass strong radius={Radius.lg} style={styles.sheet}>
           <T variant="heading">Importar respaldo</T>
           <T variant="small" muted>
@@ -380,8 +378,7 @@ function ImportModal({
             <Button label="Cancelar" kind="secondary" onPress={onClose} />
           </View>
         </Glass>
-      </View>
-    </Modal>
+    </BubbleModal>
   );
 }
 
