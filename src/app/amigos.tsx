@@ -44,7 +44,7 @@ export default function FriendsScreen() {
 
   return (
     <Screen>
-      <View style={{ paddingTop: 52, gap: Space.xs }}>
+      <View style={{ paddingTop: Space.sm, gap: Space.xs }}>
         <T variant="title">Amigos</T>
         <T muted>Sigue a tus amigos y mira qué están viendo.</T>
       </View>

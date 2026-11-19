@@ -7,7 +7,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { Radius, Space, type Colors } from '@/constants/theme';
 import { useColors, useStyles } from '@/store/theme';
-import { getNetworkLogo, getProviderDirectory } from '@/lib/tmdb';
+import { findWordmark, getNetworkLogo, getProviderDirectory, type Wordmark } from '@/lib/tmdb';
 import type { ProviderInfo } from '@/lib/types';
 import { useSettings } from '@/store/settings';
 
@@ -162,8 +162,8 @@ const makeStyles = (C: Colors) =>
 // --- Logos con el nombre (como JustWatch) ---
 
 /**
- * Cada plataforma con su red en TMDB, que trae el logo con el nombre (no el ícono cuadrado de la
- * app). Las que no están aquí se muestran con su nombre escrito.
+ * Las grandes, con su red en TMDB (el logo más fiel). Las demás se buscan solas por su nombre
+ * entre las compañías de TMDB; si no hay logo, se usa el ícono oficial de la app.
  */
 const WORDMARK_NETWORK: Record<number, number> = {
   8: 213, // Netflix
@@ -180,18 +180,17 @@ const WORDMARK_NETWORK: Record<number, number> = {
   15: 453, // Hulu
   386: 3353, // Peacock
 };
-/** Logos que se ven bien en su color original; los demás se muestran en un solo tono. */
-const KEEP_COLOR = new Set([213, 1112, 453]);
 
-const WM_KEY = 'sollar.wordmarks.v1';
-let wordmarks: Record<number, string | null> | null = null;
+const WM_KEY = 'sollar.wordmarks.v2';
+let wordmarks: Record<string, Wordmark | null> | null = null;
 let wmLoad: Promise<void> | null = null;
+const pending = new Map<string, Promise<Wordmark | null>>();
 
 function loadWordmarks() {
   if (wmLoad) return wmLoad;
   wmLoad = AsyncStorage.getItem(WM_KEY)
     .then((raw) => {
-      wordmarks = raw ? (JSON.parse(raw) as Record<number, string | null>) : {};
+      wordmarks = raw ? (JSON.parse(raw) as Record<string, Wordmark | null>) : {};
     })
     .catch(() => {
       wordmarks = {};
@@ -199,65 +198,67 @@ function loadWordmarks() {
   return wmLoad;
 }
 
-function useWordmark(providerId: number): { path: string | null; network: number | null; ready: boolean } {
-  const network = WORDMARK_NETWORK[providerId] ?? null;
-  const [path, setPath] = useState<string | null>(network && wordmarks ? wordmarks[network] ?? null : null);
-  const [ready, setReady] = useState(!network || (wordmarks != null && network in wordmarks));
+function lookup(id: number, name: string): Promise<Wordmark | null> {
+  const k = String(id);
+  const running = pending.get(k);
+  if (running) return running;
+  const net = WORDMARK_NETWORK[id];
+  const job = (net ? getNetworkLogo(net) : findWordmark(name))
+    .catch(() => null)
+    .then((w) => {
+      wordmarks = { ...(wordmarks ?? {}), [k]: w };
+      AsyncStorage.setItem(WM_KEY, JSON.stringify(wordmarks)).catch(() => {});
+      return w;
+    });
+  pending.set(k, job);
+  return job;
+}
+
+function useWordmark(id: number, name: string) {
+  const k = String(id);
+  const [w, setW] = useState<Wordmark | null | undefined>(wordmarks ? wordmarks[k] : undefined);
   useEffect(() => {
-    if (!network) return;
     let off = false;
     loadWordmarks().then(async () => {
       if (off) return;
-      if (wordmarks && network in wordmarks) {
-        setPath(wordmarks[network]);
-        setReady(true);
-        return;
-      }
-      const p = await getNetworkLogo(network).catch(() => null);
-      if (off) return;
-      wordmarks = { ...(wordmarks ?? {}), [network]: p };
-      AsyncStorage.setItem(WM_KEY, JSON.stringify(wordmarks)).catch(() => {});
-      setPath(p);
-      setReady(true);
+      if (wordmarks && k in wordmarks) return setW(wordmarks[k]);
+      const got = await lookup(id, name);
+      if (!off) setW(got);
     });
     return () => {
       off = true;
     };
-  }, [network]);
-  return { path, network, ready };
+  }, [id, k, name]);
+  return w;
 }
 
-/** Logo con el nombre de la plataforma, en blanco (modo oscuro) o negro (claro). */
-export function ProviderWordmark({ id, name, width = 84, height = 34 }: { id: number; name: string; width?: number; height?: number }) {
+/** Luminosidad de un logo no se conoce de antemano: en modo oscuro los muy oscuros pasan a blanco. */
+const DARK_LOGO = new Set([2552, 3186, 1024]);
+
+/**
+ * Logo con el nombre de la plataforma, en sus colores. Todos se ven del mismo tamaño: el alto se
+ * ajusta según qué tan ancho es cada logo (uno cuadrado sale más alto, uno alargado más bajo).
+ */
+export function ProviderWordmark({ id, name, logoPath, box = 80 }: { id: number; name: string; logoPath: string | null; box?: number }) {
   const C = useColors();
-  const { path, network, ready } = useWordmark(id);
-  const keep = network != null && KEEP_COLOR.has(network);
-  const mono = C.mode === 'dark' ? '#FFFFFF' : '#16141B';
-  if (!ready) return <View style={{ width, height }} />;
-  if (!path) {
-    return (
-      <View style={{ width, height, alignItems: 'center', justifyContent: 'center' }}>
-        <T numberOfLines={2} style={{ fontSize: 14, lineHeight: 16, fontWeight: '700', textAlign: 'center', color: C.text }}>
-          {name}
-        </T>
-      </View>
-    );
-  }
+  const w = useWordmark(id, name);
+  if (w === undefined) return <View style={{ width: box, height: box * 0.42 }} />;
+  if (!w) return <ProviderLogo name={name} logoPath={logoPath} size={Math.round(box * 0.52)} />;
+  // Área visual pareja: ancho y alto según la proporción, dentro de la caja.
+  const aspect = Math.max(1, Math.min(w.aspect, 6));
+  const height = Math.min(box * 0.5, (box * 0.62) / Math.sqrt(aspect));
+  const width = Math.min(box, height * aspect);
+  const net = WORDMARK_NETWORK[id];
+  const whiten = C.mode === 'dark' && net != null && DARK_LOGO.has(net);
   return (
-    <View
-      style={{
-        width,
-        height,
-        // En la web el tono único se logra con un filtro; en iPhone y Android, con tintColor.
-        ...(keep ? {} : ({ filter: C.mode === 'dark' ? 'brightness(0) invert(1)' : 'brightness(0)' } as object)),
-      }}>
+    <View style={whiten ? ({ filter: 'brightness(0) invert(1)' } as object) : undefined}>
       <Image
-        source={{ uri: `https://image.tmdb.org/t/p/w300${path}` }}
+        source={{ uri: `https://image.tmdb.org/t/p/w300${w.path}` }}
         style={{ width, height }}
         contentFit="contain"
         cachePolicy="memory-disk"
         transition={0}
-        tintColor={keep ? undefined : mono}
+        tintColor={whiten ? '#FFFFFF' : undefined}
         accessibilityLabel={name}
       />
     </View>

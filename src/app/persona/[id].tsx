@@ -151,6 +151,6 @@ export default function PersonScreen() {
 
 const makeStyles = (C: Colors) =>
   StyleSheet.create({
-    header: { flexDirection: 'row', gap: Space.lg, paddingTop: 52 },
+    header: { flexDirection: 'row', gap: Space.lg, paddingTop: Space.sm },
     photo: { width: 120, height: 160, borderRadius: Radius.lg, overflow: 'hidden', backgroundColor: C.fill },
   });

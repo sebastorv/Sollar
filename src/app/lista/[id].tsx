@@ -75,7 +75,7 @@ export default function ListScreen() {
 
   return (
     <Screen>
-      <View style={{ paddingTop: 52, gap: Space.xs }}>
+      <View style={{ paddingTop: Space.sm, gap: Space.xs }}>
         <T variant="title">{list.name}</T>
         {list.description ? <T muted>{list.description}</T> : null}
         <T variant="small" muted>

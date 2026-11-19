@@ -7,7 +7,7 @@ import { createContext, useContext, useEffect, useRef, type ReactNode } from 're
 import { ActivityIndicator, Animated, Easing, Platform, ScrollView, StyleSheet, Text, View, useWindowDimensions, type PressableProps, type StyleProp, type TextProps, type TextStyle, type ViewStyle } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Gutter, MaxContentWidth, RAIL_WIDTH, Radius, Space, TabBarSpace, WIDE, type Colors } from '@/constants/theme';
+import { withAlpha, Gutter, MaxContentWidth, RAIL_WIDTH, Radius, Space, TabBarSpace, WIDE, type Colors } from '@/constants/theme';
 import { useColors, useStyles } from '@/store/theme';
 import { sharpImage } from '@/lib/tmdb';
 import { fontFamilyFor } from '@/lib/fonts';
@@ -35,7 +35,7 @@ export function T({
   // En celulares la letra se ve más grande: los textos medianos y grandes se reducen un poco.
   const phone = useWindowDimensions().width < 500;
   const size = flat?.fontSize;
-  const k = phone && size && size >= 15 ? (size >= 28 ? 0.86 : 0.92) : 1;
+  const k = phone && size && size >= 15 ? (size >= 26 ? 0.82 : size >= 19 ? 0.88 : 0.92) : 1;
   const scaled = k === 1 ? null : { fontSize: Math.round(size! * k * 2) / 2, lineHeight: flat.lineHeight ? Math.round(flat.lineHeight * k) : undefined };
   // Roboto ya es compacta: el espaciado negativo pensado para la letra anterior se suaviza.
   const spacing = flat?.letterSpacing && flat.letterSpacing < 0 ? { letterSpacing: flat.letterSpacing * 0.35 } : null;
@@ -92,7 +92,7 @@ export function Screen({
         // El contenido pasa por debajo de la barra de estado del iPhone, a pantalla completa.
         padded && { paddingTop: insets.top + Space.lg },
         // En pantallas anchas se deja lugar a la barra lateral y se da más aire a los lados.
-        padded && wide && { paddingTop: insets.top + Space.xxl, paddingLeft: rail ? RAIL_WIDTH + Space.lg * 2 + Space.md : Space.xxl, paddingRight: Space.xxl },
+        padded && wide && { paddingTop: insets.top + Space.xxl, paddingLeft: rail ? RAIL_WIDTH + Space.lg * 2 + Space.md : 48, paddingRight: 48 },
       ]}>
       {children}
     </View>
@@ -113,6 +113,13 @@ export function Screen({
         inner
       )}
       </FadeIn>
+      {/* Bajo la hora del iPhone: color sólido del fondo, para que el contenido no se vea
+          borroso detrás de la hora al bajar. */}
+      {insets.top > 0 ? (
+        <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, height: insets.top + 6 }}>
+          <LinearGradient colors={[C.bg, C.bg, withAlpha(C.bg, 0)]} locations={[0, 0.8, 1]} style={StyleSheet.absoluteFill} />
+        </View>
+      ) : null}
     </SafeAreaView>
   );
 }
@@ -369,8 +376,8 @@ export function Section({
 
 const makeStyles = (C: Colors) =>
   StyleSheet.create({
-    title: { color: C.text, fontSize: 34, lineHeight: 40, fontWeight: '800', letterSpacing: -1 },
-    heading: { color: C.text, fontSize: 22, lineHeight: 28, fontWeight: '800', letterSpacing: -0.5 },
+    title: { color: C.text, fontSize: 30, lineHeight: 36, fontWeight: '700', letterSpacing: -0.5 },
+    heading: { color: C.text, fontSize: 20, lineHeight: 26, fontWeight: '700', letterSpacing: -0.2 },
     body: { color: C.text, fontSize: 16, lineHeight: 23 },
     small: { color: C.text, fontSize: 14, lineHeight: 20 },
     caption: { color: C.text, fontSize: 12, lineHeight: 16 },

@@ -185,7 +185,7 @@ function ProgressRow({ item, first }: { item: LibraryItem; first: boolean }) {
           onPress={() => lib.setEpisodes(item.key, [next], true)}
           accessibilityLabel={`Marcar ${formatEpisode(next.season, next.episode)} como visto`}
           style={styles.check}>
-          <Icon name="check" size={24} color={C.text} strokeWidth={1.7} />
+          <Icon name="check" size={26} color={C.accent} strokeWidth={2.2} />
         </Touchable>
       ) : null}
     </Touchable>

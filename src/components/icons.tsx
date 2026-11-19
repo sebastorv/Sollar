@@ -79,14 +79,15 @@ export function Icon({
         <>
           {/* Pantalla con el botón de reproducir: lo que estás siguiendo */}
           {filled ? (
-            <Path
-              fillRule="evenodd"
-              d="M6.5 4.5h11A3.5 3.5 0 0 1 21 8v6a3.5 3.5 0 0 1-3.5 3.5h-11A3.5 3.5 0 0 1 3 14V8a3.5 3.5 0 0 1 3.5-3.5ZM10.3 8.6v4.8a.6.6 0 0 0 .9.5l3.8-2.4a.6.6 0 0 0 0-1l-3.8-2.4a.6.6 0 0 0-.9.5Z"
-              fill={color}
-              stroke={color}
-              strokeWidth={strokeWidth}
-              strokeLinejoin="round"
-            />
+            <>
+              {/* Versión sólida: la pantalla llena con el triángulo calado, sin contornos. */}
+              <Path
+                fillRule="evenodd"
+                d="M6.5 3.8h11A4.2 4.2 0 0 1 21.7 8v6a4.2 4.2 0 0 1-4.2 4.2h-11A4.2 4.2 0 0 1 2.3 14V8a4.2 4.2 0 0 1 4.2-4.2ZM10.4 8.3v5.4c0 .5.5.8.9.5l4.2-2.7a.6.6 0 0 0 0-1L11.3 7.8c-.4-.3-.9 0-.9.5Z"
+                fill={color}
+              />
+              <Rect x="8.5" y="19.6" width="7" height="1.8" rx="0.9" fill={color} />
+            </>
           ) : (
             <>
               <Rect x="3" y="4.5" width="18" height="13" rx="3.5" {...s} />
@@ -101,13 +102,16 @@ export function Icon({
         <>
           {/* Hoja de calendario con dos argollas y un día marcado */}
           {filled ? (
-            <Path
-              fillRule="evenodd"
-              d="M7 5h10a3.5 3.5 0 0 1 3.5 3.5V17a3.5 3.5 0 0 1-3.5 3.5H7A3.5 3.5 0 0 1 3.5 17V8.5A3.5 3.5 0 0 1 7 5ZM15.5 13.3a1.7 1.7 0 1 0 0 3.4 1.7 1.7 0 0 0 0-3.4Z"
-              fill={color}
-              stroke={color}
-              strokeWidth={strokeWidth}
-            />
+            <>
+              {/* Sólido: la hoja llena con una franja calada arriba y el día marcado calado. */}
+              <Path
+                fillRule="evenodd"
+                d="M7 4.6h10a3.9 3.9 0 0 1 3.9 3.9v8.6a3.9 3.9 0 0 1-3.9 3.9H7a3.9 3.9 0 0 1-3.9-3.9V8.5A3.9 3.9 0 0 1 7 4.6ZM4.6 9.4h14.8v1.2H4.6ZM15.5 13.2a1.8 1.8 0 1 0 0 3.6 1.8 1.8 0 0 0 0-3.6Z"
+                fill={color}
+              />
+              <Rect x="7.1" y="2.4" width="1.8" height="4.6" rx="0.9" fill={color} />
+              <Rect x="15.1" y="2.4" width="1.8" height="4.6" rx="0.9" fill={color} />
+            </>
           ) : (
             <>
               <Rect x="3.5" y="5" width="17" height="15.5" rx="3.5" {...s} />
@@ -115,7 +119,7 @@ export function Icon({
               <Circle cx="15.5" cy="15" r="1.7" fill={color} stroke="none" />
             </>
           )}
-          <Path d="M8 3v4M16 3v4" {...s} />
+          {filled ? null : <Path d="M8 3v4M16 3v4" {...s} />}
         </>
       ) : null}
 
@@ -199,17 +203,33 @@ export function Icon({
           <Path
             d="M4 7.5A1.5 1.5 0 0 1 5.5 6h13A1.5 1.5 0 0 1 20 7.5v2a2.5 2.5 0 0 0 0 5v2a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 16.5v-2a2.5 2.5 0 0 0 0-5Z"
             {...s}
-            fill={fill}
-            fillOpacity={fillOpacity}
+            fill="none"
+            strokeOpacity={filled ? 0 : 1}
           />
           {filled ? null : <Path d="M14.5 6.5v1.5M14.5 11v2M14.5 16v1.5" {...s} />}
+          {filled ? (
+            <Path
+              fillRule="evenodd"
+              d="M5.5 5.3h13a2.2 2.2 0 0 1 2.2 2.2v1.6a.4.4 0 0 1-.3.4 2.6 2.6 0 0 0 0 5 .4.4 0 0 1 .3.4v1.6a2.2 2.2 0 0 1-2.2 2.2h-13a2.2 2.2 0 0 1-2.2-2.2v-1.6c0-.2.1-.4.3-.4a2.6 2.6 0 0 0 0-5 .4.4 0 0 1-.3-.4V7.5a2.2 2.2 0 0 1 2.2-2.2ZM13.8 7.2h1.4v1.6h-1.4ZM13.8 11.2h1.4v1.6h-1.4ZM13.8 15.2h1.4v1.6h-1.4Z"
+              fill={color}
+            />
+          ) : null}
         </>
       ) : null}
 
       {name === 'person' ? (
         <>
-          <Circle cx="12" cy="8.5" r="3.5" {...s} fill={fill} fillOpacity={fillOpacity} />
-          <Path d={filled ? 'M5 19.5c1.2-3.3 3.9-5 7-5s5.8 1.7 7 5Z' : 'M5 19.5c1.2-3.3 3.9-5 7-5s5.8 1.7 7 5'} {...s} fill={fill} fillOpacity={fillOpacity} />
+          {filled ? (
+            <>
+              <Circle cx="12" cy="8" r="4.2" fill={color} />
+              <Path d="M4.3 19.4C5.5 15.9 8.4 14 12 14s6.5 1.9 7.7 5.4a1 1 0 0 1-1 1.3H5.3a1 1 0 0 1-1-1.3Z" fill={color} />
+            </>
+          ) : (
+            <>
+              <Circle cx="12" cy="8.5" r="3.5" {...s} />
+              <Path d="M5 19.5c1.2-3.3 3.9-5 7-5s5.8 1.7 7 5" {...s} />
+            </>
+          )}
         </>
       ) : null}
 

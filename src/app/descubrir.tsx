@@ -67,7 +67,7 @@ export default function DiscoverScreen() {
 
   return (
     <Screen>
-      <View style={{ paddingTop: 52, gap: Space.xs }}>
+      <View style={{ paddingTop: Space.sm, gap: Space.xs }}>
         <T variant="title">Descubrir</T>
         <T muted>Combina filtros para encontrar justo lo que quieres ver.</T>
       </View>

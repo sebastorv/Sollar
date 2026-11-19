@@ -31,6 +31,7 @@ import type { MediaType, TmdbSearchResult } from '@/lib/types';
 import { useSettings } from '@/store/settings';
 import { useColors, useStyles } from '@/store/theme';
 import { Touchable } from '@/components/touch';
+import { TypeFilter } from '@/components/type-filter';
 
 type Tab = 'series' | 'estrenos';
 
@@ -39,10 +40,12 @@ export default function CalendarScreen() {
   return (
     <Screen>
       <T variant="title">Calendario</T>
-      <View style={{ flexDirection: 'row', gap: Space.sm }}>
-        <Chip label="Mis series" selected={tab === 'series'} onPress={() => setTab('series')} />
-        <Chip label="Estrenos" selected={tab === 'estrenos'} onPress={() => setTab('estrenos')} />
-      </View>
+      {/* Series o películas, con ícono, como el filtro de tipo del resto de la app. */}
+      <TypeFilter
+        value={tab === 'series' ? 'tv' : 'movie'}
+        onChange={(v) => setTab(v === 'movie' ? 'estrenos' : 'series')}
+        options={['tv', 'movie']}
+      />
       {tab === 'series' ? <MySeries /> : <Premieres />}
     </Screen>
   );
@@ -127,9 +130,11 @@ function MySeries() {
           <View key={g.date} style={{ gap: Space.sm }}>
             <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: Space.sm }}>
               <T variant="heading">{dayLabel(g.date)}</T>
-              <T variant="small" muted>
-                {longDate(g.date)}
-              </T>
+              {/\d/.test(dayLabel(g.date)) ? null : (
+                <T variant="small" muted>
+                  {longDate(g.date)}
+                </T>
+              )}
             </View>
             {g.items.map((e) => (
               <EpisodeRow key={`${e.key}:${e.season}:${e.episode}`} e={e} />
@@ -156,7 +161,7 @@ function ViewSwitch({ value, onChange }: { value: View3; onChange: (v: View3) =>
     ['posters', 'Carátulas', 'grid'],
   ];
   return (
-    <View style={{ flexDirection: 'row', borderRadius: 16, padding: 4, ...glassFill(C), alignSelf: 'flex-start' }}>
+    <View style={{ flexDirection: 'row', borderRadius: 999, padding: 4, gap: 2, ...glassFill(C), alignSelf: 'flex-start' }}>
       {opts.map(([k, label, icon]) => {
         const on = value === k;
         return (
@@ -169,15 +174,16 @@ function ViewSwitch({ value, onChange }: { value: View3; onChange: (v: View3) =>
               flexDirection: 'row',
               alignItems: 'center',
               gap: 6,
-              height: 40,
-              paddingHorizontal: Space.md,
-              borderRadius: 12,
-              backgroundColor: on ? (C.mode === 'dark' ? 'rgba(255,255,255,0.14)' : '#fff') : 'transparent',
-            }}>
+              height: 36,
+              paddingHorizontal: on ? 14 : 11,
+              borderRadius: 999,
+              backgroundColor: on ? C.accentSoft : 'transparent',
+            }}
+            accessibilityLabel={label}>
             <View>
-              <Icon name={icon} size={16} color={on ? C.accentInk : C.textMuted} strokeWidth={2.2} />
+              <Icon name={icon} size={18} color={on ? C.accent : C.textMuted} strokeWidth={1.8} />
             </View>
-            <T style={{ fontSize: 14, fontWeight: on ? '700' : '500', color: on ? C.text : C.textMuted }}>{label}</T>
+            {on ? <T style={{ fontSize: 14, fontWeight: '600', color: C.text }}>{label}</T> : null}
           </Touchable>
         );
       })}
@@ -310,47 +316,57 @@ function MonthView({ episodes }: { episodes: CalendarEpisode[] }) {
 
 /** Vista de carátulas: cuadrícula de lo que sale, con el día en una etiqueta. */
 function PosterView({ episodes }: { episodes: CalendarEpisode[] }) {
-  const C = useColors();
   if (!episodes.length) return <T muted>Nada programado</T>;
   return (
-    <Grid minWidth={130}>
+    <Grid minWidth={120}>
       {episodes.slice(0, 120).map((e) => (
-        <Link
-          key={`${e.key}:${e.season}:${e.episode}`}
-          href={{ pathname: '/titulo/[tipo]/[id]', params: { tipo: 'tv', id: String(e.tmdbId) } }}
-          asChild>
-          <Touchable style={{ gap: 4 }}>
-            <View>
-              <Poster path={e.posterPath} title={e.title} width={130} />
-              <View
-                style={{
-                  position: 'absolute',
-                  left: 6,
-                  bottom: 6,
-                  paddingHorizontal: 8,
-                  height: 22,
-                  borderRadius: 11,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 5,
-                  backgroundColor: 'rgba(12,11,15,0.6)',
-                }}>
-                {e.airDate === todayISO() ? <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: C.accent }} /> : null}
-                <T style={{ fontSize: 11, lineHeight: 14, fontWeight: '700', color: '#fff' }}>{dayLabel(e.airDate)}</T>
-              </View>
-            </View>
-            <T numberOfLines={1} style={{ fontSize: 14, fontWeight: '700' }}>
-              {e.title}
-            </T>
-            <T numberOfLines={1} variant="caption" muted>
-              {formatEpisode(e.season, e.episode)}
-            </T>
-          </Touchable>
-        </Link>
+        <PosterCell key={`${e.key}:${e.season}:${e.episode}`} e={e} />
       ))}
     </Grid>
   );
 }
+
+/** Una carátula del calendario: el ancho lo pone la cuadrícula, y el texto no la estira. */
+function PosterCell({ e, width = 120 }: { e: CalendarEpisode; width?: number }) {
+  const C = useColors();
+  return (
+    <Link href={{ pathname: '/titulo/[tipo]/[id]', params: { tipo: 'tv', id: String(e.tmdbId) } }} asChild>
+      <Touchable style={{ width, gap: 8 }}>
+        <View>
+          <Poster path={e.posterPath} title={e.title} width={width} />
+          <View style={dayTag}>
+            {e.airDate === todayISO() ? <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: C.accent }} /> : null}
+            <T numberOfLines={1} style={{ fontSize: 11, lineHeight: 14, fontWeight: '600', color: '#fff' }}>
+              {dayLabel(e.airDate)}
+            </T>
+          </View>
+        </View>
+        <View>
+          <T numberOfLines={1} style={{ fontSize: 14, fontWeight: '600' }}>
+            {e.title}
+          </T>
+          <T numberOfLines={1} variant="caption" muted>
+            {formatEpisode(e.season, e.episode)}
+          </T>
+        </View>
+      </Touchable>
+    </Link>
+  );
+}
+
+const dayTag = {
+  position: 'absolute',
+  left: 6,
+  bottom: 6,
+  maxWidth: '90%',
+  paddingHorizontal: 8,
+  height: 22,
+  borderRadius: 11,
+  flexDirection: 'row',
+  alignItems: 'center',
+  gap: 5,
+  backgroundColor: 'rgba(12,11,15,0.62)',
+} as const;
 
 /** Los próximos siete días; un punto marca los días con episodios. */
 function WeekStrip({
@@ -383,7 +399,7 @@ function WeekStrip({
             <T variant="caption" style={{ color: on ? C.onInk : C.textMuted, fontWeight: '600' }}>
               {d === today ? 'hoy' : shortDay(d)}
             </T>
-            <T style={{ fontSize: 18, lineHeight: 22, fontWeight: '800', color: on ? C.onInk : C.text }}>
+            <T style={{ fontSize: 17, lineHeight: 22, fontWeight: '600', color: on ? C.onInk : C.text }}>
               {fromISO(d).getDate()}
             </T>
             <View style={[styles.dot, { backgroundColor: has ? (on ? C.onInk : C.accent) : 'transparent' }]} />
@@ -400,33 +416,30 @@ function EpisodeRow({ e }: { e: CalendarEpisode }) {
   const C = useColors();
   const styles = useStyles(makeStyles);
   const badge = KIND_LABEL[e.kind];
+  const img = sharpImage(e.stillPath ?? e.posterPath, e.stillPath ? 'still' : 'poster', 128);
   return (
     <Link href={{ pathname: '/titulo/[tipo]/[id]', params: { tipo: 'tv', id: String(e.tmdbId) } }} asChild>
-      <Touchable>
-        {({ pressed }) => (
-          <View style={[styles.row, pressed && { opacity: 0.8 }]}>
-            <Poster path={e.posterPath} title={e.title} width={52} size="w185" />
-            <View style={{ flex: 1, gap: 2 }}>
-              <T variant="label" numberOfLines={1}>
-                {e.title}
-              </T>
-              <T variant="small" muted numberOfLines={1}>
-                {formatEpisode(e.season, e.episode)}
-                {e.name ? ` · ${e.name}` : ''}
-              </T>
-              {badge ? (
-                <View style={styles.badge}>
-                  <T variant="caption" style={{ color: C.accentInk, fontWeight: '700' }}>
-                    {badge}
-                  </T>
-                </View>
-              ) : null}
-            </View>
-            <T variant="caption" style={{ color: C.textMuted, fontWeight: '600' }}>
-              {countdown(e.airDate)}
+      <Touchable pressScale={0.98} style={styles.row}>
+        <View style={styles.thumb}>
+          {img ? <Image source={{ uri: img }} style={StyleSheet.absoluteFill} contentFit="cover" transition={150} /> : null}
+        </View>
+        <View style={{ flex: 1, gap: 2, minWidth: 0 }}>
+          <T numberOfLines={1} style={{ fontSize: 15, fontWeight: '600' }}>
+            {e.title}
+          </T>
+          <T variant="small" muted numberOfLines={1}>
+            {formatEpisode(e.season, e.episode)}
+            {e.name ? ` · ${e.name}` : ''}
+          </T>
+          {badge ? (
+            <T variant="caption" style={{ color: C.accentInk, fontWeight: '600' }}>
+              {badge}
             </T>
-          </View>
-        )}
+          ) : null}
+        </View>
+        <T variant="caption" style={{ color: C.textMuted, fontWeight: '500' }}>
+          {countdown(e.airDate)}
+        </T>
       </Touchable>
     </Link>
   );
@@ -566,8 +579,8 @@ const makeStyles = (C: Colors) =>
   StyleSheet.create({
     week: { flexDirection: 'row', gap: 6 },
     day: {
-      ...card(C),
       flex: 1,
+      backgroundColor: C.mode === 'light' ? '#FFFFFF' : 'rgba(255,255,255,0.05)',
       alignItems: 'center',
       gap: 2,
       paddingVertical: Space.sm,
@@ -576,14 +589,12 @@ const makeStyles = (C: Colors) =>
     },
     dot: { width: 6, height: 6, borderRadius: 3, marginTop: 2 },
     row: {
-      ...card(C),
       flexDirection: 'row',
       alignItems: 'center',
       gap: Space.md,
-      padding: Space.sm,
-      paddingRight: Space.md,
-      borderRadius: Radius.lg,
+      paddingVertical: 6,
     },
+    thumb: { width: 112, aspectRatio: 16 / 9, borderRadius: 12, overflow: 'hidden', backgroundColor: C.fill },
     badge: {
       alignSelf: 'flex-start',
       backgroundColor: C.accentSoft,

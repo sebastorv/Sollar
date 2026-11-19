@@ -8,21 +8,15 @@ import type { ReactNode } from 'react';
 import { Platform } from 'react-native';
 import { SafeAreaInsetsContext, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-// La barra que iOS tomó al abrir la app (cambiarla después no tiene efecto hasta reabrirla).
-const launchStyle =
-  Platform.OS === 'web' && typeof document !== 'undefined'
-    ? document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]')?.getAttribute('content')
-    : null;
-
 function iosHomeScreenApp() {
   if (Platform.OS !== 'web' || typeof window === 'undefined') return false;
   const standalone =
     (navigator as Navigator & { standalone?: boolean }).standalone === true ||
     window.matchMedia?.('(display-mode: standalone)').matches;
   const ios = /iPhone|iPad|iPod/.test(navigator.userAgent);
-  // Solo hace falta cuando el contenido pasa por debajo de la hora (barra translúcida).
-  const translucent = launchStyle === 'black-translucent';
-  return standalone && ios && translucent;
+  // En iOS 26 la app de la pantalla de inicio siempre dibuja por debajo de la hora (con
+  // cualquier estilo de barra) y a veces informa 0 de margen: se corrige en ambos modos.
+  return standalone && ios;
 }
 
 export function FixedInsets({ children }: { children: ReactNode }) {

@@ -141,9 +141,7 @@ function BarLayout({ narrow, children, ...rest }: TabListProps & { narrow: boole
           <SollarLogo size={44} shape="icon" />
         </View>
         <View pointerEvents="box-none" style={{ flex: 1, justifyContent: 'center', alignItems: 'center', gap: Space.md }}>
-          <Glass radius={999} style={styles.circle}>
-            {search}
-          </Glass>
+          <View style={styles.circle}>{search}</View>
           <Glass radius={999}>
             <View style={{ padding: PAD }}>
               {drop}
@@ -184,9 +182,7 @@ function BarLayout({ narrow, children, ...rest }: TabListProps & { narrow: boole
             ) : null}
           </Glass>
         </Animated.View>
-        <Glass radius={999} style={{ width: small, height: small }}>
-          {search}
-        </Glass>
+        <View style={{ width: small, height: small }}>{search}</View>
       </View>
     </View>
   );
@@ -214,7 +210,13 @@ function TabButton({
       accessibilityRole="tab"
       accessibilityLabel={tr(label)}
       accessibilityState={{ selected: isFocused }}
-      style={[round ? styles.roundBtn : [styles.slot, { width: slotW }, labels && { height: SLOT_TALL, gap: 2 }], round && isFocused && { backgroundColor: C.accentSoft }]}>
+      style={round ? styles.roundBtn : [styles.slot, { width: slotW }, labels && { height: SLOT_TALL, gap: 2 }]}>
+      {/* La lupa es una burbuja de vidrio entera: se encoge y rebota completa al tocarla. */}
+      {round ? (
+        <Glass radius={999} style={StyleSheet.absoluteFill}>
+          {isFocused ? <View style={[StyleSheet.absoluteFill, { backgroundColor: C.accentSoft }]} /> : null}
+        </Glass>
+      ) : null}
       <View>
         {icon === 'person' && avatar ? (
           // Tu foto en la pestaña de perfil, como en las redes.
@@ -223,11 +225,11 @@ function TabButton({
             style={{ width: 26, height: 26, borderRadius: 13, borderWidth: isFocused ? 2 : 0, borderColor: C.accent }}
           />
         ) : (
-          <Icon name={icon} size={round ? 24 : 22} color={isFocused ? C.accentInk : C.text} filled={isFocused && icon !== 'search'} strokeWidth={1.6} />
+          <Icon name={icon} size={round ? 24 : 22} color={isFocused ? C.accent : C.text} filled={isFocused && icon !== 'search'} strokeWidth={1.6} />
         )}
       </View>
       {!round && labels ? (
-        <T numberOfLines={1} style={{ fontSize: 10.5, lineHeight: 13, fontWeight: isFocused ? '700' : '500', color: isFocused ? C.accentInk : C.textMuted }}>
+        <T numberOfLines={1} style={{ fontSize: 10.5, lineHeight: 13, fontWeight: isFocused ? '600' : '500', color: isFocused ? C.text : C.textMuted }}>
           {label}
         </T>
       ) : null}
@@ -249,6 +251,6 @@ const makeStyles = (C: Colors) =>
     slot: { width: SLOT, height: SLOT, alignItems: 'center', justifyContent: 'center', borderRadius: Radius.pill },
     drop: { position: 'absolute', left: PAD, top: PAD, width: SLOT, height: SLOT, borderRadius: Radius.pill },
     circle: { width: SLOT + PAD * 2, height: SLOT + PAD * 2 },
-    roundBtn: { flex: 1, alignItems: 'center', justifyContent: 'center', borderRadius: Radius.pill },
+    roundBtn: { width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center', borderRadius: Radius.pill },
   });
 

@@ -1103,13 +1103,15 @@ function WhereToWatch({ providers, loaded }: { providers: TmdbWatchProviders | n
                 onPress={() => link && Linking.openURL(link)}
                 accessibilityLabel={`${r.name}, ${tr(r.kind)}`}
                 style={styles.wtwTile}>
-                <ProviderWordmark id={r.id} name={r.name} />
+                <View style={{ height: 42, width: 84, alignItems: 'center', justifyContent: 'center' }}>
+                  <ProviderWordmark id={r.id} name={r.name} logoPath={r.logo} />
+                </View>
                 <T numberOfLines={1} style={{ fontSize: 14, fontWeight: '500', color: C.text }}>
                   {r.kind}
                 </T>
                 {isMine ? (
                   <View style={styles.wtwMine} accessibilityLabel={tr('En tu plan')}>
-                    <Icon name="check" size={11} color={C.onAccent} strokeWidth={3} />
+                    <Icon name="check" size={9} color={C.onAccent} strokeWidth={3.4} />
                   </View>
                 ) : null}
               </Touchable>
@@ -1236,17 +1238,17 @@ const makeStyles = (C: Colors) =>
       borderRadius: 20,
       alignItems: 'center',
       justifyContent: 'center',
-      gap: 14,
+      gap: 10,
       backgroundColor: C.mode === 'light' ? '#FFFFFF' : '#16161B',
       boxShadow: C.mode === 'light' ? '0 2px 10px rgba(30,16,50,0.06)' : 'none',
     },
     wtwMine: {
       position: 'absolute',
-      top: 7,
-      right: 7,
-      width: 18,
-      height: 18,
-      borderRadius: 9,
+      top: 8,
+      right: 8,
+      width: 14,
+      height: 14,
+      borderRadius: 7,
       backgroundColor: C.accent,
       alignItems: 'center',
       justifyContent: 'center',

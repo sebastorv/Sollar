@@ -20,11 +20,20 @@ const OPTIONS: { id: TypeValue; icon: IconName; label: string }[] = [
   { id: 'movie', icon: 'film', label: 'Películas' },
 ];
 
-export function TypeFilter({ value, onChange }: { value: TypeValue; onChange: (v: TypeValue) => void }) {
+export function TypeFilter({
+  value,
+  onChange,
+  options = ['all', 'tv', 'movie'],
+}: {
+  value: TypeValue;
+  onChange: (v: TypeValue) => void;
+  /** Cuáles mostrar (por ejemplo, solo series y películas). */
+  options?: TypeValue[];
+}) {
   const C = useColors();
   return (
     <View style={{ flexDirection: 'row', alignSelf: 'flex-start', borderRadius: 999, padding: 4, gap: 2, ...glassFill(C) }}>
-      {OPTIONS.map((o) => {
+      {OPTIONS.filter((o) => options.includes(o.id)).map((o) => {
         const on = o.id === value;
         return (
           <Touchable
@@ -44,8 +53,8 @@ export function TypeFilter({ value, onChange }: { value: TypeValue; onChange: (v
               borderRadius: 999,
               backgroundColor: on ? C.accentSoft : 'transparent',
             }}>
-            <Icon name={o.icon} size={18} color={on ? C.accentInk : C.textMuted} strokeWidth={1.7} />
-            {on ? <T style={{ fontSize: 14, fontWeight: '600', color: C.accentInk }}>{o.label}</T> : null}
+            <Icon name={o.icon} size={18} color={on ? C.accent : C.textMuted} strokeWidth={1.8} />
+            {on ? <T style={{ fontSize: 14, fontWeight: '600', color: C.text }}>{o.label}</T> : null}
           </Touchable>
         );
       })}

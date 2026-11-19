@@ -32,7 +32,7 @@ type Accent = {
 
 export const ACCENTS: Record<AccentName, Accent> = {
   // Amarillo sol, el color principal: dorado cálido, sin llegar a chillón. Sobre él va texto oscuro.
-  sol: { label: 'Sol', g1: '#FFD95A', g2: '#FFB21E', solid: '#FFC531', inkLight: '#8F5B00', inkDark: '#FFD15C', on: '#1E1604' },
+  sol: { label: 'Sol', g1: '#FFD95A', g2: '#FFB21E', solid: '#FFC531', inkLight: '#A06C00', inkDark: '#FFD15C', on: '#1E1604' },
   brasa: { label: 'Brasa', g1: '#FF8A3D', g2: '#F0306A', solid: '#F5534F', inkLight: '#D0234F', inkDark: '#FF7A66', on: '#FFFFFF' },
   atardecer: { label: 'Atardecer', g1: '#FFBE45', g2: '#FF5A5F', solid: '#FF7F50', inkLight: '#C2410C', inkDark: '#FFB061', on: '#FFFFFF' },
   cereza: { label: 'Cereza', g1: '#FF4D4D', g2: '#E3197F', solid: '#F0306A', inkLight: '#C8136E', inkDark: '#FF6B9A', on: '#FFFFFF' },

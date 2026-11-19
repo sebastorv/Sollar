@@ -96,24 +96,6 @@ function EdgeSwipeBack() {
   return (
     <>
       <View {...pan.panHandlers} style={{ position: 'absolute', left: 0, top: insets.top + 60, bottom: 0, width: 22 }} />
-      <Animated.View
-        pointerEvents="none"
-        style={{
-          position: 'absolute',
-          top: '45%',
-          left: 0,
-          width: 40,
-          height: 40,
-          borderRadius: 20,
-          alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor: C.mode === 'light' ? 'rgba(255,255,255,0.9)' : 'rgba(40,38,48,0.9)',
-          boxShadow: '0 4px 14px rgba(0,0,0,0.2)',
-          opacity: dx.interpolate({ inputRange: [0, 30, 80], outputRange: [0, 0.6, 1] }),
-          transform: [{ translateX: dx.interpolate({ inputRange: [0, 140], outputRange: [-44, 20] }) }],
-        }}>
-        <Icon name="chevronLeft" size={20} color={C.text} strokeWidth={2.2} />
-      </Animated.View>
     </>
   );
 }

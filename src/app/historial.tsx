@@ -6,6 +6,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { card } from '@/components/glass';
 import { Touchable } from '@/components/touch';
+import { TypeFilter } from '@/components/type-filter';
 import { Button, Chip, Empty, Poster, Screen, T } from '@/components/ui';
 import { Radius, Space, type Colors } from '@/constants/theme';
 import { eventsOf, hours, totalsOf, type WatchEvent } from '@/lib/activity';
@@ -38,18 +39,14 @@ export default function HistoryScreen() {
 
   return (
     <Screen>
-      <View style={{ paddingTop: 52, gap: Space.xs }}>
+      <View style={{ paddingTop: Space.sm, gap: Space.xs }}>
         <T variant="title">Historial</T>
         <T muted>
           {events.length.toLocaleString('es-CO')} {events.length === 1 ? 'registro' : 'registros'} ·{' '}
           {hours(totalsOf(events).minutes)} frente a la pantalla
         </T>
       </View>
-      <View style={{ flexDirection: 'row', gap: Space.sm }}>
-        <Chip label="Todo" selected={filter === 'all'} onPress={() => (setFilter('all'), setLimit(PAGE))} />
-        <Chip label="Episodios" selected={filter === 'tv'} onPress={() => (setFilter('tv'), setLimit(PAGE))} />
-        <Chip label="Películas" selected={filter === 'movie'} onPress={() => (setFilter('movie'), setLimit(PAGE))} />
-      </View>
+      <TypeFilter value={filter} onChange={(v) => (setFilter(v), setLimit(PAGE))} />
 
       {events.length === 0 ? (
         <Empty title="Aún no hay historial" message="Cada episodio y película que marques aparece aquí con su fecha." />

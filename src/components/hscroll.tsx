@@ -76,9 +76,6 @@ function Arrows({
   );
   return (
     <>
-      {/* Un degradado suave donde la fila queda cortada, para que no se vea mocha. */}
-      {fade('left', a.canLeft)}
-      {fade('right', a.canRight)}
       {a.wide && a.canLeft ? (
         <View pointerEvents="box-none" style={[styles.side, { left: 8, top, opacity: hover ? 1 : 0 }]}>
           <Arrow icon="chevronLeft" label="Anterior" onPress={() => go(Math.max(0, a.x - page))} />
@@ -126,10 +123,12 @@ function useHover() {
  * Las filas que llegan al borde de la pantalla usan márgenes negativos: el margen se pasa al
  * contenedor, para que el degradado y las flechas queden en el borde real.
  */
-function splitMargin(style: unknown) {
+function splitMargin(style: unknown, wide: boolean) {
   const flat = (StyleSheet.flatten(style as never) ?? {}) as Record<string, unknown>;
-  const { marginHorizontal, marginLeft, marginRight, ...rest } = flat;
-  return { outer: { marginHorizontal, marginLeft, marginRight } as ViewStyle, inner: rest as ViewStyle };
+  const { marginHorizontal, marginLeft, marginRight, paddingHorizontal, ...rest } = flat;
+  // En computador la fila no llega al borde: termina en el mismo margen que el resto.
+  if (wide) return { outer: {} as ViewStyle, inner: rest as ViewStyle };
+  return { outer: { marginHorizontal, marginLeft, marginRight } as ViewStyle, inner: { ...rest, paddingHorizontal } as ViewStyle };
 }
 
 export function HScroll({
@@ -149,7 +148,7 @@ export function HScroll({
   const a = useArrows();
   const h = useHover();
   const [height, setHeight] = useState(0);
-  const { outer, inner } = splitMargin(props.style);
+  const { outer, inner } = splitMargin(props.style, a.wide);
   return (
     <View {...h.bind} style={outer} onLayout={(e) => setHeight(e.nativeEvent.layout.height)}>
       <ScrollView
@@ -177,7 +176,7 @@ export function HList<T>({ onScroll, textBelow = 56, ...props }: FlatListProps<T
   const a = useArrows();
   const h = useHover();
   const [height, setHeight] = useState(0);
-  const { outer, inner } = splitMargin(props.style);
+  const { outer, inner } = splitMargin(props.style, a.wide);
   return (
     <View {...h.bind} style={outer} onLayout={(e) => setHeight(e.nativeEvent.layout.height)}>
       <FlatList

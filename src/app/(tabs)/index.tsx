@@ -20,6 +20,7 @@ import { FlatList, StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import { SollarLogo } from '@/components/brand';
 import { TypeFilter, type TypeValue } from '@/components/type-filter';
+import { eventsOf, type WatchEvent } from '@/lib/activity';
 import { card } from '@/components/glass';
 import { Icon } from '@/components/icons';
 import { TitleCard } from '@/components/title-card';
@@ -47,6 +48,19 @@ export default function FollowingScreen() {
   const [kind, setKind] = useState<TypeValue>('all');
   const showTv = kind !== 'movie';
   const showMovies = kind !== 'tv';
+  // Lo último que viste, series y películas juntas (una entrada por título).
+  const recent = useMemo(() => {
+    const seen = new Set<string>();
+    const out: WatchEvent[] = [];
+    for (const e of eventsOf(items)) {
+      if (kind !== 'all' && e.mediaType !== kind) continue;
+      if (seen.has(e.key)) continue;
+      seen.add(e.key);
+      out.push(e);
+      if (out.length >= 20) break;
+    }
+    return out;
+  }, [items, kind]);
 
   const watching = useMemo(
     () =>
@@ -145,6 +159,28 @@ export default function FollowingScreen() {
               const first = nextEpisode(i);
               if (first) lib.setEpisodes(i.key, [first], true);
             }}
+          />
+        </Section>
+      ) : null}
+
+      {recent.length > 0 ? (
+        <Section title="Visto recientemente" onPress={() => router.push('/historial')}>
+          <HList
+            data={recent}
+            keyExtractor={(e) => `${e.key}:${e.at}`}
+            renderItem={({ item: e }) => (
+              <TitleCard
+                id={e.tmdbId}
+                mediaType={e.mediaType}
+                title={e.title}
+                posterPath={e.posterPath}
+                subtitle={[e.season != null ? formatEpisode(e.season, e.episode ?? 1) : null, dayLabel(e.day)].filter(Boolean).join(' · ')}
+                width={124}
+              />
+            )}
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ gap: Space.md }}
+            style={styles.bleed}
           />
         </Section>
       ) : null}
@@ -257,7 +293,7 @@ function UpNextCard({ item, upcoming }: { item: LibraryItem; upcoming?: Calendar
             accessibilityLabel={`Marcar ${code} como visto`}
             onPress={() => setEpisodes(item.key, [next], true)}
             style={styles.checkBtn}>
-            <Icon name="check" size={26} color={C.text} strokeWidth={1.7} />
+            <Icon name="check" size={26} color={C.accent} strokeWidth={2.2} />
           </Touchable>
         ) : null}
       </View>

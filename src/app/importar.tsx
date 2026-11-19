@@ -77,7 +77,7 @@ export default function ImportScreen() {
 
   return (
     <Screen>
-      <View style={{ paddingTop: 52, gap: Space.xs }}>
+      <View style={{ paddingTop: Space.sm, gap: Space.xs }}>
         <T variant="title">Importar historial</T>
         <T muted>Trae lo que ya tienes en WeTrakr: series, episodios vistos, películas, calificaciones, listas y favoritos.</T>
       </View>

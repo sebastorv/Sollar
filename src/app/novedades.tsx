@@ -71,7 +71,7 @@ export default function NewsScreen() {
 
   return (
     <Screen>
-      <View style={{ paddingTop: 44, gap: 4 }}>
+      <View style={{ paddingTop: Space.sm, gap: 4 }}>
         <T variant="title">Novedades</T>
         <T muted>Lo nuevo en streaming en Colombia, lo que viene y los tráileres.</T>
       </View>

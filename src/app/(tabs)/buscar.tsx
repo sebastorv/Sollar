@@ -1,4 +1,5 @@
 import { tr } from '@/i18n';
+import { TypeFilter, type TypeValue } from '@/components/type-filter';
 /** Pestaña "Buscar": búsqueda en TMDB y, sin texto, Descubrir (recomendaciones, tendencias y más). */
 
 import { useEffect, useState } from 'react';
@@ -28,6 +29,7 @@ export default function SearchScreen() {
   const [results, setResults] = useState<TmdbSearchResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [kind, setKind] = useState<TypeValue>('all');
   const { get } = useLibrary();
   const { myProviders } = useSettings();
   const availability = useAvailabilityFor(
@@ -77,6 +79,8 @@ export default function SearchScreen() {
       />
       </View>
 
+      {debounced || isDemo ? <TypeFilter value={kind} onChange={setKind} /> : null}
+
       {isDemo ? <TokenWarning /> : null}
 
       {error ? <Empty title="No se pudo buscar" message={error} /> : null}
@@ -92,7 +96,7 @@ export default function SearchScreen() {
       {results.length > 0 ? (
         <Section title={debounced ? 'Resultados' : isDemo ? 'Catálogo de ejemplo' : 'Tendencias de la semana'}>
           <Grid>
-            {results.map((r) => {
+            {results.filter((r) => kind === 'all' || r.media_type === kind).map((r) => {
               const type = r.media_type as MediaType;
               const saved = get(itemKey(type, r.id));
               const year = displayYear(r);

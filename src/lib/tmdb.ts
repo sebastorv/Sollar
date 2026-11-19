@@ -281,15 +281,34 @@ const RATING_ORDER = ['imdb', 'tomatoes', 'metacritic', 'letterboxd', 'tomatoesa
  * Notas de IMDb, Rotten Tomatoes, Metacritic, Letterboxd y Trakt (por MDBList, a través de la
  * función de Supabase). En el orden de importancia mundial. Si no está configurado, lista vacía.
  */
-/** Logo con el nombre de una cadena o plataforma (para "Dónde ver"). */
-export async function getNetworkLogo(networkId: number): Promise<string | null> {
+export type Wordmark = { path: string; aspect: number };
+
+function widest(logos?: { file_path: string; aspect_ratio: number }[]): Wordmark | null {
+  // El más ancho (con el nombre completo); entre parecidos, el primero (el mejor votado).
+  const list = (logos ?? []).filter((l) => l.file_path && !l.file_path.endsWith('.svg'));
+  const wide = list.filter((l) => l.aspect_ratio >= 1.6).sort((a, b) => b.aspect_ratio - a.aspect_ratio)[0] ?? list[0];
+  return wide ? { path: wide.file_path, aspect: wide.aspect_ratio || 3 } : null;
+}
+
+/** Logo con el nombre de una cadena (para "Dónde ver"). */
+export async function getNetworkLogo(networkId: number): Promise<Wordmark | null> {
   if (isDemo) return null;
-  const raw = await get<{ logo_path?: string | null; images?: { logos?: { file_path: string; aspect_ratio: number }[] } }>(`/network/${networkId}`, {
+  const raw = await get<{ images?: { logos?: { file_path: string; aspect_ratio: number }[] } }>(`/network/${networkId}`, {
     append_to_response: 'images',
   });
-  // El más ancho (con el nombre completo), si hay varios.
-  const wide = raw.images?.logos?.filter((l) => l.aspect_ratio >= 1.8).sort((a, b) => b.aspect_ratio - a.aspect_ratio)[0];
-  return wide?.file_path ?? raw.logo_path ?? null;
+  return widest(raw.images?.logos);
+}
+
+/** Logo oficial de una plataforma buscándola por su nombre entre las compañías de TMDB. */
+export async function findWordmark(name: string): Promise<Wordmark | null> {
+  if (isDemo) return null;
+  const clean = name.replace(/\s+(Amazon Channel|Apple TV Channel|Premium|Standard with Ads|with Ads|Basic|Kids)$/i, '').trim();
+  const res = await get<{ results: { id: number; name: string; logo_path: string | null }[] }>('/search/company', { query: clean });
+  const norm = (x: string) => x.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const hit = res.results.find((c) => c.logo_path && norm(c.name) === norm(clean)) ?? res.results.find((c) => c.logo_path && norm(c.name).startsWith(norm(clean)));
+  if (!hit) return null;
+  const imgs = await get<{ logos?: { file_path: string; aspect_ratio: number }[] }>(`/company/${hit.id}/images`).catch(() => null);
+  return widest(imgs?.logos) ?? (hit.logo_path ? { path: hit.logo_path, aspect: 3 } : null);
 }
 
 export async function getRatings(type: MediaType, id: number): Promise<ExternalRating[]> {

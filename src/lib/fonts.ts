@@ -9,19 +9,16 @@ import {
   Roboto_400Regular,
   Roboto_500Medium,
   Roboto_600SemiBold,
-  Roboto_700Bold,
 } from '@expo-google-fonts/roboto';
 
 export const FONT_FILES = {
   Roboto_400Regular,
   Roboto_500Medium,
   Roboto_600SemiBold,
-  Roboto_700Bold,
 };
 
 export function fontFamilyFor(weight: string | number | undefined): string {
   const w = Number(weight === 'bold' ? 700 : weight === 'normal' || weight == null ? 400 : weight);
-  if (w >= 800) return 'Roboto_700Bold';
   if (w >= 700) return 'Roboto_600SemiBold';
   if (w >= 600) return 'Roboto_500Medium';
   if (w >= 500) return 'Roboto_500Medium';

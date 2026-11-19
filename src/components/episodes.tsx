@@ -442,6 +442,7 @@ export function SeasonsBlock({
   const [error, setError] = useState<string | null>(null);
   const [newest, setNewest] = useState(false);
   const [epMenu, setEpMenu] = useState<{ anchor: Anchor; ep: TmdbEpisode } | null>(null);
+  const [allOpen, setAllOpen] = useState(false);
   const shelf = useRef<ScrollViewInstance>(null);
   const seasonShelf = useRef<ScrollViewInstance>(null);
 
@@ -664,7 +665,32 @@ export function SeasonsBlock({
             </Touchable>
           );
         })}
+        {/* Al final, como Trakt: abrir la temporada completa en un panel. */}
+        {list.length > 2 ? (
+          <Touchable haptic="select" pressScale={0.95} onPress={() => setAllOpen(true)} style={{ width: 120, aspectRatio: 0.75, alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: 18, backgroundColor: C.fill }}>
+            <T raw style={{ fontSize: 22, fontWeight: '600' }}>
+              {list.length}
+            </T>
+            <T raw muted style={{ fontSize: 13, fontWeight: '500' }}>
+              {L('Ver todos', 'View all')}
+            </T>
+          </Touchable>
+        ) : null}
       </HScroll>
+
+      <SeasonPanel
+        visible={allOpen}
+        title={`${tv.name} · ${L(`Temporada ${season}`, `Season ${season}`)}`}
+        episodes={data?.episodes ?? []}
+        season={season}
+        seen={(e) => seen(season, e)}
+        onToggle={toggle}
+        onOpen={(e) => {
+          setAllOpen(false);
+          onOpen({ season, episode: e });
+        }}
+        onClose={() => setAllOpen(false)}
+      />
 
       <BubbleMenu
         anchor={epMenu?.anchor ?? null}
@@ -918,6 +944,99 @@ export function EpisodePanel({
               </Touchable>
             </>
           )}
+        </ScrollView>
+      </Animated.View>
+    </Modal>
+  );
+}
+
+/** La temporada completa en un panel lateral (computador) o que sube desde abajo (celular). */
+function SeasonPanel({
+  visible,
+  title,
+  episodes,
+  season,
+  seen,
+  onToggle,
+  onOpen,
+  onClose,
+}: {
+  visible: boolean;
+  title: string;
+  episodes: TmdbEpisode[];
+  season: number;
+  seen: (e: number) => boolean;
+  onToggle: (ep: TmdbEpisode) => void;
+  onOpen: (e: number) => void;
+  onClose: () => void;
+}) {
+  const C = useColors();
+  const date = useDate();
+  const epLabel = useEpLabel();
+  const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
+  const wide = width >= 900;
+  const x = useRef(new Animated.Value(0)).current;
+  const [shown, setShown] = useState(visible);
+  useEffect(() => {
+    if (visible) {
+      setShown(true);
+      Animated.spring(x, { toValue: 1, useNativeDriver: false, speed: 16, bounciness: 3 }).start();
+    } else if (shown) Animated.timing(x, { toValue: 0, duration: 180, useNativeDriver: false }).start(() => setShown(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible]);
+  if (!shown) return null;
+  const today = new Date().toISOString().slice(0, 10);
+  const W = wide ? Math.min(520, width * 0.4) : width;
+  return (
+    <Modal visible transparent animationType="none" onRequestClose={onClose}>
+      <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel={tr('Cerrar')}>
+        <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.3)', opacity: x }]} />
+      </Pressable>
+      <Animated.View
+        style={[
+          {
+            position: 'absolute',
+            overflow: 'hidden',
+            backgroundColor: C.mode === 'light' ? 'rgba(250,250,252,0.9)' : 'rgba(24,23,30,0.9)',
+            ...({ backdropFilter: 'blur(36px) saturate(180%)', WebkitBackdropFilter: 'blur(36px) saturate(180%)' } as object),
+          },
+          wide
+            ? { top: 12, right: 12, bottom: 12, width: W, borderRadius: 30, transform: [{ translateX: x.interpolate({ inputRange: [0, 1], outputRange: [W + 40, 0] }) }] }
+            : { left: 0, right: 0, bottom: 0, top: insets.top + 40, borderTopLeftRadius: 30, borderTopRightRadius: 30, transform: [{ translateY: x.interpolate({ inputRange: [0, 1], outputRange: [800, 0] }) }] },
+        ]}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: Space.md, padding: Space.xl, paddingBottom: Space.md }}>
+          <T raw numberOfLines={1} style={{ flex: 1, fontSize: 19, fontWeight: '700' }}>
+            {title}
+          </T>
+          <GlassButton icon="close" label="Cerrar" onPress={onClose} size={38} />
+        </View>
+        <ScrollView contentContainerStyle={{ paddingHorizontal: Space.xl, paddingBottom: insets.bottom + Space.xl, gap: Space.md }}>
+          {episodes.map((ep) => {
+            const aired = !!ep.air_date && ep.air_date <= today;
+            const on = seen(ep.episode_number);
+            const still = sharpImage(ep.still_path, 'still', 120);
+            return (
+              <Touchable key={ep.id} haptic="select" pressScale={0.98} onPress={() => onOpen(ep.episode_number)} style={{ flexDirection: 'row', alignItems: 'center', gap: Space.md }}>
+                <View style={{ width: 112, aspectRatio: 16 / 9, borderRadius: 12, overflow: 'hidden', backgroundColor: C.fill, opacity: aired ? 1 : 0.55 }}>
+                  {still ? <Image source={{ uri: still }} style={StyleSheet.absoluteFill} contentFit="cover" /> : null}
+                </View>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <T raw numberOfLines={1} style={{ fontSize: 15, fontWeight: '600' }}>
+                    {ep.name}
+                  </T>
+                  <T raw variant="caption" muted numberOfLines={1}>
+                    {[epLabel(season, ep.episode_number), ep.air_date && !isDemo ? date(ep.air_date) : null, ep.runtime ? `${ep.runtime} min` : null].filter(Boolean).join(' · ')}
+                  </T>
+                </View>
+                {aired ? (
+                  <Touchable haptic={on ? 'light' : 'success'} pressScale={0.8} hitSlop={8} onPress={() => onToggle(ep)} accessibilityRole="checkbox" accessibilityState={{ checked: on }}>
+                    <Icon name={on ? 'checks' : 'check'} size={24} color={on ? C.accent : C.textMuted} strokeWidth={2} />
+                  </Touchable>
+                ) : null}
+              </Touchable>
+            );
+          })}
         </ScrollView>
       </Animated.View>
     </Modal>

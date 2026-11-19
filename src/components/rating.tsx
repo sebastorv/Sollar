@@ -134,23 +134,53 @@ export function Rating({
 
 // --- ¿Cómo te sentiste? ---
 
-export const REACTIONS: { id: string; label: string; img: number }[] = [
-  { id: 'impactado', label: 'Impactado', img: require('../../assets/emoji/impactado.png') },
-  { id: 'divertido', label: 'Divertido', img: require('../../assets/emoji/divertido.png') },
-  { id: 'conmovido', label: 'Conmovido', img: require('../../assets/emoji/conmovido.png') },
-  { id: 'triste', label: 'Triste', img: require('../../assets/emoji/triste.png') },
-  { id: 'emocionado', label: 'Emocionado', img: require('../../assets/emoji/emocionado.png') },
-  { id: 'asustado', label: 'Asustado', img: require('../../assets/emoji/asustado.png') },
-  { id: 'tenso', label: 'Tenso', img: require('../../assets/emoji/tenso.png') },
-  { id: 'aburrido', label: 'Aburrido', img: require('../../assets/emoji/aburrido.png') },
-  { id: 'enojado', label: 'Enojado', img: require('../../assets/emoji/enojado.png') },
-  { id: 'confundido', label: 'Confundido', img: require('../../assets/emoji/confundido.png') },
-  { id: 'enamorado', label: 'Enamorado', img: require('../../assets/emoji/enamorado.png') },
-  { id: 'feliz', label: 'Feliz', img: require('../../assets/emoji/feliz.png') },
+/**
+ * Emojis animados oficiales de Google (Noto Animated Emoji, licencia CC BY 4.0). Quietos se
+ * muestran como imagen fija; al tocarlos (o mientras están elegidos) se animan.
+ */
+const NOTO = 'https://fonts.gstatic.com/s/e/notoemoji/latest';
+export const REACTIONS: { id: string; label: string; cp: string; fallback: number }[] = [
+  { id: 'impactado', label: 'Impactado', cp: '1f632', fallback: require('../../assets/emoji/impactado.png') },
+  { id: 'divertido', label: 'Divertido', cp: '1f606', fallback: require('../../assets/emoji/divertido.png') },
+  { id: 'conmovido', label: 'Conmovido', cp: '1f979', fallback: require('../../assets/emoji/conmovido.png') },
+  { id: 'triste', label: 'Triste', cp: '1f622', fallback: require('../../assets/emoji/triste.png') },
+  { id: 'emocionado', label: 'Emocionado', cp: '1f929', fallback: require('../../assets/emoji/emocionado.png') },
+  { id: 'asustado', label: 'Asustado', cp: '1f628', fallback: require('../../assets/emoji/asustado.png') },
+  { id: 'tenso', label: 'Tenso', cp: '1f62c', fallback: require('../../assets/emoji/tenso.png') },
+  { id: 'aburrido', label: 'Aburrido', cp: '1f971', fallback: require('../../assets/emoji/aburrido.png') },
+  { id: 'enojado', label: 'Enojado', cp: '1f621', fallback: require('../../assets/emoji/enojado.png') },
+  { id: 'confundido', label: 'Confundido', cp: '1f914', fallback: require('../../assets/emoji/confundido.png') },
+  { id: 'enamorado', label: 'Enamorado', cp: '1f60d', fallback: require('../../assets/emoji/enamorado.png') },
+  { id: 'feliz', label: 'Feliz', cp: '1f601', fallback: require('../../assets/emoji/feliz.png') },
 ];
+
+let prefetched = false;
+function prefetchEmoji() {
+  if (prefetched) return;
+  prefetched = true;
+  Image.prefetch(REACTIONS.flatMap((r) => [`${NOTO}/${r.cp}/emoji.svg`, `${NOTO}/${r.cp}/512.webp`]), 'memory-disk').catch(() => {});
+}
+
+/** Un emoji: fijo o animado. Si no carga (sin conexión), se usa la versión guardada en la app. */
+function Emoji({ r, animated, size }: { r: (typeof REACTIONS)[number]; animated: boolean; size: number }) {
+  const [failed, setFailed] = useState(false);
+  const uri = `${NOTO}/${r.cp}/${animated ? '512.webp' : 'emoji.svg'}`;
+  return (
+    <Image
+      source={failed ? r.fallback : { uri }}
+      onError={() => setFailed(true)}
+      style={{ width: size, height: size }}
+      contentFit="contain"
+      cachePolicy="memory-disk"
+      transition={0}
+      accessibilityIgnoresInvertColors
+    />
+  );
+}
 
 /** Hasta tres reacciones por episodio o título. */
 export function Reactions({ value, onChange }: { value: string[]; onChange: (v: string[]) => void }) {
+  useEffect(prefetchEmoji, []);
   function toggle(id: string) {
     if (value.includes(id)) onChange(value.filter((x) => x !== id));
     else onChange([...value, id].slice(-3));
@@ -177,6 +207,7 @@ function ReactionTile({ r, on, onPress }: { r: (typeof REACTIONS)[number]; on: b
   const pop = useRef(new Animated.Value(1)).current;
   const prev = useRef(on);
   const [hover, setHover] = useState(false);
+  const [burst, setBurst] = useState(false);
   useEffect(() => {
     // Al elegirla, el emoji salta un poco.
     if (on && !prev.current) {
@@ -189,7 +220,12 @@ function ReactionTile({ r, on, onPress }: { r: (typeof REACTIONS)[number]; on: b
     <Touchable
       haptic={on ? 'light' : 'success'}
       pressScale={0.92}
-      onPress={onPress}
+      onPress={() => {
+        onPress();
+        // Al tocarlo se anima un momento (y sigue animado si quedó elegido).
+        setBurst(true);
+        setTimeout(() => setBurst(false), 2600);
+      }}
       onHoverIn={() => setHover(true)}
       onHoverOut={() => setHover(false)}
       accessibilityRole="checkbox"
@@ -206,7 +242,7 @@ function ReactionTile({ r, on, onPress }: { r: (typeof REACTIONS)[number]; on: b
         backgroundColor: on ? C.accentSoft : C.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(22,20,27,0.04)',
       }}>
       <Animated.View style={{ transform: [{ scale: pop }], opacity: on || hover ? 1 : 0.9 }}>
-        <Image source={r.img} style={{ width: 40, height: 40 }} contentFit="contain" transition={0} />
+        <Emoji r={r} animated={on || burst || hover} size={40} />
       </Animated.View>
       <T numberOfLines={1} style={{ fontSize: 13, fontWeight: on ? '700' : '500', color: on ? C.accentInk : C.text }}>
         {r.label}

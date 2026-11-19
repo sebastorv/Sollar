@@ -44,7 +44,7 @@ export default function SettingsScreen() {
 
   return (
     <Screen>
-      <View style={{ paddingTop: 44 }}>
+      <View style={{ paddingTop: Space.sm }}>
         <T variant="title">Ajustes</T>
       </View>
 
@@ -91,6 +91,9 @@ export default function SettingsScreen() {
         {/* Frase exigida por TMDB, en su idioma original. */}
         <T variant="caption" muted>
           This product uses the TMDB API but is not endorsed or certified by TMDB.
+        </T>
+        <T variant="small" muted>
+          Emojis animados: Noto Emoji de Google, licencia CC BY 4.0. Emojis sin conexión: Fluent Emoji de Microsoft, licencia MIT.
         </T>
       </Section>
 

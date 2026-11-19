@@ -562,4 +562,5 @@ export const EN: Record<string, string> = {
   'Con anuncios': 'With ads',
   'Toca una estrella': 'Tap a star',
   Streaming: 'Stream',
+  'Emojis animados: Noto Emoji de Google, licencia CC BY 4.0. Emojis sin conexión: Fluent Emoji de Microsoft, licencia MIT.': 'Animated emoji: Google Noto Emoji, CC BY 4.0 license. Offline emoji: Microsoft Fluent Emoji, MIT license.',
 };

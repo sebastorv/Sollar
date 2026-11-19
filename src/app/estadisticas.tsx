@@ -84,7 +84,7 @@ export default function StatsScreen() {
 
   return (
     <Screen>
-      <View style={{ paddingTop: 52 }}>
+      <View style={{ paddingTop: Space.sm }}>
         <T variant="title">Tus estadísticas</T>
       </View>
       <HScroll showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }} contentContainerStyle={{ gap: Space.sm }}>
