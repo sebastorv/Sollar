@@ -441,7 +441,6 @@ export function SeasonsBlock({
   const [data, setData] = useState<TmdbSeason | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [newest, setNewest] = useState(false);
-  const [menu, setMenu] = useState<Anchor | null>(null);
   const [epMenu, setEpMenu] = useState<{ anchor: Anchor; ep: TmdbEpisode } | null>(null);
   const shelf = useRef<ScrollViewInstance>(null);
   const seasonShelf = useRef<ScrollViewInstance>(null);
@@ -493,17 +492,6 @@ export function SeasonsBlock({
       <View style={{ flexDirection: wide ? 'row' : 'column', alignItems: wide ? 'center' : 'stretch', gap: Space.md }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: Space.md, flex: wide ? 1 : undefined }}>
           <T variant="heading" style={{ marginRight: 'auto' }}>Temporadas</T>
-          <Touchable
-            haptic="select"
-            pressScale={0.96}
-            onPress={async (e) => setMenu(await anchorOf(e, { x: 0, y: 0, width: 0, height: 0 }))}
-            accessibilityRole="button"
-            style={styles.dropdown}>
-            <T raw style={{ fontSize: 15, fontWeight: '700' }}>
-              {L(`Temporada ${season} de ${seasons.length}`, `Season ${season} of ${seasons.length}`)}
-            </T>
-            <Icon name="chevronDown" size={16} color={C.text} strokeWidth={2.4} />
-          </Touchable>
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: Space.md }}>
           <Touchable
@@ -678,22 +666,6 @@ export function SeasonsBlock({
         })}
       </HScroll>
 
-      <BubbleMenu
-        anchor={menu}
-        title={L('Temporadas', 'Seasons')}
-        onClose={() => setMenu(null)}
-        items={seasons.map((s) => {
-          const count = item ? Array.from({ length: s.episodeCount }, (_, i) => i + 1).filter((e) => seen(s.seasonNumber, e)).length : 0;
-          return {
-            label: L(`Temporada ${s.seasonNumber} · ${count}/${s.episodeCount}`, `Season ${s.seasonNumber} · ${count}/${s.episodeCount}`),
-            on: s.seasonNumber === season,
-            onPress: () => {
-              pick(s.seasonNumber);
-              seasonShelf.current?.scrollTo({ x: Math.max(0, seasons.indexOf(s) - 1) * ((wide ? 132 : 108) + Space.md), animated: true });
-            },
-          };
-        })}
-      />
       <BubbleMenu
         anchor={epMenu?.anchor ?? null}
         title={epMenu ? epLabel(season, epMenu.ep.episode_number) : undefined}

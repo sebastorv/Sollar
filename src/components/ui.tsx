@@ -7,7 +7,7 @@ import { createContext, useContext, useEffect, useRef, type ReactNode } from 're
 import { ActivityIndicator, Animated, Easing, Platform, ScrollView, StyleSheet, Text, View, useWindowDimensions, type PressableProps, type StyleProp, type TextProps, type TextStyle, type ViewStyle } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { MaxContentWidth, RAIL_WIDTH, Radius, Space, TabBarSpace, WIDE, type Colors } from '@/constants/theme';
+import { Gutter, MaxContentWidth, RAIL_WIDTH, Radius, Space, TabBarSpace, WIDE, type Colors } from '@/constants/theme';
 import { useColors, useStyles } from '@/store/theme';
 import { sharpImage } from '@/lib/tmdb';
 import { fontFamilyFor } from '@/lib/fonts';
@@ -37,12 +37,14 @@ export function T({
   const size = flat?.fontSize;
   const k = phone && size && size >= 15 ? (size >= 28 ? 0.86 : 0.92) : 1;
   const scaled = k === 1 ? null : { fontSize: Math.round(size! * k * 2) / 2, lineHeight: flat.lineHeight ? Math.round(flat.lineHeight * k) : undefined };
+  // Roboto ya es compacta: el espaciado negativo pensado para la letra anterior se suaviza.
+  const spacing = flat?.letterSpacing && flat.letterSpacing < 0 ? { letterSpacing: flat.letterSpacing * 0.35 } : null;
   // Idioma: cada texto pasa por la traducción (inglés por defecto).
   useLang();
   const children = raw ? rest.children : translate(rest.children);
   return (
     <Text
-      style={[flat, scaled, { fontFamily: fontFamilyFor(flat?.fontWeight), fontWeight: undefined }]}
+      style={[flat, scaled, spacing, { fontFamily: fontFamilyFor(flat?.fontWeight), fontWeight: undefined }]}
       {...rest}>
       {children}
     </Text>
@@ -376,7 +378,7 @@ const makeStyles = (C: Colors) =>
     screen: { flex: 1, backgroundColor: C.bg },
     scrollContent: { flexGrow: 1, paddingBottom: TabBarSpace },
     inner: { width: '100%', maxWidth: MaxContentWidth, alignSelf: 'center', gap: Space.xl, flex: 1 },
-    padded: { paddingHorizontal: Space.lg, paddingTop: Space.lg },
+    padded: { paddingHorizontal: Gutter, paddingTop: Space.lg },
     posterBox: {
       backgroundColor: C.fill,
       overflow: 'hidden',

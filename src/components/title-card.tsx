@@ -101,7 +101,7 @@ export function TitleCard({
  * Rejilla pareja: calcula cuántas columnas caben y reparte el ancho exacto entre ellas, para que
  * no quede un hueco irregular a la derecha. Ajusta el ancho de cada TitleCard.
  */
-export function Grid({ children, minWidth = 108 }: { children: ReactNode; minWidth?: number }) {
+export function Grid({ children, minWidth = 100 }: { children: ReactNode; minWidth?: number }) {
   const styles = useStyles(makeStyles);
   const [width, setWidth] = useState(0);
   const gap = Space.md;

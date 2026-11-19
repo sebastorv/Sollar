@@ -18,7 +18,7 @@ import { Rating, Reactions } from '@/components/rating';
 import { Backdrop, card, GlassButton, glassFill } from '@/components/glass';
 import { Icon, type IconName } from '@/components/icons';
 import { AddToListSheet, entryFrom } from '@/components/lists';
-import { ProviderLogo } from '@/components/platforms';
+import { ProviderWordmark } from '@/components/platforms';
 import { Gallery } from '@/components/gallery';
 import { anchorOf, BubbleMenu, Sheet, type Anchor, type PressLike } from '@/components/sheet';
 import { EpisodePanel, ProgressSummary, SeasonsBlock, UpNext } from '@/components/episodes';
@@ -27,7 +27,7 @@ import { Soundtrack } from '@/components/soundtrack';
 import { DetailsBlock, Recommendations, SeasonQuality } from '@/components/title-extras';
 import { Touchable } from '@/components/touch';
 import { Button, Empty, FadeIn, Loading, Poster, T } from '@/components/ui';
-import { Radius, Space, type Colors } from '@/constants/theme';
+import { Gutter, Radius, Space, type Colors } from '@/constants/theme';
 import { withAlpha } from '@/constants/theme';
 import { addDays, fromISO, todayISO } from '@/lib/dates';
 import { itemKey, newItemFromMovie, newItemFromTv, seasonsFromTv } from '@/lib/library-item';
@@ -115,12 +115,6 @@ function TitleScreenBody() {
   async function openSheet(kind: 'rate' | 'lists' | 'watched', e?: PressLike) {
     setSheetAnchor(await anchorOf(e, center));
     setSheet(kind);
-  }
-  /** Ir a una parte de la ficha: en celular, su pestaña; en computador, se baja hasta ella. */
-  function jump(k: Tab) {
-    if (!wide) return setTab(k);
-    if (Platform.OS === 'web' && typeof document !== 'undefined')
-      document.getElementById(`sec-${k}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
   /** En computador el episodio se abre en un panel a la derecha; en celular, en su página. */
   function openEpisode(t: { season: number; episode: number }) {
@@ -460,6 +454,10 @@ function TitleScreenBody() {
     return (
       <View style={{ backgroundColor: C.bg }}>
         {scrim}
+        {/* Compartir arriba a la derecha, sobre la imagen; se va con ella al bajar. */}
+        <View style={{ position: 'absolute', right: Gutter, top: insets.top + Space.sm, zIndex: 2 }}>
+          <RoundIcon icon="share" label="Compartir" onPress={share} />
+        </View>
         <View style={[styles.content, { paddingTop: insets.top + 64, paddingBottom: Space.xl, gap: Space.lg }]}>
           <View style={{ alignItems: 'center' }}>
             <Poster path={poster} title={title} width={posterW} style={styles.poster} />
@@ -499,13 +497,19 @@ function TitleScreenBody() {
   const musicPart = <Soundtrack titles={titles} year={year ?? null} wide={wide} />;
   const mediaPart = extras ? <Gallery extras={extras} /> : <Loading />;
   const reactionsPart = item ? <Reactions value={item.reactions?.title ?? []} onChange={(list) => lib.setReactions(key, 'title', list)} /> : null;
-  const sidePart = (
-    <View style={{ gap: Space.xxl }}>
-      <WhereToWatch providers={providers} loaded={providersLoaded} />
+  const wherePart = <WhereToWatch providers={providers} loaded={providersLoaded} />;
+  const restPart = (
+    <>
       {extras ? <DetailsBlock extras={extras} type={type} id={id} status={isTv ? details.data.status : undefined} /> : null}
       {details.kind === 'tv' ? <SeasonQuality seasons={details.data.seasons} /> : null}
       <InYourLists entryKey={key} />
       {item ? <NoteBox item={item} /> : null}
+    </>
+  );
+  const sidePart = (
+    <View style={{ gap: Space.xxl }}>
+      {wherePart}
+      {restPart}
     </View>
   );
 
@@ -551,8 +555,9 @@ function TitleScreenBody() {
 
       {tab === 'info' ? (
         <View style={{ gap: Space.xxl }}>
+          {wherePart}
           {reactionsPart}
-          {sidePart}
+          {restPart}
         </View>
       ) : null}
       {tab === 'episodes' ? episodesPart : null}
@@ -572,18 +577,10 @@ function TitleScreenBody() {
         <DarkScope>
           <WithTheme>{renderHero}</WithTheme>
         </DarkScope>
-        {/* Del fondo oscuro de la portada al fondo de la página. */}
-        <LinearGradient colors={[C.bg, C.bg]} style={{ height: 56 }} />
         <View style={[styles.content, wide && styles.contentWide]}>{body}</View>
       </ScrollView>
       </FadeIn>
 
-      {/* Compartir arriba a la derecha, sobre la imagen (celular). */}
-      {!wide ? (
-        <View style={{ position: 'absolute', right: Space.lg, top: insets.top + Space.sm }}>
-          <RoundIcon icon="share" label="Compartir" onPress={share} glass />
-        </View>
-      ) : null}
 
       {details.kind === 'tv' && wide ? (
         <EpisodePanel
@@ -644,11 +641,6 @@ function TitleScreenBody() {
           ...(extras?.trailerKey
             ? [{ label: 'Ver tráiler', icon: 'film' as IconName, onPress: () => Linking.openURL(`https://www.youtube.com/watch?v=${extras.trailerKey}`) }]
             : []),
-          { label: 'Videos e imágenes', icon: 'camera' as IconName, onPress: () => jump('media') },
-          { label: 'Banda sonora', icon: 'music' as IconName, onPress: () => jump('music') },
-          { label: 'Notas personales', icon: 'edit' as IconName, onPress: () => jump('info') },
-          { label: 'Compartir', icon: 'share' as IconName, onPress: share },
-          'divider' as const,
           { label: 'Ver en TMDB', icon: 'screen' as IconName, onPress: () => Linking.openURL(`https://www.themoviedb.org/${type}/${id}`) },
           ...(extras?.imdbId
             ? [{ label: 'Ver en IMDb', icon: 'screen' as IconName, onPress: () => Linking.openURL(`https://www.imdb.com/title/${extras.imdbId}/`) }]
@@ -820,7 +812,7 @@ function ActionTiles({
         style={[styles.tile, { borderWidth: 0, overflow: 'hidden', boxShadow: 'none' }]}>
         <LinearGradient colors={[C.g1, C.g2]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
         <View>
-          <Icon name={statusIcon} size={24} color={C.onAccent} filled={!!item} strokeWidth={1.9} />
+          <Icon name={statusIcon} size={24} color={C.onAccent} strokeWidth={1.8} />
         </View>
       </Touchable>
       <Tile icon="heart" label="Favorito" on={!!item?.favorite} onPress={onFavorite} />
@@ -1055,7 +1047,7 @@ function InYourLists({ entryKey }: { entryKey: string }) {
 
 // --- Dónde ver: todos los servicios, con lista desplegable ---
 
-const KIND_LABEL = { flatrate: 'Suscripción', free: 'Gratis', ads: 'Con anuncios', rent: 'Alquiler', buy: 'Compra' } as const;
+const KIND_LABEL = { flatrate: 'Streaming', free: 'Gratis', ads: 'Con anuncios', rent: 'Alquiler', buy: 'Compra' } as const;
 
 /**
  * Dónde ver, como JustWatch: una cuadrícula de mosaicos con el logo grande de cada servicio y,
@@ -1111,8 +1103,8 @@ function WhereToWatch({ providers, loaded }: { providers: TmdbWatchProviders | n
                 onPress={() => link && Linking.openURL(link)}
                 accessibilityLabel={`${r.name}, ${tr(r.kind)}`}
                 style={styles.wtwTile}>
-                <ProviderLogo name={r.name} logoPath={r.logo} size={52} />
-                <T numberOfLines={1} style={{ fontSize: 13, fontWeight: '600', color: C.textMuted }}>
+                <ProviderWordmark id={r.id} name={r.name} />
+                <T numberOfLines={1} style={{ fontSize: 14, fontWeight: '500', color: C.text }}>
                   {r.kind}
                 </T>
                 {isMine ? (
@@ -1145,7 +1137,7 @@ function WhereToWatch({ providers, loaded }: { providers: TmdbWatchProviders | n
 const makeStyles = (C: Colors) =>
   StyleSheet.create({
     page: { flex: 1, backgroundColor: C.bg },
-    content: { width: '100%', maxWidth: 1480, alignSelf: 'center', paddingHorizontal: Space.lg },
+    content: { width: '100%', maxWidth: 1480, alignSelf: 'center', paddingHorizontal: Gutter },
     contentWide: { paddingHorizontal: Space.xxl + Space.md },
     poster: {
       shadowColor: '#000',
@@ -1239,13 +1231,13 @@ const makeStyles = (C: Colors) =>
     providers: { ...glassFill(C), borderRadius: Radius.lg, paddingHorizontal: Space.md },
     wtwGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Space.sm },
     wtwTile: {
-      width: 96,
-      height: 104,
+      width: 108,
+      height: 108,
       borderRadius: 20,
       alignItems: 'center',
       justifyContent: 'center',
-      gap: 8,
-      backgroundColor: C.mode === 'light' ? '#FFFFFF' : 'rgba(255,255,255,0.06)',
+      gap: 14,
+      backgroundColor: C.mode === 'light' ? '#FFFFFF' : '#16161B',
       boxShadow: C.mode === 'light' ? '0 2px 10px rgba(30,16,50,0.06)' : 'none',
     },
     wtwMine: {

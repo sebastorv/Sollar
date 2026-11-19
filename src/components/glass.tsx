@@ -75,8 +75,8 @@ export function Glass({
               borderRadius: radius,
               backgroundColor: tintBg,
               // @ts-expect-error: propiedades de CSS que react-native-web pasa al navegador.
-              backdropFilter: `blur(${strong ? 28 : 16}px) saturate(180%)`,
-              WebkitBackdropFilter: `blur(${strong ? 28 : 16}px) saturate(180%)`,
+              backdropFilter: `blur(${strong ? 40 : 16}px) saturate(${strong ? 200 : 180}%)`,
+              WebkitBackdropFilter: `blur(${strong ? 40 : 16}px) saturate(${strong ? 200 : 180}%)`,
             },
           ]}
         />

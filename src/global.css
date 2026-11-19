@@ -1,6 +1,6 @@
 :root {
   --font-display:
-    'PlusJakartaSans_400Regular', Inter, ui-sans-serif, system-ui, sans-serif, Apple Color Emoji, Segoe UI Emoji,
+    'Roboto_400Regular', Roboto, ui-sans-serif, system-ui, sans-serif, Apple Color Emoji, Segoe UI Emoji,
     Segoe UI Symbol, Noto Color Emoji;
   --font-mono:
     ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, Courier New, monospace;
@@ -13,5 +13,5 @@ input,
 textarea,
 select,
 button {
-  font-family: 'PlusJakartaSans_500Medium', Inter, ui-sans-serif, system-ui, sans-serif;
+  font-family: 'Roboto_400Regular', Roboto, ui-sans-serif, system-ui, sans-serif;
 }

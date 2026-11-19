@@ -8,6 +8,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { FilterSheet } from '@/components/filter-sheet';
+import { TypeFilter } from '@/components/type-filter';
 import { card, glassFill } from '@/components/glass';
 import { Icon } from '@/components/icons';
 import { MyLists } from '@/components/lists';
@@ -147,9 +148,7 @@ export default function ListScreen() {
       </ScrollView>
 
       <View style={{ flexDirection: 'row', gap: Space.sm, flexWrap: 'wrap', alignItems: 'center' }}>
-        <Chip label="Todo" selected={filters.type === 'all'} onPress={() => set('type', 'all')} />
-        <Chip label="Series" selected={filters.type === 'tv'} onPress={() => set('type', 'tv')} />
-        <Chip label="Películas" selected={filters.type === 'movie'} onPress={() => set('type', 'movie')} />
+        <TypeFilter value={filters.type} onChange={(t) => set('type', t)} />
         <Touchable
           onPress={() => setSheetOpen(true)}
           accessibilityRole="button"

@@ -1,29 +1,29 @@
 /**
- * La letra de Sollar: Plus Jakarta Sans, geométrica y cálida, en todos los textos.
+ * La letra de Sollar: Roboto, la misma de Trakt. Limpia, legible y no muy gruesa.
  * Cada grosor es un archivo distinto; fontFamilyFor elige el que corresponde al fontWeight.
+ * Los grosores pedidos se aligeran un paso (800 se ve como 700, 700 como 600), para que nada
+ * se vea pesado.
  */
 
 import {
-  PlusJakartaSans_400Regular,
-  PlusJakartaSans_500Medium,
-  PlusJakartaSans_600SemiBold,
-  PlusJakartaSans_700Bold,
-  PlusJakartaSans_800ExtraBold,
-} from '@expo-google-fonts/plus-jakarta-sans';
+  Roboto_400Regular,
+  Roboto_500Medium,
+  Roboto_600SemiBold,
+  Roboto_700Bold,
+} from '@expo-google-fonts/roboto';
 
 export const FONT_FILES = {
-  PlusJakartaSans_400Regular,
-  PlusJakartaSans_500Medium,
-  PlusJakartaSans_600SemiBold,
-  PlusJakartaSans_700Bold,
-  PlusJakartaSans_800ExtraBold,
+  Roboto_400Regular,
+  Roboto_500Medium,
+  Roboto_600SemiBold,
+  Roboto_700Bold,
 };
 
 export function fontFamilyFor(weight: string | number | undefined): string {
   const w = Number(weight === 'bold' ? 700 : weight === 'normal' || weight == null ? 400 : weight);
-  if (w >= 800) return 'PlusJakartaSans_800ExtraBold';
-  if (w >= 700) return 'PlusJakartaSans_700Bold';
-  if (w >= 600) return 'PlusJakartaSans_600SemiBold';
-  if (w >= 500) return 'PlusJakartaSans_500Medium';
-  return 'PlusJakartaSans_400Regular';
+  if (w >= 800) return 'Roboto_700Bold';
+  if (w >= 700) return 'Roboto_600SemiBold';
+  if (w >= 600) return 'Roboto_500Medium';
+  if (w >= 500) return 'Roboto_500Medium';
+  return 'Roboto_400Regular';
 }

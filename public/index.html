@@ -60,6 +60,16 @@
         height: 100%;
         flex: 1;
       }
+      /* App de la pantalla de inicio (iPhone): iOS a veces informa una altura menor que la
+         pantalla y deja una franja abajo. Se toma la altura completa de la pantalla. */
+      @media (display-mode: standalone) {
+        html,
+        body,
+        #root {
+          height: 100lvh;
+          min-height: 100lvh;
+        }
+      }
     </style>
   </head>
 

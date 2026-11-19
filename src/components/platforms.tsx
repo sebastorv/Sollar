@@ -7,7 +7,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { Radius, Space, type Colors } from '@/constants/theme';
 import { useColors, useStyles } from '@/store/theme';
-import { getProviderDirectory } from '@/lib/tmdb';
+import { getNetworkLogo, getProviderDirectory } from '@/lib/tmdb';
 import type { ProviderInfo } from '@/lib/types';
 import { useSettings } from '@/store/settings';
 
@@ -158,3 +158,108 @@ const makeStyles = (C: Colors) =>
     justifyContent: 'center',
   },
 });
+
+// --- Logos con el nombre (como JustWatch) ---
+
+/**
+ * Cada plataforma con su red en TMDB, que trae el logo con el nombre (no el ícono cuadrado de la
+ * app). Las que no están aquí se muestran con su nombre escrito.
+ */
+const WORDMARK_NETWORK: Record<number, number> = {
+  8: 213, // Netflix
+  1796: 213,
+  337: 2739, // Disney+
+  119: 1024, // Prime Video
+  9: 1024,
+  1899: 3186, // Max
+  384: 3186,
+  350: 2552, // Apple TV+
+  2: 2552,
+  531: 4330, // Paramount+
+  283: 1112, // Crunchyroll
+  15: 453, // Hulu
+  386: 3353, // Peacock
+};
+/** Logos que se ven bien en su color original; los demás se muestran en un solo tono. */
+const KEEP_COLOR = new Set([213, 1112, 453]);
+
+const WM_KEY = 'sollar.wordmarks.v1';
+let wordmarks: Record<number, string | null> | null = null;
+let wmLoad: Promise<void> | null = null;
+
+function loadWordmarks() {
+  if (wmLoad) return wmLoad;
+  wmLoad = AsyncStorage.getItem(WM_KEY)
+    .then((raw) => {
+      wordmarks = raw ? (JSON.parse(raw) as Record<number, string | null>) : {};
+    })
+    .catch(() => {
+      wordmarks = {};
+    });
+  return wmLoad;
+}
+
+function useWordmark(providerId: number): { path: string | null; network: number | null; ready: boolean } {
+  const network = WORDMARK_NETWORK[providerId] ?? null;
+  const [path, setPath] = useState<string | null>(network && wordmarks ? wordmarks[network] ?? null : null);
+  const [ready, setReady] = useState(!network || (wordmarks != null && network in wordmarks));
+  useEffect(() => {
+    if (!network) return;
+    let off = false;
+    loadWordmarks().then(async () => {
+      if (off) return;
+      if (wordmarks && network in wordmarks) {
+        setPath(wordmarks[network]);
+        setReady(true);
+        return;
+      }
+      const p = await getNetworkLogo(network).catch(() => null);
+      if (off) return;
+      wordmarks = { ...(wordmarks ?? {}), [network]: p };
+      AsyncStorage.setItem(WM_KEY, JSON.stringify(wordmarks)).catch(() => {});
+      setPath(p);
+      setReady(true);
+    });
+    return () => {
+      off = true;
+    };
+  }, [network]);
+  return { path, network, ready };
+}
+
+/** Logo con el nombre de la plataforma, en blanco (modo oscuro) o negro (claro). */
+export function ProviderWordmark({ id, name, width = 84, height = 34 }: { id: number; name: string; width?: number; height?: number }) {
+  const C = useColors();
+  const { path, network, ready } = useWordmark(id);
+  const keep = network != null && KEEP_COLOR.has(network);
+  const mono = C.mode === 'dark' ? '#FFFFFF' : '#16141B';
+  if (!ready) return <View style={{ width, height }} />;
+  if (!path) {
+    return (
+      <View style={{ width, height, alignItems: 'center', justifyContent: 'center' }}>
+        <T numberOfLines={2} style={{ fontSize: 14, lineHeight: 16, fontWeight: '700', textAlign: 'center', color: C.text }}>
+          {name}
+        </T>
+      </View>
+    );
+  }
+  return (
+    <View
+      style={{
+        width,
+        height,
+        // En la web el tono único se logra con un filtro; en iPhone y Android, con tintColor.
+        ...(keep ? {} : ({ filter: C.mode === 'dark' ? 'brightness(0) invert(1)' : 'brightness(0)' } as object)),
+      }}>
+      <Image
+        source={{ uri: `https://image.tmdb.org/t/p/w300${path}` }}
+        style={{ width, height }}
+        contentFit="contain"
+        cachePolicy="memory-disk"
+        transition={0}
+        tintColor={keep ? undefined : mono}
+        accessibilityLabel={name}
+      />
+    </View>
+  );
+}

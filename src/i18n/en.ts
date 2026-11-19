@@ -560,4 +560,6 @@ export const EN: Record<string, string> = {
   'sáb': 'Sat',
   hoy: 'Today',
   'Con anuncios': 'With ads',
+  'Toca una estrella': 'Tap a star',
+  Streaming: 'Stream',
 };

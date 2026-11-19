@@ -244,20 +244,6 @@ export function DetailsBlock({
           </View>
         ))}
       </View>
-      <View style={{ flexDirection: 'row', gap: Space.lg }}>
-        <Touchable onPress={() => Linking.openURL(`https://www.themoviedb.org/${type}/${id}`)} accessibilityRole="link">
-          <T variant="label" style={{ textDecorationLine: 'underline' }}>
-            Ver en TMDB
-          </T>
-        </Touchable>
-        {extras.imdbId ? (
-          <Touchable onPress={() => Linking.openURL(`https://www.imdb.com/title/${extras.imdbId}/`)} accessibilityRole="link">
-            <T variant="label" style={{ textDecorationLine: 'underline' }}>
-              Ver en IMDb
-            </T>
-          </Touchable>
-        ) : null}
-      </View>
     </Section>
   );
 }

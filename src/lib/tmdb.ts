@@ -281,6 +281,17 @@ const RATING_ORDER = ['imdb', 'tomatoes', 'metacritic', 'letterboxd', 'tomatoesa
  * Notas de IMDb, Rotten Tomatoes, Metacritic, Letterboxd y Trakt (por MDBList, a través de la
  * función de Supabase). En el orden de importancia mundial. Si no está configurado, lista vacía.
  */
+/** Logo con el nombre de una cadena o plataforma (para "Dónde ver"). */
+export async function getNetworkLogo(networkId: number): Promise<string | null> {
+  if (isDemo) return null;
+  const raw = await get<{ logo_path?: string | null; images?: { logos?: { file_path: string; aspect_ratio: number }[] } }>(`/network/${networkId}`, {
+    append_to_response: 'images',
+  });
+  // El más ancho (con el nombre completo), si hay varios.
+  const wide = raw.images?.logos?.filter((l) => l.aspect_ratio >= 1.8).sort((a, b) => b.aspect_ratio - a.aspect_ratio)[0];
+  return wide?.file_path ?? raw.logo_path ?? null;
+}
+
 export async function getRatings(type: MediaType, id: number): Promise<ExternalRating[]> {
   if (isDemo || hasToken) return [];
   try {

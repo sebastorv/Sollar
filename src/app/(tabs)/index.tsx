@@ -19,13 +19,14 @@ import { useEffect, useMemo, useState } from 'react';
 import { FlatList, StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import { SollarLogo } from '@/components/brand';
+import { TypeFilter, type TypeValue } from '@/components/type-filter';
 import { card } from '@/components/glass';
 import { Icon } from '@/components/icons';
 import { TitleCard } from '@/components/title-card';
 import { TokenWarning } from '@/components/token-warning';
 import { Touchable } from '@/components/touch';
 import { Button, Empty, Poster, Screen, Section, T } from '@/components/ui';
-import { Radius, Space, type Colors } from '@/constants/theme';
+import { Gutter, Radius, Space, type Colors } from '@/constants/theme';
 import { useCalendar, type CalendarEpisode } from '@/hooks/use-calendar';
 import { addDays, dayLabel, daysFromToday, toISO, todayISO } from '@/lib/dates';
 import { formatEpisode, nextEpisode, totalEpisodes, watchedCount } from '@/lib/progress';
@@ -42,6 +43,10 @@ export default function FollowingScreen() {
   const { items } = lib;
   const { myProviders } = useSettings();
   const calendar = useCalendar();
+  // Filtro de tipo (todo, series, películas), como en Trakt.
+  const [kind, setKind] = useState<TypeValue>('all');
+  const showTv = kind !== 'movie';
+  const showMovies = kind !== 'tv';
 
   const watching = useMemo(
     () =>
@@ -73,26 +78,9 @@ export default function FollowingScreen() {
         </T>
         <NewsBell />
       </View>
+      {items.length > 0 ? <TypeFilter value={kind} onChange={setKind} /> : null}
 
       {isDemo ? <TokenWarning /> : null}
-
-      {calendar.fresh.length > 0 ? (
-        <View style={styles.fresh}>
-          <View style={styles.freshDot} />
-          <T variant="small" style={{ flex: 1 }}>
-            <T variant="small" style={{ fontWeight: '800' }}>
-              {calendar.fresh.length === 1 ? 'Episodio nuevo' : `${calendar.fresh.length} series con episodio nuevo`}
-            </T>
-            {': '}
-            {calendar.fresh
-              .slice(0, 3)
-              .map((f) => lib.get(f.key)?.title)
-              .filter(Boolean)
-              .join(', ')}
-            {calendar.fresh.length > 3 ? ' y más' : ''}
-          </T>
-        </View>
-      ) : null}
 
       {items.length === 0 ? (
         <Empty
@@ -112,7 +100,7 @@ export default function FollowingScreen() {
         </View>
       ) : null}
 
-      {watching.length > 0 ? (
+      {showTv && watching.length > 0 ? (
         <Section title="Continúa viendo" onPress={() => router.navigate('/lista')}>
           <HList
             data={watching}
@@ -129,7 +117,7 @@ export default function FollowingScreen() {
 
       {items.length > 0 ? <StreakCard items={items} /> : null}
 
-      {thisWeek.length > 0 ? (
+      {showTv && thisWeek.length > 0 ? (
         <Section title="Esta semana" onPress={() => router.navigate('/calendario')}>
           <HList
             data={thisWeek.slice(0, 20)}
@@ -142,13 +130,13 @@ export default function FollowingScreen() {
         </Section>
       ) : null}
 
-      {readyNow.length > 0 ? (
+      {readyNow.some((i) => kind === 'all' || i.mediaType === kind) ? (
         <Section title="Listo en tus plataformas">
-          <PosterShelf items={readyNow} myProviders={myProviders} />
+          <PosterShelf items={readyNow.filter((i) => kind === 'all' || i.mediaType === kind)} myProviders={myProviders} />
         </Section>
       ) : null}
 
-      {plannedShows.length > 0 ? (
+      {showTv && plannedShows.length > 0 ? (
         <Section title="Empieza a ver">
           <PosterShelf
             items={plannedShows}
@@ -161,7 +149,7 @@ export default function FollowingScreen() {
         </Section>
       ) : null}
 
-      {plannedMovies.length > 0 ? (
+      {showMovies && plannedMovies.length > 0 ? (
         <Section title="Películas por ver">
           <PosterShelf items={plannedMovies} myProviders={myProviders} onCheck={(i) => lib.setMovieWatched(i.key, true)} />
         </Section>
@@ -218,7 +206,8 @@ function UpNextCard({ item, upcoming }: { item: LibraryItem; upcoming?: Calendar
   const next = unaired ? null : nextRaw;
   const target = next ?? (unaired && upcoming ? { season: upcoming.season, episode: upcoming.episode } : null);
   const ep = useEpisode(item.tmdbId, target?.season, target?.episode);
-  const width = Math.min(Math.max(screen * 0.78, 260), 340);
+  // Como Trakt: caben casi dos tarjetas a lo ancho del celular.
+  const width = Math.min(Math.max(screen * 0.6, 220), 300);
   const still = sharpImage(ep?.still_path, 'still', width) ?? sharpImage(item.backdropPath, 'backdrop', width);
   const total = totalEpisodes(item.seasons);
   const seen = watchedCount(item);
@@ -268,7 +257,7 @@ function UpNextCard({ item, upcoming }: { item: LibraryItem; upcoming?: Calendar
             accessibilityLabel={`Marcar ${code} como visto`}
             onPress={() => setEpisodes(item.key, [next], true)}
             style={styles.checkBtn}>
-            <Icon name="check" size={20} color={C.onAccent} strokeWidth={2.4} />
+            <Icon name="check" size={26} color={C.text} strokeWidth={1.7} />
           </Touchable>
         ) : null}
       </View>
@@ -379,7 +368,7 @@ function WeekCard({ e }: { e: CalendarEpisode }) {
   const today = e.airDate === todayISO();
   return (
     <Link href={{ pathname: '/titulo/[tipo]/[id]', params: { tipo: 'tv', id: String(e.tmdbId) } }} asChild>
-      <Touchable style={{ width: 260, gap: 8 }} pressScale={0.97}>
+      <Touchable style={{ width: 230, gap: 8 }} pressScale={0.97}>
         <View style={[styles.weekStill]}>
           {img ? <Image source={{ uri: img }} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} /> : null}
           <LinearGradient colors={['transparent', 'rgba(0,0,0,0.55)']} style={StyleSheet.absoluteFill} />
@@ -422,7 +411,7 @@ const makeStyles = (C: Colors) =>
       backgroundColor: C.accentSoft,
     },
     freshDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: C.accent },
-    weekStill: { width: 260, aspectRatio: 16 / 9, borderRadius: 16, overflow: 'hidden', backgroundColor: C.fill },
+    weekStill: { width: 230, aspectRatio: 16 / 9, borderRadius: 16, overflow: 'hidden', backgroundColor: C.fill },
     weekTags: { position: 'absolute', left: 10, bottom: 10, flexDirection: 'row', gap: 6 },
     weekTag: {
       flexDirection: 'row',
@@ -435,7 +424,7 @@ const makeStyles = (C: Colors) =>
     },
     weekTagText: { fontSize: 11, lineHeight: 14, fontWeight: '700', color: '#fff' },
     // Los estantes llegan al borde de la pantalla, como en las apps de streaming.
-    bleed: { marginHorizontal: -Space.lg, paddingHorizontal: Space.lg, flexGrow: 0 },
+    bleed: { marginHorizontal: -Gutter, paddingHorizontal: Gutter, flexGrow: 0 },
     still: {
       aspectRatio: 16 / 9,
       width: '100%',
@@ -457,12 +446,10 @@ const makeStyles = (C: Colors) =>
     },
     pillFill: { position: 'absolute', left: 0, top: 0, bottom: 0, backgroundColor: 'rgba(255,255,255,0.16)' },
     pillText: { color: '#fff', fontSize: 12, lineHeight: 16, fontWeight: '700' },
-    cardTitle: { fontSize: 16, lineHeight: 21, fontWeight: '800', letterSpacing: -0.3, color: C.text },
+    cardTitle: { fontSize: 15, lineHeight: 20, fontWeight: '700', color: C.text },
     checkBtn: {
       width: 38,
       height: 38,
-      borderRadius: 19,
-      backgroundColor: C.accent,
       alignItems: 'center',
       justifyContent: 'center',
     },

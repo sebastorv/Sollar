@@ -240,7 +240,7 @@ function LanguagePicker() {
                 <Icon name="globe" size={20} color={on ? C.accentInk : C.textMuted} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 16, fontWeight: on ? '700' : '500', color: C.text, fontFamily: 'PlusJakartaSans_600SemiBold' }}>
+                <Text style={{ fontSize: 16, fontWeight: on ? '700' : '500', color: C.text, fontFamily: 'Roboto_500Medium' }}>
                   {l.label}
                 </Text>
                 {l.note ? <T variant="caption" muted>{l.note}</T> : null}

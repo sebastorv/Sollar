@@ -8,7 +8,7 @@ import { router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { FlatList, StyleSheet, View } from 'react-native';
 
-import { Space, type Colors } from '@/constants/theme';
+import { Gutter, Space, type Colors } from '@/constants/theme';
 import { itemKey } from '@/lib/library-item';
 import { DEFAULT_DISCOVER, discover, getExtras, getShelf, type Shelf } from '@/lib/tmdb';
 import { STATUS_LABEL, type LibraryItem, type MediaType, type TmdbSearchResult } from '@/lib/types';
@@ -163,7 +163,7 @@ function ShelfSection({
 
 const makeStyles = (C: Colors) =>
   StyleSheet.create({
-    bleed: { marginHorizontal: -Space.lg, paddingHorizontal: Space.lg, flexGrow: 0 },
+    bleed: { marginHorizontal: -Gutter, paddingHorizontal: Gutter, flexGrow: 0 },
     placeholderRow: { flexDirection: 'row', gap: Space.md },
     placeholder: { width: 124, height: 186, borderRadius: 14, backgroundColor: C.fill },
   });

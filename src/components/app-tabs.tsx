@@ -21,21 +21,25 @@ import { useColors, useStyles } from '@/store/theme';
 
 import { SollarLogo } from './brand';
 import { Glass } from './glass';
-import { type IconName } from './icons';
+import { Icon, type IconName } from './icons';
+import { T } from './ui';
 import { TabScrollProvider, useTabScroll } from './tab-scroll';
 import { Touchable } from './touch';
 import { Image } from 'expo-image';
-import Svg, { Circle, Path, Rect } from 'react-native-svg';
 import { useSettings } from '@/store/settings';
 import { RailContext } from './ui';
 
 /** Las pestañas de la píldora, en orden. Buscar va aparte. */
 const PILL = ['/', '/calendario', '/lista', '/perfil'];
 const SLOT = 46;
+/** Alto de cada pestaña en celular (ícono y nombre). */
+const SLOT_TALL = 54;
 const PAD = 6;
 const native = Platform.OS !== 'web';
 /** Ancho de cada pestaña: en celular la barra ocupa casi todo el ancho y las reparte parejo. */
 const SlotWidth = createContext(SLOT);
+/** En celular, las pestañas llevan su nombre debajo del ícono (como Trakt). */
+const Labels = createContext(false);
 
 export default function AppTabs() {
   const { width } = useWindowDimensions();
@@ -79,7 +83,7 @@ function BarLayout({ narrow, children, ...rest }: TabListProps & { narrow: boole
   const index = PILL.findIndex((r) => (r === '/' ? pathname === '/' : pathname.startsWith(r)));
   const { width: screenW } = useWindowDimensions();
   // Celular: la píldora llega casi a los bordes (deja sitio a la lupa) y cada pestaña se ensancha.
-  const small = SLOT + PAD * 2;
+  const small = (narrow ? SLOT_TALL : SLOT) + PAD * 2;
   const full = narrow ? Math.min(screenW - Space.lg * 2, 480) - Space.sm - small : PILL.length * SLOT + PAD * 2;
   const slotW = narrow ? (full - PAD * 2) / PILL.length : SLOT;
 
@@ -118,7 +122,7 @@ function BarLayout({ narrow, children, ...rest }: TabListProps & { narrow: boole
       pointerEvents="none"
       style={[
         styles.drop,
-        { backgroundColor: dropColor, opacity: show, width: slotW },
+        { backgroundColor: dropColor, opacity: show, width: slotW, height: narrow ? SLOT_TALL : SLOT },
         vertical
           ? { transform: [{ translateY: pos }, { scaleY: stretch }, { scaleX: Animated.divide(1, stretch) }] }
           : { transform: [{ translateX: pos }, { scaleX: stretch }, { scaleY: Animated.divide(1, stretch) }] },
@@ -166,7 +170,9 @@ function BarLayout({ narrow, children, ...rest }: TabListProps & { narrow: boole
           <Glass radius={999} style={{ width: '100%' }}>
             <Animated.View style={{ flexDirection: 'row', padding: PAD, width: full, transform: [{ translateX: shift }] }}>
               {drop}
-              <SlotWidth value={slotW}>{pill}</SlotWidth>
+              <SlotWidth value={slotW}>
+                <Labels value>{pill}</Labels>
+              </SlotWidth>
             </Animated.View>
             {collapsed ? (
               <Touchable
@@ -178,7 +184,7 @@ function BarLayout({ narrow, children, ...rest }: TabListProps & { narrow: boole
             ) : null}
           </Glass>
         </Animated.View>
-        <Glass radius={999} style={styles.circle}>
+        <Glass radius={999} style={{ width: small, height: small }}>
           {search}
         </Glass>
       </View>
@@ -197,6 +203,7 @@ function TabButton({
 }: TabTriggerSlotProps & { icon: IconName; label: string; round?: boolean }) {
   const avatar = useSettings().profile.avatar;
   const slotW = useContext(SlotWidth);
+  const labels = useContext(Labels);
   const C = useColors();
   const styles = useStyles(makeStyles);
   return (
@@ -207,7 +214,7 @@ function TabButton({
       accessibilityRole="tab"
       accessibilityLabel={tr(label)}
       accessibilityState={{ selected: isFocused }}
-      style={[round ? styles.roundBtn : [styles.slot, { width: slotW }], round && isFocused && { backgroundColor: C.accentSoft }]}>
+      style={[round ? styles.roundBtn : [styles.slot, { width: slotW }, labels && { height: SLOT_TALL, gap: 2 }], round && isFocused && { backgroundColor: C.accentSoft }]}>
       <View>
         {icon === 'person' && avatar ? (
           // Tu foto en la pestaña de perfil, como en las redes.
@@ -216,9 +223,14 @@ function TabButton({
             style={{ width: 26, height: 26, borderRadius: 13, borderWidth: isFocused ? 2 : 0, borderColor: C.accent }}
           />
         ) : (
-          <TabGlyph name={icon} on={!!isFocused} size={24} color={C.text} fill={C.accent} detail={C.onAccent} />
+          <Icon name={icon} size={round ? 24 : 22} color={isFocused ? C.accentInk : C.text} filled={isFocused && icon !== 'search'} strokeWidth={1.6} />
         )}
       </View>
+      {!round && labels ? (
+        <T numberOfLines={1} style={{ fontSize: 10.5, lineHeight: 13, fontWeight: isFocused ? '700' : '500', color: isFocused ? C.accentInk : C.textMuted }}>
+          {label}
+        </T>
+      ) : null}
     </Touchable>
   );
 }
@@ -240,52 +252,3 @@ const makeStyles = (C: Colors) =>
     roundBtn: { flex: 1, alignItems: 'center', justifyContent: 'center', borderRadius: Radius.pill },
   });
 
-/**
- * Íconos de la barra: finos y suaves cuando no están elegidos; al elegirlos se rellenan con el
- * color de la marca y sus detalles quedan en contraste (en vez de pintar solo el borde).
- */
-function TabGlyph({ name, on, size, color, fill, detail }: { name: IconName; on: boolean; size: number; color: string; fill: string; detail: string }) {
-  const line = { stroke: on ? fill : color, strokeWidth: 1.6, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
-  const body = on ? { fill, stroke: fill, strokeWidth: 1.6, strokeLinejoin: 'round' as const } : { ...line, fill: 'none' };
-  const cut = { stroke: detail, strokeWidth: 1.6, strokeLinecap: 'round' as const, fill: 'none' };
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24">
-      {name === 'play' ? (
-        <>
-          <Rect x="3" y="4.5" width="18" height="13" rx="3.8" {...body} />
-          <Path d="M10.4 8.8v4.4a.5.5 0 0 0 .8.4l3.4-2.2a.5.5 0 0 0 0-.8l-3.4-2.2a.5.5 0 0 0-.8.4Z" fill={on ? detail : color} />
-          <Path d="M9 20.5h6" {...line} />
-        </>
-      ) : null}
-      {name === 'calendar' ? (
-        <>
-          <Rect x="3.5" y="5" width="17" height="15.5" rx="3.8" {...body} />
-          <Path d="M3.5 10h17" {...(on ? cut : line)} />
-          <Path d="M8 3v4M16 3v4" {...line} />
-          <Circle cx="15.5" cy="15" r="1.6" fill={on ? detail : color} />
-        </>
-      ) : null}
-      {name === 'ticket' ? (
-        <>
-          <Path
-            d="M4 7.5A1.5 1.5 0 0 1 5.5 6h13A1.5 1.5 0 0 1 20 7.5v2a2.5 2.5 0 0 0 0 5v2a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 16.5v-2a2.5 2.5 0 0 0 0-5Z"
-            {...body}
-          />
-          <Path d="M14.5 7v1.2M14.5 11.3v1.4M14.5 15.8V17" {...(on ? cut : line)} />
-        </>
-      ) : null}
-      {name === 'person' ? (
-        <>
-          <Circle cx="12" cy="8.3" r="3.6" {...body} />
-          <Path d={on ? 'M4.8 19.6c1-3.4 3.9-5.3 7.2-5.3s6.2 1.9 7.2 5.3c.1.4-.2.9-.7.9H5.5c-.5 0-.8-.5-.7-.9Z' : 'M5 19.5c1.2-3.3 3.9-5 7-5s5.8 1.7 7 5'} {...body} />
-        </>
-      ) : null}
-      {name === 'search' ? (
-        <>
-          <Circle cx="10.5" cy="10.5" r="6.2" {...body} />
-          <Path d="M15.2 15.2l4.8 4.8" {...line} strokeWidth={on ? 2.2 : 1.6} />
-        </>
-      ) : null}
-    </Svg>
-  );
-}

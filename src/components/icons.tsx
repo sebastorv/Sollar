@@ -70,15 +70,29 @@ export function Icon({
   color = color ?? C.text;
   const s = { stroke: color, strokeWidth, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const, fill: 'none' };
   const fill = filled ? color : 'none';
-  const fillOpacity = filled ? 0.22 : 0;
+  // Relleno sólido de un solo color: los detalles quedan como huecos, sin líneas por dentro.
+  const fillOpacity = filled ? 1 : 0;
 
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24">
       {name === 'play' ? (
         <>
           {/* Pantalla con el botón de reproducir: lo que estás siguiendo */}
-          <Rect x="3" y="4.5" width="18" height="13" rx="3.5" {...s} fill={fill} fillOpacity={fillOpacity} />
-          <Path d="M10.3 8.6v4.8a.6.6 0 0 0 .9.5l3.8-2.4a.6.6 0 0 0 0-1l-3.8-2.4a.6.6 0 0 0-.9.5Z" {...s} fill={color} strokeWidth={1.2} />
+          {filled ? (
+            <Path
+              fillRule="evenodd"
+              d="M6.5 4.5h11A3.5 3.5 0 0 1 21 8v6a3.5 3.5 0 0 1-3.5 3.5h-11A3.5 3.5 0 0 1 3 14V8a3.5 3.5 0 0 1 3.5-3.5ZM10.3 8.6v4.8a.6.6 0 0 0 .9.5l3.8-2.4a.6.6 0 0 0 0-1l-3.8-2.4a.6.6 0 0 0-.9.5Z"
+              fill={color}
+              stroke={color}
+              strokeWidth={strokeWidth}
+              strokeLinejoin="round"
+            />
+          ) : (
+            <>
+              <Rect x="3" y="4.5" width="18" height="13" rx="3.5" {...s} />
+              <Path d="M10.3 8.6v4.8a.6.6 0 0 0 .9.5l3.8-2.4a.6.6 0 0 0 0-1l-3.8-2.4a.6.6 0 0 0-.9.5Z" {...s} fill={color} strokeWidth={1.2} />
+            </>
+          )}
           <Path d="M9 20.5h6" {...s} />
         </>
       ) : null}
@@ -86,9 +100,22 @@ export function Icon({
       {name === 'calendar' ? (
         <>
           {/* Hoja de calendario con dos argollas y un día marcado */}
-          <Rect x="3.5" y="5" width="17" height="15.5" rx="3.5" {...s} fill={fill} fillOpacity={fillOpacity} />
-          <Path d="M3.5 10h17M8 3v4M16 3v4" {...s} />
-          <Circle cx="15.5" cy="15" r="1.7" fill={color} stroke="none" />
+          {filled ? (
+            <Path
+              fillRule="evenodd"
+              d="M7 5h10a3.5 3.5 0 0 1 3.5 3.5V17a3.5 3.5 0 0 1-3.5 3.5H7A3.5 3.5 0 0 1 3.5 17V8.5A3.5 3.5 0 0 1 7 5ZM15.5 13.3a1.7 1.7 0 1 0 0 3.4 1.7 1.7 0 0 0 0-3.4Z"
+              fill={color}
+              stroke={color}
+              strokeWidth={strokeWidth}
+            />
+          ) : (
+            <>
+              <Rect x="3.5" y="5" width="17" height="15.5" rx="3.5" {...s} />
+              <Path d="M3.5 10h17" {...s} />
+              <Circle cx="15.5" cy="15" r="1.7" fill={color} stroke="none" />
+            </>
+          )}
+          <Path d="M8 3v4M16 3v4" {...s} />
         </>
       ) : null}
 
@@ -147,12 +174,14 @@ export function Icon({
 
       {name === 'arrowUp' ? <Path d="M12 19V5M6 11l6-6 6 6" {...s} /> : null}
       {name === 'arrowDown' ? <Path d="M12 5v14M6 13l6 6 6-6" {...s} /> : null}
-      {name === 'edit' ? <Path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4Z" {...s} /> : null}
+      {name === 'edit' ? <Path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4Z" {...s} fill={fill} fillOpacity={fillOpacity} /> : null}
 
       {name === 'film' ? (
         <>
-          <Rect x="3" y="5" width="18" height="14" rx="3" {...s} />
-          <Path d="M10 9.2v5.6a.5.5 0 0 0 .8.4l4.2-2.8a.5.5 0 0 0 0-.8l-4.2-2.8a.5.5 0 0 0-.8.4Z" {...s} fill={color} strokeWidth={1} />
+          {/* Claqueta de cine */}
+          <Path d="M3.5 10h17v7.5a2.5 2.5 0 0 1-2.5 2.5H6a2.5 2.5 0 0 1-2.5-2.5Z" {...s} fill={fill} fillOpacity={fillOpacity} />
+          <Path d="M3.6 9.7 3 7.3a1.5 1.5 0 0 1 1.1-1.8l13.6-3.4a1.5 1.5 0 0 1 1.8 1.1l.6 2.4Z" {...s} fill={fill} fillOpacity={fillOpacity} />
+          {filled ? null : <Path d="M7.4 4.6l2.4 3.6M12.3 3.4l2.4 3.6" {...s} />}
         </>
       ) : null}
 
@@ -160,8 +189,7 @@ export function Icon({
         <>
           <Circle cx="10.5" cy="10.5" r="6" {...s} fill={fill} fillOpacity={fillOpacity} />
           <Path d="M15 15l5 5" {...s} />
-          {/* Destello del lente */}
-          <Path d="M8 8.2a3 3 0 0 1 2.4-1.2" {...s} strokeWidth={strokeWidth * 0.8} />
+          {filled ? null : <Path d="M8 8.2a3 3 0 0 1 2.4-1.2" {...s} strokeWidth={strokeWidth * 0.8} />}
         </>
       ) : null}
 
@@ -174,14 +202,14 @@ export function Icon({
             fill={fill}
             fillOpacity={fillOpacity}
           />
-          <Path d="M14.5 6.5v1.5M14.5 11v2M14.5 16v1.5" {...s} />
+          {filled ? null : <Path d="M14.5 6.5v1.5M14.5 11v2M14.5 16v1.5" {...s} />}
         </>
       ) : null}
 
       {name === 'person' ? (
         <>
           <Circle cx="12" cy="8.5" r="3.5" {...s} fill={fill} fillOpacity={fillOpacity} />
-          <Path d="M5 19.5c1.2-3.3 3.9-5 7-5s5.8 1.7 7 5" {...s} />
+          <Path d={filled ? 'M5 19.5c1.2-3.3 3.9-5 7-5s5.8 1.7 7 5Z' : 'M5 19.5c1.2-3.3 3.9-5 7-5s5.8 1.7 7 5'} {...s} fill={fill} fillOpacity={fillOpacity} />
         </>
       ) : null}
 

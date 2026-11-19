@@ -87,6 +87,8 @@ const RULES: [RegExp, string | ((...m: string[]) => string)][] = [
   [/Viendo desde (\S+) de (\d{4})/g, (_, m, y) => `Watching since ${MONTHS_EN[MONTHS_ES.indexOf(m.toLowerCase())] ?? m} ${y}`],
   [/^Marcar el primer episodio de (.+)$/g, 'Mark the first episode of $1'],
   [/^Marcar (.+?) como vist[oa]$/g, 'Mark $1 as watched'],
+  [/^Todo · (\d)/g, 'All · $1'],
+  [/^Listas · (\d)/g, 'Lists · $1'],
   [/Porque te gustó /g, 'Because you liked '],
   [/Le pusiste (\d+)\/10/g, 'You gave it $1/10'],
   [/vio y le puso/g, 'watched and rated'],

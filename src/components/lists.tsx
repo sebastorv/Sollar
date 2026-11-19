@@ -19,6 +19,7 @@ import { useColors, useStyles } from '@/store/theme';
 import { Glass, card } from './glass';
 import { Icon } from './icons';
 import { Sheet, type Anchor } from './sheet';
+import { useSettings } from '@/store/settings';
 import { Touchable } from './touch';
 import { Button, T } from './ui';
 
@@ -99,21 +100,19 @@ export function MyLists() {
   const all = [favoritesList(lib.items), ...lib.lists];
   return (
     <View style={{ gap: Space.lg }}>
+      <Touchable
+        haptic="light"
+        pressScale={0.95}
+        onPress={() => setCreating(true)}
+        accessibilityLabel="Nueva lista"
+        style={{ flexDirection: 'row', alignItems: 'center', gap: 8, alignSelf: 'flex-start', height: 40, paddingHorizontal: 16, borderRadius: 999, backgroundColor: C.accentSoft }}>
+        <Icon name="plus" size={18} color={C.accentInk} strokeWidth={2} />
+        <T style={{ fontSize: 15, fontWeight: '600', color: C.accentInk }}>Nueva lista</T>
+      </Touchable>
       <View style={styles.grid}>
         {all.map((l) => (
           <ListTile key={l.id} list={l} />
         ))}
-        <Touchable style={[styles.tile, styles.newCard]} onPress={() => setCreating(true)} accessibilityLabel="Nueva lista">
-          <View style={styles.plus}>
-            <Icon name="plus" size={28} color={C.accentInk} strokeWidth={2.4} />
-          </View>
-          <View style={{ gap: 2, flex: 1 }}>
-            <T style={{ fontSize: 18, fontWeight: '800', color: C.text }}>Nueva lista</T>
-            <T variant="small" muted>
-              Junta lo que quieras: maratones, pendientes, recomendaciones…
-            </T>
-          </View>
-        </Touchable>
       </View>
       <ListNameDialog
         visible={creating}
@@ -130,77 +129,72 @@ export function MyLists() {
 }
 
 /**
- * Tarjeta de una lista: la primera carátula desenfocada de fondo, tres carátulas en abanico y
- * el nombre grande con cuántos títulos tiene y cuántos ya viste.
+ * Tarjeta de una lista, como en Trakt: arriba tu foto, el nombre y cuántos títulos tiene; abajo
+ * una tira de carátulas superpuestas, la última completa.
  */
 function ListTile({ list }: { list: CustomList }) {
   const C = useColors();
   const styles = useStyles(makeStyles);
   const lib = useLibrary();
-  const posters = list.entries.filter((e) => e.posterPath).slice(0, 3);
+  const { profile } = useSettings();
+  const [w, setW] = useState(0);
+  const posters = list.entries.filter((e) => e.posterPath).slice(0, 10);
   const seen = list.entries.filter((e) => {
     const it = lib.get(e.key);
     return it && (it.status === 'completed' || (it.mediaType === 'movie' && it.watchedAt));
   }).length;
   const total = list.entries.length;
-  const bg = posters[0] ? sharpImage(posters[0].posterPath, 'poster', 200) : null;
+  const fav = list.id === FAVORITES_ID;
+  // La tira ocupa todo el ancho: la última carátula entera y las demás asomando por debajo.
+  const PH = 150;
+  const PW = PH / 1.5;
+  const n = posters.length;
+  const step = n > 1 ? Math.min(PW * 0.62, (w - PW) / (n - 1)) : 0;
   return (
     <Touchable
       haptic="light"
-      pressScale={0.97}
+      pressScale={0.98}
       style={styles.tile}
       accessibilityLabel={`${list.name}, ${total} títulos`}
       onPress={() => router.push({ pathname: '/lista/[id]', params: { id: list.id } })}>
-      {bg ? <Image source={{ uri: bg }} style={StyleSheet.absoluteFill} contentFit="cover" blurRadius={40} /> : null}
-      <View style={[StyleSheet.absoluteFill, { backgroundColor: C.mode === 'dark' ? 'rgba(11,11,13,0.62)' : 'rgba(255,255,255,0.7)' }]} />
-      <View style={styles.fan}>
-        {posters.length ? (
-          posters
-            .map((e, i) => (
-              <Image
-                key={e.key}
-                source={{ uri: sharpImage(e.posterPath, 'poster', 90) ?? undefined }}
-                style={[
-                  styles.fanPoster,
-                  {
-                    left: i * 22,
-                    zIndex: 3 - i,
-                    transform: [{ rotate: `${(i - 1) * 7}deg` }, { scale: i === 0 ? 1 : 0.92 }],
-                  },
-                ]}
-                contentFit="cover"
-              />
-            ))
-            .reverse()
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: Space.md }}>
+        {fav ? (
+          <View style={[styles.avatar, { backgroundColor: C.accentSoft, alignItems: 'center', justifyContent: 'center' }]}>
+            <Icon name="heart" size={20} color={C.accentInk} filled />
+          </View>
+        ) : profile.avatar ? (
+          <Image source={{ uri: profile.avatar }} style={styles.avatar} contentFit="cover" />
         ) : (
-          <View style={[styles.fanPoster, { alignItems: 'center', justifyContent: 'center', backgroundColor: C.fill }]}>
-            <Icon name={list.id === FAVORITES_ID ? 'heart' : 'ticket'} size={30} color={C.textFaint} />
+          <View style={[styles.avatar, { backgroundColor: C.fill, alignItems: 'center', justifyContent: 'center' }]}>
+            <Icon name="ticket" size={20} color={C.textMuted} strokeWidth={1.7} />
           </View>
         )}
-      </View>
-      <View style={{ flex: 1, gap: 4, justifyContent: 'center' }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-          {list.id === FAVORITES_ID ? (
-            <View>
-              <Icon name="heart" size={16} color={C.accent} filled />
-            </View>
-          ) : null}
-          <T numberOfLines={2} style={{ fontSize: 19, lineHeight: 24, fontWeight: '800', color: C.text, flexShrink: 1 }}>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <T numberOfLines={1} style={{ fontSize: 17, fontWeight: '700', color: C.text }}>
             {list.name}
           </T>
+          <T variant="small" muted numberOfLines={1}>
+            {total === 1 ? '1 título' : `${total.toLocaleString('es-CO')} títulos`}
+            {total ? ` · ${seen} vistos` : ''}
+          </T>
         </View>
-        <T variant="small" muted>
-          {total === 1 ? '1 título' : `${total.toLocaleString('es-CO')} títulos`}
-          {total ? ` · ${seen} vistos` : ''}
-        </T>
-        {total ? (
-          <View style={{ height: 4, borderRadius: 2, backgroundColor: C.fill, overflow: 'hidden', marginTop: 4, maxWidth: 160 }}>
-            <View style={{ width: `${Math.round((seen / total) * 100)}%`, height: '100%', backgroundColor: C.accent }} />
-          </View>
-        ) : null}
+        <Icon name="chevronRight" size={18} color={C.textMuted} strokeWidth={1.8} />
       </View>
-      <View>
-        <Icon name="chevronRight" size={18} color={C.textFaint} />
+      <View style={{ height: PH }} onLayout={(e) => setW(e.nativeEvent.layout.width)}>
+        {n ? (
+          posters.map((e, i) => (
+            <Image
+              key={e.key}
+              source={{ uri: sharpImage(e.posterPath, 'poster', PW) ?? undefined }}
+              style={[styles.stripPoster, { width: PW, height: PH, left: i * step, zIndex: i }]}
+              contentFit="cover"
+            />
+          ))
+        ) : (
+          <View style={[styles.stripPoster, { width: PW, height: PH, alignItems: 'center', justifyContent: 'center', backgroundColor: C.fill }]}>
+            <Icon name={fav ? 'heart' : 'ticket'} size={28} color={C.textMuted} strokeWidth={1.6} />
+          </View>
+        )}
       </View>
     </Touchable>
   );
@@ -375,15 +369,14 @@ function ToggleRow({
 const makeStyles = (C: Colors) =>
   StyleSheet.create({
     grid: { flexDirection: 'row', flexWrap: 'wrap', gap: Space.md },
+    avatar: { width: 40, height: 40, borderRadius: 20, overflow: 'hidden' },
+    stripPoster: { position: 'absolute', top: 0, borderRadius: 12, overflow: 'hidden', boxShadow: '-6px 0 14px rgba(0,0,0,0.28)' },
     tile: {
       ...card(C),
       flexGrow: 1,
       flexBasis: 320,
-      maxWidth: 560,
-      minHeight: 150,
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: Space.lg,
+      maxWidth: 620,
+      gap: Space.md,
       padding: Space.lg,
       borderRadius: 24,
       overflow: 'hidden',
@@ -391,7 +384,7 @@ const makeStyles = (C: Colors) =>
     fan: { width: 118, height: 116 },
     fanPoster: { position: 'absolute', top: 4, width: 74, height: 110, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)' },
     listCard: { ...card(C), width: 164, padding: Space.md, gap: Space.sm, borderRadius: Radius.lg },
-    newCard: { borderStyle: 'dashed', borderColor: C.accentLine, borderWidth: 1.5 },
+    newCard: { flexDirection: 'row', alignItems: 'center', gap: Space.lg, backgroundColor: C.accentSoft },
     plus: {
       width: 56,
       height: 56,

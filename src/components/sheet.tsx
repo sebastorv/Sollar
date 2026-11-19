@@ -47,8 +47,8 @@ function usePop(visible: boolean) {
  * Devuelve la posición y el punto desde donde crece (el botón).
  */
 function place(a: Anchor, W: number, H: number, screen: { width: number; height: number }, top0: number, bottom0: number) {
-  const gap = 8;
-  const margin = Space.md;
+  const gap = 10;
+  const margin = 20;
   const spaceBelow = screen.height - bottom0 - (a.y + a.height) - gap;
   const spaceAbove = a.y - top0 - gap;
   const below = spaceBelow >= Math.min(H, 320) || spaceBelow >= spaceAbove;
@@ -231,14 +231,14 @@ export function BubbleMenu({
   const a = last.current;
   if (!shown || !a) return null;
 
-  const W = Math.min(290, screen.width - Space.md * 2);
-  const H = items.reduce((h, it) => h + (it === 'divider' ? 9 : 48), (title ? 40 : 0) + 16);
+  const W = Math.min(264, screen.width - 40);
+  const H = items.reduce((h, it) => h + (it === 'divider' ? 9 : 46), (title ? 40 : 0) + 16);
   const p = place(a, W, H, screen, insets.top, insets.bottom);
 
   return (
     <Modal visible transparent animationType="none" onRequestClose={onClose}>
       <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel={tr('Cerrar')}>
-        <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.12)', opacity: v }]} />
+        <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.08)', opacity: v }]} />
       </Pressable>
       <Animated.View
         style={{
@@ -250,7 +250,7 @@ export function BubbleMenu({
           opacity: v.interpolate({ inputRange: [0, 0.3, 1], outputRange: [0, 1, 1] }),
           transform: [{ scale: v.interpolate({ inputRange: [0, 1], outputRange: [0.3, 1] }) }],
         }}>
-        <Glass strong radius={24}>
+        <Glass strong radius={26}>
           <ScrollView bounces={false} style={{ maxHeight: p.maxHeight }} contentContainerStyle={{ paddingVertical: Space.sm }}>
             {title ? (
               <T style={{ fontSize: 13, fontWeight: '700', color: C.textMuted, paddingHorizontal: Space.lg, paddingVertical: Space.sm }}>
@@ -259,7 +259,7 @@ export function BubbleMenu({
             ) : null}
             {items.map((it, i) =>
               it === 'divider' ? (
-                <View key={i} style={{ height: 1, backgroundColor: C.border, marginVertical: 4, marginHorizontal: Space.lg }} />
+                <View key={i} style={{ height: 6 }} />
               ) : (
                 <Touchable
                   key={i}
@@ -271,13 +271,13 @@ export function BubbleMenu({
                   }}
                   accessibilityRole="button"
                   accessibilityState={{ selected: it.on }}
-                  style={styles.item}>
+                  style={({ pressed }) => [styles.item, (pressed || it.on) && { backgroundColor: C.mode === 'light' ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.08)' }]}>
                   {it.icon ? (
                     <View>
-                      <Icon name={it.icon} size={20} color={it.danger ? C.danger : C.text} />
+                      <Icon name={it.icon} size={19} color={it.danger ? C.danger : C.textMuted} strokeWidth={1.7} />
                     </View>
                   ) : null}
-                  <T style={{ flex: 1, fontSize: 16, fontWeight: it.on ? '700' : '500', color: it.danger ? C.danger : C.text }}>
+                  <T style={{ flex: 1, fontSize: 16, fontWeight: it.on ? '600' : '400', color: it.danger ? C.danger : C.text }}>
                     {it.label}
                   </T>
                   {it.on ? (
@@ -299,5 +299,5 @@ const styles = StyleSheet.create({
   wrap: { flex: 1, paddingHorizontal: Space.md, justifyContent: 'flex-end' },
   bubbleBox: { width: '100%', maxWidth: 480, alignSelf: 'center' },
   bubble: { padding: Space.xl, gap: Space.lg },
-  item: { flexDirection: 'row', alignItems: 'center', gap: Space.md, height: 48, paddingHorizontal: Space.lg },
+  item: { flexDirection: 'row', alignItems: 'center', gap: 14, height: 46, paddingHorizontal: 18, marginHorizontal: 6, borderRadius: 14 },
 });
